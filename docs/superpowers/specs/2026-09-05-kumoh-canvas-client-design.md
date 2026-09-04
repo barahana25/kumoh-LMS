@@ -18,8 +18,16 @@
   → `200 { code:"200", data:{ accessToken, refreshToken } }`
 - `accessToken`: JWT(HS512), 만료 **1시간**. payload에 `loginId(학번)`, `name`, `role`, `division`, `subDivision` 등.
 - `refreshToken`: JWT, 만료 **약 2시간**.
-- 갱신: `POST /reissue` (refreshToken 사용, 서버가 토큰 회전).
-- 웹앱 관측: 응답 **204 또는 401**을 "재발급 필요" 신호로 보고 `/reissue` → 원요청 재시도, 갱신 중 동시요청은 큐잉(`_retry` 플래그).
+- 갱신: `POST /reissue` — **`X-Refresh-Token: <refreshToken>` 헤더 필수**(쿠키/바디/Bearer 모두 실패 확인). 성공 시 `{accessToken, refreshToken}` **둘 다 새로 회전**되어 내려옴. 검증 완료.
+- 모든 요청 헤더 규약(웹앱 request 인터셉터와 동일): `Authorization: Bearer <accessToken>` + `X-Refresh-Token: <refreshToken>` 동시 부착.
+- **재발급 트리거 = HTTP 204**(웹앱 response 인터셉터가 `204 === status`로 판정). 방어적으로 401도 함께 처리.
+- 갱신 중 동시요청은 큐잉, `_retry` 플래그로 무한루프 방지, `/reissue` 자체는 트리거 제외.
+
+### 에러 응답이 두 가지 형태다 (검증됨)
+1. **앱 봉투**: `{code, message, data}` — 애플리케이션 레벨 (`U004`, `A001` 등)
+2. **원시 Spring**: `{timestamp, status, error, path}` — 필터 레벨. Authorization 헤더 없음 → **401**, 형식이 깨진 토큰 → **500**.
+
+파서는 **두 형태를 모두** 처리해야 한다.
 - 깊은 콘텐츠(과제 제출·Panopto)는 `.kumoh.ac.kr` 도메인에 `_linus_saml_login`(=loginId)/`_linus_saml_domain` 쿠키를 심고 `GET /saml/redirect.do?relayState=<path>` 가 돌려주는 Canvas SSO URL을 웹뷰로 여는 브릿지 구조. **v1 범위 밖**(심만 남김).
 
 ### 검증된 조회 엔드포인트 (모두 200 OK, Bearer 필요)
@@ -150,8 +158,8 @@ Future<void> refresh(int termId, {bool force = false}) async {
 
 - 로그인 → accessToken(1h) + refreshToken(~2h) → **둘 다 Secure Storage**, **비번 미저장**.
 - `auth_interceptor.dart`:
-  - onRequest: `Authorization: Bearer <access>` + `Origin: https://lms.kumoh.ac.kr` + `Referer` 부착.
-  - onResponse/onError: **204/401** → `/reissue`(refreshToken) → 토큰 회전·저장 → 원요청 재시도. 갱신 진행 중 동시요청은 큐에 모아 갱신 후 일괄 재개(`_retry` 가드로 무한루프 방지, `/reissue` 자체는 재발급 대상 제외).
+  - onRequest: `Authorization: Bearer <access>` + **`X-Refresh-Token: <refresh>`** + `Origin: https://lms.kumoh.ac.kr` 부착.
+  - onResponse/onError: **204(주 신호)/401(방어)** → `POST /reissue`(**`X-Refresh-Token` 헤더**) → accessToken·refreshToken **둘 다 회전·저장** → 원요청 재시도. 갱신 진행 중 동시요청은 큐에 모아 갱신 후 일괄 재개(`_retry` 가드로 무한루프 방지, `/reissue` 자체는 재발급 대상 제외).
   - 재발급 실패 → 세션 클리어 → AuthController → 로그인 화면.
 - refreshToken(~2h) 만료 시 재로그인 필요.
 - **자동 로그인 토글** = 포함하되 **기본 OFF**. ON일 때만 자격증명을 Secure Storage(Keychain)에 저장하고 refresh 만료 시 조용히 재로그인. 보안 트레이드오프를 설정 화면에 명시.
