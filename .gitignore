@@ -1,0 +1,30 @@
+# ---- Secrets (NEVER commit) ----
+env
+.env
+*.env
+**/secrets.dart
+
+# ---- Flutter / Dart ----
+.dart_tool/
+.packages
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+pubspec.lock            # app: keep? for apps usually commit; leaving out until project init
+*.g.dart.bak
+
+# ---- IDE / OS ----
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# ---- Android / iOS build ----
+android/.gradle/
+android/app/debug/
+android/app/profile/
+android/app/release/
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Flutter.framework/
