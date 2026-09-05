@@ -1,4 +1,3 @@
-import 'package:drift/drift.dart';
 
 import '../../../core/config/env.dart';
 import '../../../core/storage/cache_policy.dart';
@@ -20,13 +19,13 @@ class AssignmentsRepository {
   String _cacheKey(int termId) => 'calendar:$termId';
 
   Stream<List<CalendarEventRow>> watchTerm(int termId) =>
-      _db.calendarEventsDao.watchByTerm(termId).map(_normalizeAll);
+      _db.calendarEventsDao.watchByTerm(termId);
 
   Stream<List<CalendarEventRow>> watchBetween({
     required DateTime from,
     required DateTime to,
   }) =>
-      _db.calendarEventsDao.watchBetween(from: from, to: to).map(_normalizeAll);
+      _db.calendarEventsDao.watchBetween(from: from, to: to);
 
   Future<void> refresh(
     int termId, {
@@ -64,11 +63,4 @@ class AssignmentsRepository {
   // isUtc가 false인 로컬 DateTime으로 되돌린다(가리키는 시각 자체는 맞다).
   // Dart의 DateTime.==는 시각뿐 아니라 isUtc도 비교하므로, UTC로 명시해
   // 저장 전후 값이 그대로 비교 가능하도록 맞춘다.
-  List<CalendarEventRow> _normalizeAll(List<CalendarEventRow> rows) =>
-      rows.map(_normalize).toList();
-
-  CalendarEventRow _normalize(CalendarEventRow row) => row.copyWith(
-        startAt: Value(row.startAt?.toUtc()),
-        endAt: Value(row.endAt?.toUtc()),
-      );
 }

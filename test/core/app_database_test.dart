@@ -113,4 +113,31 @@ void main() {
     expect(await db.coursesDao.watchByTerm(8).first, isEmpty);
     expect(await db.cacheMetaDao.fetchedAt('courses:8'), isNull);
   });
+
+  test('저장한 UTC 시각은 여러 테이블에서 UTC로 되읽힌다', () async {
+    // drift 기본(정수 타임스탬프) 저장은 읽을 때 isUtc를 잃는다.
+    // DateTime.==는 isUtc까지 비교하므로 UTC로 쓴 값이 왕복 후 달라진다.
+    final termAt = DateTime.utc(2026, 9, 1, 0, 1);
+    final postedAt = DateTime.utc(2026, 9, 3, 1);
+
+    await db.termsDao.upsertAll([
+      TermsCompanion.insert(id: const Value(8), name: '2026-2학기', startAt: Value(termAt)),
+    ]);
+    await db.announcementsDao.replaceForTerm(8, [
+      AnnouncementsCompanion.insert(
+        id: '991',
+        termId: 8,
+        title: '공지',
+        postedAt: Value(postedAt),
+      ),
+    ]);
+
+    final term = (await db.termsDao.watchAll().first).single;
+    final ann = (await db.announcementsDao.watchByTerm(8).first).single;
+
+    expect(term.startAt!.isUtc, isTrue, reason: 'Terms.startAt이 UTC로 되읽혀야 한다');
+    expect(ann.postedAt!.isUtc, isTrue, reason: 'Announcements.postedAt이 UTC로 되읽혀야 한다');
+    expect(term.startAt, termAt);
+    expect(ann.postedAt, postedAt);
+  });
 }

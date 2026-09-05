@@ -25,6 +25,13 @@ class AppDatabase extends _$AppDatabase {
   /// 테스트용. 보통 NativeDatabase.memory()를 넘긴다.
   factory AppDatabase.forTesting(QueryExecutor executor) => AppDatabase(executor);
 
+  /// drift 기본값은 DateTime을 정수 타임스탬프로 저장해 읽을 때 isUtc를 잃는다.
+  /// DateTime.==는 isUtc까지 비교하므로 UTC로 쓴 값이 왕복 후 달라진다.
+  /// 텍스트(ISO-8601) 저장으로 전 테이블에서 UTC를 보존한다.
+  @override
+  DriftDatabaseOptions get options =>
+      const DriftDatabaseOptions(storeDateTimeAsText: true);
+
   @override
   int get schemaVersion => 1;
 

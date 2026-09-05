@@ -35,6 +35,9 @@
   - 모델은 여전히 불변(`final` 필드 + `const` 생성자)이다.
 - **커밋**: 각 태스크 끝에서 커밋. 커밋 메시지 끝에 다음 줄을 붙인다:
   `Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>`
+- **DateTime은 UTC로 저장·비교한다**: `AppDatabase`가 `storeDateTimeAsText: true`를 쓴다.
+  drift 기본 정수 저장은 읽을 때 `isUtc`를 잃고, `DateTime.==`는 `isUtc`까지 비교하므로
+  UTC로 쓴 값이 왕복 후 달라진다. 리포지토리에서 `.toUtc()`로 덧칠하지 말 것.
 - **`unwrapEnvelope` 호출 시 타입 인자를 명시할 것**: `unwrapEnvelope<Course>(...)` 처럼.
   async 함수의 `return` 문맥에서 `T`가 `FutureOr<...>`로 추론되어
   `unawaited_return_in_try_block` 경고가 뜬다. 타입 인자를 못 박으면 사라진다.
@@ -2001,6 +2004,12 @@ class AppDatabase extends _$AppDatabase {
 
   /// 테스트용. 보통 NativeDatabase.memory()를 넘긴다.
   factory AppDatabase.forTesting(QueryExecutor executor) => AppDatabase(executor);
+
+  /// drift 기본값은 DateTime을 정수 타임스탬프로 저장해 읽을 때 isUtc를 잃는다.
+  /// DateTime.==는 isUtc까지 비교하므로 UTC로 쓴 값이 왕복 후 달라진다.
+  @override
+  DriftDatabaseOptions get options =>
+      const DriftDatabaseOptions(storeDateTimeAsText: true);
 
   @override
   int get schemaVersion => 1;
