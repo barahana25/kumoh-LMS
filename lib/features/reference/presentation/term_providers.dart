@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/error/failure.dart';
 import '../../../core/storage/db/app_database.dart';
 import '../../../providers.dart';
 
@@ -13,7 +14,13 @@ final activeTermIdProvider = FutureProvider<int?>((ref) async {
   if (selected != null) return selected;
 
   final repo = ref.watch(referenceRepositoryProvider);
-  await repo.refreshTerms();
+  try {
+    await repo.refreshTerms();
+  } on Failure {
+    // 오프라인이어도 캐시된 학기로 화면을 띄운다. 여기서 예외를 흘리면
+    // 강좌·과제·공지 세 화면이 전부 에러 화면이 되어, 저장된 데이터를
+    // 보여준다는 이 앱의 원칙이 깨진다.
+  }
   return repo.currentTermId();
 });
 

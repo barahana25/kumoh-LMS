@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../error/failure.dart';
+
 import '../../features/reference/presentation/term_providers.dart';
 
 /// 새로고침이 실패했을 때 캐시 위에 얇게 뜨는 안내줄.
@@ -46,8 +48,13 @@ Future<void> runRefresh(WidgetRef ref, Future<void> Function() action) async {
   try {
     await action();
     ref.read(refreshErrorProvider.notifier).state = null;
-  } on Object catch (e) {
+  } on Failure catch (e) {
+    // Failure는 사용자에게 보여줄 한국어 메시지를 이미 갖고 있다.
     ref.read(refreshErrorProvider.notifier).state =
-        '새로고침에 실패했습니다. 저장된 데이터를 표시합니다. ($e)';
+        '${e.message} 저장된 데이터를 표시합니다.';
+  } on Exception {
+    ref.read(refreshErrorProvider.notifier).state =
+        '새로고침에 실패했습니다. 저장된 데이터를 표시합니다.';
   }
+  // Error(TypeError, StateError 등)는 프로그래밍 버그이므로 삼키지 않고 그대로 던진다.
 }

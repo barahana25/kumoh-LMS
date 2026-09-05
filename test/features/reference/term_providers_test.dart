@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http_mock_adapter/http_mock_adapter.dart';
@@ -62,5 +63,27 @@ void main() {
     final id = await container.read(activeTermIdProvider.future);
 
     expect(id, 6);
+  });
+
+  test('네트워크가 실패해도 캐시된 학기를 돌려준다 (오프라인)', () async {
+    // 캐시에는 학기가 있지만 CacheMeta가 없어 TTL상 "새로고침 필요" 상태다.
+    // 이때 네트워크가 실패해도 캐시된 학기가 나와야 한다. 예외가 새면
+    // 강좌·과제·공지 세 화면이 전부 에러 화면이 된다.
+    await db.termsDao.upsertAll([
+      TermsCompanion.insert(
+        id: const Value(8),
+        name: '2026-2학기',
+        startAt: Value(DateTime.utc(2026, 9, 1)),
+        endAt: Value(DateTime.utc(2026, 12, 22)),
+      ),
+    ]);
+    adapter.onGet('/terms', (s) => s.reply(500, springAuthErrorJson),
+        queryParameters: {'accountId': 1});
+
+    final id = await container
+        .read(activeTermIdProvider.future)
+        .timeout(const Duration(seconds: 5));
+
+    expect(id, 8, reason: '오프라인이어도 캐시된 현재 학기가 나와야 한다');
   });
 }
