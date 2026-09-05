@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -25,6 +26,8 @@ void main() {
     adapter = DioAdapter(dio: dio);
     container = ProviderContainer(overrides: [
       tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+      // 테스트가 실제 학교 서버로 나가지 않도록 봉인한다.
+      dioProvider.overrideWithValue(dio),
       appDatabaseProvider.overrideWithValue(db),
       referenceRepositoryProvider.overrideWithValue(
         ReferenceRepository(api: ReferenceApi(dio), db: db),
@@ -85,5 +88,30 @@ void main() {
         .timeout(const Duration(seconds: 5));
 
     expect(id, 8, reason: '오프라인이어도 캐시된 현재 학기가 나와야 한다');
+  });
+
+  test('캐시된 학기가 있으면 네트워크를 기다리지 않는다', () async {
+    // 서버가 영영 응답하지 않아도 화면은 즉시 열려야 한다.
+    // 이걸 await 하면 세 화면이 전부 스피너에 묶인다.
+    await db.termsDao.upsertAll([
+      TermsCompanion.insert(
+        id: const Value(8),
+        name: '2026-2학기',
+        startAt: Value(DateTime.utc(2026, 9, 1)),
+        endAt: Value(DateTime.utc(2026, 12, 22)),
+      ),
+    ]);
+    final hang = Completer<void>();
+    addTearDown(() => hang.complete());
+    dio.interceptors.add(InterceptorsWrapper(onRequest: (o, h) async {
+      await hang.future;
+      h.next(o);
+    }));
+
+    final id = await container
+        .read(activeTermIdProvider.future)
+        .timeout(const Duration(seconds: 2));
+
+    expect(id, 8, reason: '네트워크와 무관하게 캐시 학기가 즉시 나와야 한다');
   });
 }

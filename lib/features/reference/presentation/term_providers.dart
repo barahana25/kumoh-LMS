@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/error/failure.dart';
@@ -14,12 +15,33 @@ final activeTermIdProvider = FutureProvider<int?>((ref) async {
   if (selected != null) return selected;
 
   final repo = ref.watch(referenceRepositoryProvider);
+
+  var disposed = false;
+  ref.onDispose(() => disposed = true);
+
+  // 캐시된 학기가 있으면 네트워크를 기다리지 않는다. 이걸 await 하면
+  // 강좌·과제·공지 세 화면이 전부, 이미 디스크에 있는 데이터를 두고도
+  // 연결이 끝날 때까지(최대 20초) 스피너만 돈다.
+  final cached = await repo.currentTermId();
+  if (cached != null) {
+    unawaited(() async {
+      try {
+        await repo.refreshTerms();
+        final fresh = await repo.currentTermId();
+        // 새 학기가 시작돼 값이 바뀐 경우에만 다시 계산한다(무한 루프 방지).
+        if (!disposed && fresh != null && fresh != cached) ref.invalidateSelf();
+      } on Object {
+        // 배경 갱신 실패는 캐시 표시를 막지 않는다.
+      }
+    }());
+    return cached;
+  }
+
+  // 캐시가 아예 없는 최초 실행에서만 네트워크를 기다린다.
   try {
     await repo.refreshTerms();
   } on Failure {
-    // 오프라인이어도 캐시된 학기로 화면을 띄운다. 여기서 예외를 흘리면
-    // 강좌·과제·공지 세 화면이 전부 에러 화면이 되어, 저장된 데이터를
-    // 보여준다는 이 앱의 원칙이 깨진다.
+    // 오프라인이면 학기를 못 정한다. 화면은 빈 상태를 보여준다.
   }
   return repo.currentTermId();
 });

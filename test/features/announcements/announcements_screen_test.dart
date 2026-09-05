@@ -68,4 +68,27 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pumpAndSettle();
   });
+
+  testWidgets('새로고침이 실패하면 캐시를 유지한 채 배너로 알린다', (tester) async {
+    await db.announcementsDao.replaceForTerm(8, [
+      AnnouncementsCompanion.insert(
+        id: '991',
+        termId: 8,
+        courseId: const Value(4831),
+        title: '2주차 실습 안내',
+        contextName: const Value('리눅스시스템프로그래밍-01'),
+        postedAt: Value(DateTime.utc(2026, 9, 3, 1)),
+      ),
+    ]);
+
+    await tester.pumpWidget(wrap());
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('저장된 데이터를 표시합니다'), findsOneWidget,
+        reason: '실패를 알리지 않으면 학생이 낡은 데이터를 최신으로 오해한다');
+    expect(find.text('2주차 실습 안내'), findsOneWidget,
+        reason: '실패해도 캐시는 화면에 남아야 한다');
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpAndSettle();
+  });
 }

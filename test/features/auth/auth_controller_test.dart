@@ -21,6 +21,8 @@ void main() {
         tokenStoreProvider.overrideWithValue(store),
         appDatabaseProvider.overrideWithValue(db),
         authDioProvider.overrideWithValue(authDio),
+          // 테스트가 실제 학교 서버로 나가지 않도록 봉인한다.
+          dioProvider.overrideWithValue(authDio),
       ]);
 
   setUp(() {

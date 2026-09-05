@@ -37,7 +37,7 @@ class ReferenceRepository {
 
   /// 오늘이 포함된 학기를 고르고, 없으면 가장 최근(id 최대) 학기로 폴백한다.
   Future<int?> currentTermId({DateTime? now}) async {
-    final rows = await _db.termsDao.watchAll().first;
+    final rows = await _db.termsDao.getAll();
     if (rows.isEmpty) return null;
 
     final today = (now ?? DateTime.now()).toUtc();
@@ -51,6 +51,6 @@ class ReferenceRepository {
         return t.id;
       }
     }
-    return rows.first.id; // watchAll은 id 내림차순
+    return rows.first.id; // getAll은 id 내림차순
   }
 }

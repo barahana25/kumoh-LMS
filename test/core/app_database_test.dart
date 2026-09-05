@@ -1,3 +1,6 @@
+import 'dart:io';
+import 'package:path/path.dart' as p;
+import 'package:sqlite3/sqlite3.dart';
 // `isNull`/`isNotNull` are deprecated top-level free functions in drift that
 // collide with flutter_test's matchers of the same name; hide them since this
 // file only needs drift's `Value` wrapper.
@@ -139,5 +142,31 @@ void main() {
     expect(ann.postedAt!.isUtc, isTrue, reason: 'Announcements.postedAt이 UTC로 되읽혀야 한다');
     expect(term.startAt, termAt);
     expect(ann.postedAt, postedAt);
+  });
+
+  test('읽을 수 없는 캐시 파일은 버리고 새로 만든다', () async {
+    // 키스토어 초기화 등으로 키와 파일이 어긋나면 모든 쿼리가 영구히 실패하고,
+    // 로그아웃의 wipe()마저 실패해 사용자가 스스로 되돌릴 수 없다.
+    final dir = await Directory.systemTemp.createTemp('kumoh_db_test');
+    addTearDown(() => dir.deleteSync(recursive: true));
+    final broken = File(p.join(dir.path, 'broken.sqlite'));
+    await broken.writeAsString('이건 데이터베이스가 아니다');
+
+    await discardUnreadableCache(broken, 'anykey');
+
+    expect(broken.existsSync(), isFalse, reason: '열 수 없으면 버려야 한다');
+  });
+
+  test('정상 캐시 파일은 지우지 않는다', () async {
+    final dir = await Directory.systemTemp.createTemp('kumoh_db_ok');
+    addTearDown(() => dir.deleteSync(recursive: true));
+    final healthy = File(p.join(dir.path, 'ok.sqlite'));
+    final created = sqlite3.open(healthy.path);
+    created.execute('CREATE TABLE t (a INTEGER);');
+    created.dispose();
+
+    await discardUnreadableCache(healthy, 'anykey');
+
+    expect(healthy.existsSync(), isTrue, reason: '멀쩡한 캐시를 버리면 안 된다');
   });
 }

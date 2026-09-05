@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http_mock_adapter/http_mock_adapter.dart';
+import 'package:kumoh_lms/core/error/failure.dart';
 import 'package:kumoh_lms/core/storage/db/app_database.dart';
 import 'package:kumoh_lms/features/assignments/data/assignments_repository.dart';
 import 'package:kumoh_lms/features/assignments/data/calendar_api.dart';
@@ -174,5 +175,34 @@ void main() {
     expect(rows.map((e) => e.id).toSet(),
         {'assignment_7931', 'assignment_8888'});
     expect(rows.map((e) => e.courseId).toSet(), {4831, 5682});
+  });
+
+  test('네트워크가 실패해도 기존 캐시는 남는다', () async {
+    adapter.onGet('/calendar-events', (s) => s.reply(200, calendarEventsJson),
+        queryParameters: {
+          'start_date': '2026-09-01',
+          'end_date': '2026-12-31',
+          'context_code': 'course_4831',
+        });
+    await repo.refresh(8,
+        from: DateTime.utc(2026, 9, 1), to: DateTime.utc(2026, 12, 31));
+    expect((await repo.watchTerm(8).first).length, 1);
+
+    adapter.onGet('/calendar-events', (s) => s.reply(401, springAuthErrorJson),
+        queryParameters: {
+          'start_date': '2026-09-01',
+          'end_date': '2026-12-31',
+          'context_code': 'course_4831',
+        });
+
+    await expectLater(
+      repo.refresh(8,
+          force: true,
+          from: DateTime.utc(2026, 9, 1),
+          to: DateTime.utc(2026, 12, 31)),
+      throwsA(isA<Failure>()),
+    );
+    expect((await repo.watchTerm(8).first).length, 1,
+        reason: '실패한 새로고침이 캐시를 지우면 안 된다');
   });
 }

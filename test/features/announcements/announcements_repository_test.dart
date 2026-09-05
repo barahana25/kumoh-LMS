@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http_mock_adapter/http_mock_adapter.dart';
+import 'package:kumoh_lms/core/error/failure.dart';
 import 'package:kumoh_lms/core/storage/db/app_database.dart';
 import 'package:kumoh_lms/features/announcements/data/announcements_api.dart';
 import 'package:kumoh_lms/features/announcements/data/announcements_repository.dart';
@@ -117,5 +118,36 @@ void main() {
     expect(row.htmlUrl,
         'https://canvas.kumoh.ac.kr/courses/5682/discussion_topics/992');
     expect(row.postedAt, DateTime.utc(2026, 9, 10, 2));
+  });
+
+  test('네트워크가 실패해도 기존 캐시는 남는다', () async {
+    adapter.onGet('/dashboard/total/announcement',
+        (s) => s.reply(200, announcementsJson),
+        queryParameters: {'termId': 8});
+    await repo.refresh(8);
+    expect((await repo.watch(8).first).length, 1);
+
+    adapter.onGet('/dashboard/total/announcement',
+        (s) => s.reply(401, springAuthErrorJson),
+        queryParameters: {'termId': 8});
+
+    await expectLater(repo.refresh(8, force: true), throwsA(isA<Failure>()));
+    expect((await repo.watch(8).first).length, 1,
+        reason: '실패한 새로고침이 캐시를 지우면 안 된다');
+  });
+
+  test('서버에서 사라진 공지는 새로고침 후 캐시에서도 없어진다', () async {
+    adapter.onGet('/dashboard/total/announcement',
+        (s) => s.reply(200, announcementsJson),
+        queryParameters: {'termId': 8});
+    await repo.refresh(8);
+    expect((await repo.watch(8).first).length, 1);
+
+    adapter.onGet('/dashboard/total/announcement',
+        (s) => s.reply(200, emptyAnnouncementsJson),
+        queryParameters: {'termId': 8});
+    await repo.refresh(8, force: true);
+
+    expect(await repo.watch(8).first, isEmpty);
   });
 }
