@@ -1127,6 +1127,11 @@ import 'auth_dto.dart';
 /// DioException을 앱의 Failure 타입으로 정규화한다.
 /// 모든 API 클래스가 이 함수를 통해 예외를 던진다.
 Never throwAsFailure(DioException e) {
+  // 인터셉터가 이미 판정한 Failure(예: 세션 만료 AuthFailure)는 그대로 통과시킨다.
+  // 이게 없으면 AuthInterceptor가 실어 보낸 AuthFailure가 NetworkFailure로 뒤바뀐다.
+  final carried = e.error;
+  if (carried is Failure) throw carried;
+
   switch (e.type) {
     case DioExceptionType.connectionError:
     case DioExceptionType.connectionTimeout:
