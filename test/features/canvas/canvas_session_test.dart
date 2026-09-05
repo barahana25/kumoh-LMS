@@ -8,11 +8,9 @@ import 'package:kumoh_lms/features/canvas/data/canvas_session.dart';
 /// SAML 왕복을 대본대로 재현하는 최소 어댑터.
 /// 실제 흐름: redirect.do -> (IdP) 자동제출 폼 HTML -> Canvas ACS로 POST -> 302
 class _SamlScript implements HttpClientAdapter {
-  _SamlScript({this.idpBody, this.acsStatus = 302, this.redirectStatus = 200});
+  _SamlScript({this.idpBody});
 
   final String? idpBody;
-  final int acsStatus;
-  final int redirectStatus;
   final List<String> calls = [];
 
   static const ssoUrl = 'https://canvas.kumoh.ac.kr/login/saml?RelayState=/courses';
@@ -26,7 +24,7 @@ class _SamlScript implements HttpClientAdapter {
     calls.add('${options.method} ${options.uri.host}${options.uri.path}');
 
     if (options.uri.path.endsWith('/saml/redirect.do')) {
-      return ResponseBody.fromString(ssoUrl, redirectStatus);
+      return ResponseBody.fromString(ssoUrl, 200);
     }
     // IdP가 자동제출 폼을 돌려주는 지점
     if (options.uri.host == 'canvas.kumoh.ac.kr' &&
@@ -40,7 +38,7 @@ class _SamlScript implements HttpClientAdapter {
         options.uri.path == '/login/saml') {
       return ResponseBody.fromString(
         '',
-        acsStatus,
+        302,
         headers: {
           'set-cookie': ['_normandy_session=abc123; path=/; HttpOnly'],
         },
