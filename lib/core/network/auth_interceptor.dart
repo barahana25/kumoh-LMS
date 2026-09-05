@@ -107,6 +107,18 @@ class AuthInterceptor extends Interceptor {
 
   bool _needsReissueFor(int? statusCode) => _needsReissue(statusCode);
 
+  /// 재발급 직후 원요청 재시도(replay)가 그 자체로 인증 오류(204/401)로
+  /// 실패했는지 판별한다. 이 경우는 방금 저장한 새 토큰마저 서버가 거부한
+  /// 것이므로 세션을 정상 상태로 유지하면 안 된다. replay는 이 인터셉터가
+  /// 다시 가로채므로(kRetryFlag가 이미 true라 [_isBlockedAuthError] 분기를
+  /// 타고 AuthFailure로 거절된다) 보통 error가 이미 [AuthFailure]지만,
+  /// 방어적으로 statusCode도 함께 확인한다.
+  bool _isAuthReplayFailure(Object error) {
+    if (error is! DioException) return false;
+    if (error.error is AuthFailure) return true;
+    return _needsReissueFor(error.response?.statusCode);
+  }
+
   /// 재발급 → 원요청 재시도. 실패하면 세션을 비우고 AuthFailure로 거절한다.
   Future<void> _recover(
     RequestOptions options,
@@ -130,8 +142,14 @@ class AuthInterceptor extends Interceptor {
       try {
         resolve(await _replay(options, token));
       } on Object catch (e) {
-        // 재발급은 성공했다. 재시도 실패는 세션 문제가 아니라 원인 그대로 전달한다.
-        reject(_asDioException(options, e));
+        if (_isAuthReplayFailure(e)) {
+          // 방금 발급받은 새 토큰마저 거부당했다. 세션을 종료한다.
+          await _failSession();
+          reject(_authError(options));
+        } else {
+          // 재발급은 성공했다. 재시도 실패는 세션 문제가 아니라 원인 그대로 전달한다.
+          reject(_asDioException(options, e));
+        }
       }
       return;
     }
@@ -139,50 +157,70 @@ class AuthInterceptor extends Interceptor {
     // check-then-act 경쟁을 막기 위해 await(readRefreshToken) 이전에 플래그부터 세운다.
     // 동시 요청은 이 지점부터 위 waiter 분기로 들어와 재발급을 공유하게 된다.
     _refreshing = true;
-
-    final refresh = await _tokenStore.readRefreshToken();
-    if (refresh == null || refresh.isEmpty) {
-      _refreshing = false;
-      _rejectWaiters(const AuthFailure());
-      await _failSession();
-      reject(_authError(options));
-      return;
-    }
-
-    // reissue 실패와 replay 실패를 분리한다: reissue 자체가 실패했을 때만
-    // 세션을 지우고 AuthFailure로 통일한다. reissue가 성공한 뒤 replay가
-    // 실패하면(예: 방금 저장한 새 토큰과는 무관한 일회성 500/timeout) 세션은
-    // 멀쩡하므로 지우지 않고, 에러도 그 원인 그대로 전달한다.
-    late final AuthTokens tokens;
+    // 아래 블록 전체(readRefreshToken/saveTokens 등 TokenStore I/O 포함)를
+    // 예외로부터 보호한다. SecureTokenStore는 flutter_secure_storage 위에서
+    // 동작하므로 플랫폼 채널 오류(PlatformException 등)로 언제든 던질 수 있다.
+    // 이걸 그대로 흘려보내면 _refreshing이 true로 남아 이 요청도, 이미 쌓인
+    // _waiters도, 이후의 모든 요청도 영원히 대기하게 된다. finally로 플래그
+    // 해제를 보장하고, 바깥쪽 catch로 아직 처리되지 않은 예외까지 대기열과
+    // 이 요청을 반드시 settle 시킨다.
     try {
-      tokens = await _reissue(refresh);
-      if (!tokens.isValid) {
-        throw const AuthFailure();
+      final refresh = await _tokenStore.readRefreshToken();
+      if (refresh == null || refresh.isEmpty) {
+        _rejectWaiters(const AuthFailure());
+        await _failSession();
+        reject(_authError(options));
+        return;
+      }
+
+      // reissue 실패와 replay 실패를 분리한다: reissue 자체가 실패했을 때만
+      // 세션을 지우고 AuthFailure로 통일한다. reissue가 성공한 뒤 replay가
+      // 실패하면(예: 방금 저장한 새 토큰과는 무관한 일회성 500/timeout) 세션은
+      // 멀쩡하므로 지우지 않고, 에러도 그 원인 그대로 전달한다.
+      late final AuthTokens tokens;
+      try {
+        tokens = await _reissue(refresh);
+        if (!tokens.isValid) {
+          throw const AuthFailure();
+        }
+      } on Object catch (e) {
+        _rejectWaiters(e);
+        await _failSession();
+        reject(_authError(options));
+        return;
+      }
+
+      await _tokenStore.saveTokens(
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+      );
+      for (final w in _waiters) {
+        w.complete(tokens.accessToken);
+      }
+      _waiters.clear();
+
+      try {
+        resolve(await _replay(options, tokens.accessToken));
+      } on Object catch (e) {
+        if (_isAuthReplayFailure(e)) {
+          // 방금 발급받은 새 토큰마저 거부당했다. 세션을 종료한다.
+          await _failSession();
+          reject(_authError(options));
+        } else {
+          // 재발급은 이미 성공해서 새 토큰이 저장돼 있다. 재시도 실패는 세션을
+          // 지우지 않고(_failSession 호출 안 함) 원인 그대로 전달한다.
+          reject(_asDioException(options, e));
+        }
       }
     } on Object catch (e) {
-      _refreshing = false;
+      // readRefreshToken()/saveTokens() 등 위에서 예상하지 못한 예외가
+      // 새어나온 경우. 대기열과 이 요청을 그대로 두면 영원히 멈추므로
+      // 반드시 정리한다. 세션이 실제로 만료됐다는 근거는 없으므로(로컬 I/O
+      // 문제일 뿐) _failSession()은 호출하지 않고 원인 그대로 전달한다.
       _rejectWaiters(e);
-      await _failSession();
-      reject(_authError(options));
-      return;
-    }
-
-    await _tokenStore.saveTokens(
-      accessToken: tokens.accessToken,
-      refreshToken: tokens.refreshToken,
-    );
-    _refreshing = false;
-    for (final w in _waiters) {
-      w.complete(tokens.accessToken);
-    }
-    _waiters.clear();
-
-    try {
-      resolve(await _replay(options, tokens.accessToken));
-    } on Object catch (e) {
-      // 재발급은 이미 성공해서 새 토큰이 저장돼 있다. 재시도 실패는 세션을
-      // 지우지 않고(_failSession 호출 안 함) 원인 그대로 전달한다.
       reject(_asDioException(options, e));
+    } finally {
+      _refreshing = false;
     }
   }
 

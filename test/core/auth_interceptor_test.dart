@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kumoh_lms/core/error/failure.dart';
 import 'package:kumoh_lms/core/network/auth_interceptor.dart';
@@ -76,6 +77,63 @@ class _DelayedRefreshTokenStore implements TokenStore {
   @override
   Future<void> saveTokens({required String accessToken, required String refreshToken}) =>
       _inner.saveTokens(accessToken: accessToken, refreshToken: refreshToken);
+
+  @override
+  Future<void> clearTokens() => _inner.clearTokens();
+
+  @override
+  Future<String> ensureDbKey() => _inner.ensureDbKey();
+
+  @override
+  Future<void> saveCredentials({required String userId, required String password}) =>
+      _inner.saveCredentials(userId: userId, password: password);
+
+  @override
+  Future<Credentials?> readCredentials() => _inner.readCredentials();
+
+  @override
+  Future<void> clearCredentials() => _inner.clearCredentials();
+
+  @override
+  Future<void> clearAll() => _inner.clearAll();
+}
+
+/// [InMemoryTokenStore]를 감싸 지정한 호출 번째(1-based)에서 한 번만
+/// 예외(PlatformException)를 던지는 페이크. Issue 1 회귀 테스트 전용:
+/// 운영 구현인 SecureTokenStore는 flutter_secure_storage 위에서 동작하므로
+/// 플랫폼 채널 오류(키스토어/키체인 실패)로 readRefreshToken()/saveTokens()가
+/// 언제든 던질 수 있다. 어느 호출에서 던질지는 呼출 순번으로 지정한다 —
+/// onRequest가 매 요청마다 readRefreshToken()을 한 번 먼저 호출하므로,
+/// _recover 내부에서 발생하는 호출과 호출 순번이 다르다.
+class _FaultyTokenStore implements TokenStore {
+  _FaultyTokenStore(this._inner, {this.throwReadOnCall, this.throwSaveOnCall});
+
+  final TokenStore _inner;
+  final int? throwReadOnCall;
+  final int? throwSaveOnCall;
+  int readCalls = 0;
+  int saveCalls = 0;
+
+  @override
+  Future<String?> readAccessToken() => _inner.readAccessToken();
+
+  @override
+  Future<String?> readRefreshToken() async {
+    readCalls++;
+    if (throwReadOnCall != null && readCalls == throwReadOnCall) {
+      throw PlatformException(code: 'read_error', message: 'keystore read failed');
+    }
+    return _inner.readRefreshToken();
+  }
+
+  @override
+  Future<void> saveTokens({required String accessToken, required String refreshToken}) async {
+    saveCalls++;
+    if (throwSaveOnCall != null && saveCalls == throwSaveOnCall) {
+      throw PlatformException(code: 'write_error', message: 'keystore write failed');
+    }
+    return _inner.saveTokens(accessToken: accessToken, refreshToken: refreshToken);
+  }
 
   @override
   Future<void> clearTokens() => _inner.clearTokens();
@@ -188,15 +246,29 @@ void main() {
     expect(await store.readAccessToken(), isNull);
   });
 
-  test('재시도한 요청이 또 204면 재발급을 반복하지 않는다', () async {
-    await setUpDio(
-      script: {'/courses': [204, 204]},
-      reissue: (_) async => const AuthTokens(accessToken: 'newAccess', refreshToken: 'newRefresh'),
-    );
+  test(
+    '재시도한 요청이 또 204면 재발급을 반복하지 않는다 (Issue 2 회귀: 새 토큰도 거부되면 세션을 종료해야 한다)',
+    () async {
+      await setUpDio(
+        script: {'/courses': [204, 204]},
+        reissue: (_) async => const AuthTokens(accessToken: 'newAccess', refreshToken: 'newRefresh'),
+      );
 
-    await expectLater(dio.get<Object?>('/courses'), _throwsAuthFailure);
-    expect(reissueCalls, 1, reason: '_retry 플래그가 두 번째 재발급을 막아야 한다');
-  });
+      await expectLater(dio.get<Object?>('/courses'), _throwsAuthFailure);
+      expect(reissueCalls, 1, reason: '_retry 플래그가 두 번째 재발급을 막아야 한다');
+      expect(
+        sessionExpiredCalls,
+        1,
+        reason: '방금 재발급받은 새 토큰도 204로 거부됐으므로, 재시도 실패로 오분류해 세션을 '
+            '살려두면 안 되고 세션을 종료해야 한다',
+      );
+      expect(
+        await store.readAccessToken(),
+        isNull,
+        reason: '세션 종료 시 거부당한 새 토큰도 지워져야 한다',
+      );
+    },
+  );
 
   test('refreshToken이 없으면 재발급을 시도하지 않고 곧장 세션 만료 처리한다', () async {
     await setUpDio(
@@ -308,6 +380,120 @@ void main() {
       expect(sessionExpiredCalls, 0, reason: '재발급은 성공했으므로 세션을 지우면 안 된다');
       expect(await store.readAccessToken(), 'newAccess', reason: '재발급으로 저장된 새 토큰이 지워지면 안 된다');
       expect(await store.readRefreshToken(), 'newRefresh');
+    },
+  );
+
+  test(
+    'TokenStore.readRefreshToken()이 예외를 던져도 요청이 멈추지 않고 '
+    '이후 요청은 재발급을 다시 시도할 수 있다 (Issue 1 회귀: read 예외)',
+    () async {
+      final inner = InMemoryTokenStore();
+      await inner.saveTokens(accessToken: 'oldAccess', refreshToken: 'oldRefresh');
+      // 호출 #1은 onRequest가 첫 요청을 보내기 전에 부착용으로 미리 읽는 것이고,
+      // 호출 #2가 _recover 내부에서 재발급을 위해 읽는 것이다. 여기서만 던진다.
+      final faultyStore = _FaultyTokenStore(inner, throwReadOnCall: 2);
+
+      var localReissueCalls = 0;
+      var localSessionExpiredCalls = 0;
+      final localDio = Dio(BaseOptions(baseUrl: 'https://example.test/api/v1'));
+      final localAdapter = _ScriptedAdapter({
+        '/courses': [204],
+        '/terms': [204, 200],
+      });
+      localDio.httpClientAdapter = localAdapter;
+
+      localDio.interceptors.add(AuthInterceptor(
+        tokenStore: faultyStore,
+        reissue: (refresh) async {
+          localReissueCalls++;
+          return const AuthTokens(accessToken: 'newAccess', refreshToken: 'newRefresh');
+        },
+        onSessionExpired: () async {
+          localSessionExpiredCalls++;
+        },
+        retryClient: localDio,
+      ));
+
+      // 첫 요청: readRefreshToken()이 _recover 내부에서 던진다. 이 요청은
+      // 반드시 settle 되어야 한다(멈추면 안 된다) — 타임아웃으로 확인한다.
+      await expectLater(
+        localDio.get<Object?>('/courses').timeout(const Duration(seconds: 2)),
+        throwsA(anything),
+      );
+
+      // _refreshing 플래그가 리셋되지 않았다면 이 두 번째 요청은 아무도 완료해줄
+      // 수 없는 waiter로 들어가 영원히 멈춘다. 타임아웃이 그 상태를 실패로 만든다.
+      final res = await localDio.get<Object?>('/terms').timeout(const Duration(seconds: 2));
+
+      expect(res.statusCode, 200);
+      expect(
+        localReissueCalls,
+        1,
+        reason: '두 번째 요청은 정상적으로 재발급을 다시 트리거할 수 있어야 한다 '
+            '(_refreshing이 리셋되지 않았다면 절대 도달하지 못한다)',
+      );
+      expect(
+        localSessionExpiredCalls,
+        0,
+        reason: 'TokenStore I/O 예외는 로컬 문제일 뿐 세션이 실제로 만료된 근거가 아니므로 '
+            '세션을 지우면 안 된다',
+      );
+    },
+  );
+
+  test(
+    'TokenStore.saveTokens()이 예외를 던져도 요청이 멈추지 않고 '
+    '이후 요청은 재발급을 다시 시도할 수 있다 (Issue 1 회귀: save 예외)',
+    () async {
+      final inner = InMemoryTokenStore();
+      await inner.saveTokens(accessToken: 'oldAccess', refreshToken: 'oldRefresh');
+      // saveTokens() 호출 #1(첫 요청의 재발급 저장)에서만 던진다.
+      final faultyStore = _FaultyTokenStore(inner, throwSaveOnCall: 1);
+
+      var localReissueCalls = 0;
+      var localSessionExpiredCalls = 0;
+      final localDio = Dio(BaseOptions(baseUrl: 'https://example.test/api/v1'));
+      final localAdapter = _ScriptedAdapter({
+        '/courses': [204],
+        '/terms': [204, 200],
+      });
+      localDio.httpClientAdapter = localAdapter;
+
+      localDio.interceptors.add(AuthInterceptor(
+        tokenStore: faultyStore,
+        reissue: (refresh) async {
+          localReissueCalls++;
+          return const AuthTokens(accessToken: 'newAccess', refreshToken: 'newRefresh');
+        },
+        onSessionExpired: () async {
+          localSessionExpiredCalls++;
+        },
+        retryClient: localDio,
+      ));
+
+      // 첫 요청: 재발급 자체는 성공하지만 saveTokens()가 던진다. 이 요청도
+      // 반드시 settle 되어야 한다.
+      await expectLater(
+        localDio.get<Object?>('/courses').timeout(const Duration(seconds: 2)),
+        throwsA(anything),
+      );
+      expect(localReissueCalls, 1);
+
+      // 두 번째 요청: _refreshing이 리셋되지 않았다면 waiter로 들어가 멈춘다.
+      final res = await localDio.get<Object?>('/terms').timeout(const Duration(seconds: 2));
+
+      expect(res.statusCode, 200);
+      expect(
+        localReissueCalls,
+        2,
+        reason: '두 번째 요청은 정상적으로 재발급을 다시 트리거할 수 있어야 한다',
+      );
+      expect(
+        localSessionExpiredCalls,
+        0,
+        reason: 'TokenStore I/O 예외는 로컬 문제일 뿐 세션이 실제로 만료된 근거가 아니므로 '
+            '세션을 지우면 안 된다',
+      );
     },
   );
 }
