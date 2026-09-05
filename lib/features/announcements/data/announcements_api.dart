@@ -36,7 +36,7 @@ AnnouncementsCompanion _toCompanion(Map<String, dynamic> a, int termId) {
   Object? pick(String camel, String snake) => a[camel] ?? a[snake];
 
   return AnnouncementsCompanion.insert(
-    id: (pick('id', 'id') ?? '').toString(),
+    id: (a['id'] ?? '').toString(),
     termId: termId,
     courseId: Value(courseIdFromContextCode(
       (pick('contextCode', 'context_code') as String?),

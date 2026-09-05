@@ -79,4 +79,43 @@ void main() {
 
     expect(calls, 2);
   });
+
+  test('snake_case 필드로 와도 동일하게 파싱한다', () async {
+    // 서버가 필드 표기를 섞어 쓴다. camelCase 픽스처만으로는 파서의 절반이
+    // 검증되지 않으므로 snake_case 판을 따로 확인한다.
+    const snakeJson = {
+      'code': '200',
+      'message': 'Success',
+      'data': {
+        'announcements': [
+          {
+            'id': 992,
+            'title': '3주차 휴강 안내',
+            'message': '<p>휴강합니다.</p>',
+            'posted_at': '2026-09-10T02:00:00Z',
+            'context_code': 'course_5682',
+            'context_name': '모두를위한아두이노-02',
+            'html_url': 'https://canvas.kumoh.ac.kr/courses/5682/discussion_topics/992',
+            'user_name': '신승혁',
+          },
+        ],
+      },
+    };
+
+    adapter.onGet('/dashboard/total/announcement',
+        (s) => s.reply(200, snakeJson),
+        queryParameters: {'termId': 8});
+
+    await repo.refresh(8);
+    final row = (await repo.watch(8).first).single;
+
+    expect(row.id, '992');
+    expect(row.title, '3주차 휴강 안내');
+    expect(row.courseId, 5682);
+    expect(row.contextName, '모두를위한아두이노-02');
+    expect(row.authorName, '신승혁');
+    expect(row.htmlUrl,
+        'https://canvas.kumoh.ac.kr/courses/5682/discussion_topics/992');
+    expect(row.postedAt, DateTime.utc(2026, 9, 10, 2));
+  });
 }
