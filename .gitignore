@@ -10,7 +10,7 @@ env
 build/
 .flutter-plugins
 .flutter-plugins-dependencies
-pubspec.lock            # app: keep? for apps usually commit; leaving out until project init
+# (pubspec.lock is intentionally committed — apps pin their resolved versions)
 *.g.dart.bak
 
 # ---- IDE / OS ----
