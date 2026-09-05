@@ -28,3 +28,6 @@ android/app/release/
 ios/Pods/
 ios/.symlinks/
 ios/Flutter/Flutter.framework/
+
+# SDD scratch
+.superpowers/

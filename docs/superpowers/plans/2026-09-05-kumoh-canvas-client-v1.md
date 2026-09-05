@@ -3627,20 +3627,19 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 
 ---
 
-## Task 12: 테마 + 라우터 + 앱 셸
+## Task 12: 테마 + 앱 셸
+
+> 라우터(`app_router.dart`)와 앱 진입점(`app.dart`, `main.dart`)은 **Task 17**에서 만든다. 라우터가 아직 존재하지 않는 화면들을 import하므로, 여기서 만들면 Task 12~16 내내 `flutter analyze`가 깨진다. 화면이 모두 갖춰진 뒤에 배선한다.
 
 **Files:**
-- Create: `lib/core/config/theme.dart`, `lib/core/router/app_router.dart`, `lib/features/shell/home_shell.dart`, `lib/app.dart`
-- Modify: `lib/main.dart`
+- Create: `lib/core/config/theme.dart`, `lib/features/shell/home_shell.dart`
 - Test: `test/core/theme_test.dart`
 
 **Interfaces:**
-- Consumes: `authControllerProvider`, `AuthState` (Task 11)
+- Consumes: 없음 (순수 위젯·테마)
 - Produces:
   - `ThemeData buildLightTheme()`, `ThemeData buildDarkTheme()`, `const Color kKitBrand`
-  - `final routerProvider = Provider<GoRouter>` — 경로 `/login`, `/courses`, `/assignments`, `/announcements`, `/settings`
-  - `class HomeShell extends StatelessWidget` — `HomeShell({required this.navigationShell})`
-  - `class KumohLmsApp extends ConsumerWidget`
+  - `class HomeShell extends StatelessWidget` — `HomeShell({required this.navigationShell})`, `navigationShell`은 `StatefulNavigationShell`
 
 - [ ] **Step 1: 실패 테스트 작성**
 
@@ -3772,128 +3771,17 @@ class HomeShell extends StatelessWidget {
 }
 ```
 
-- [ ] **Step 6: app_router.dart 구현**
-
-`lib/core/router/app_router.dart`:
-```dart
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
-
-import '../../features/announcements/presentation/announcements_screen.dart';
-import '../../features/assignments/presentation/assignments_screen.dart';
-import '../../features/auth/presentation/auth_controller.dart';
-import '../../features/auth/presentation/login_screen.dart';
-import '../../features/courses/presentation/course_list_screen.dart';
-import '../../features/settings/presentation/settings_screen.dart';
-import '../../features/shell/home_shell.dart';
-import '../../providers.dart';
-
-/// AsyncValue 변화를 Listenable로 바꿔 GoRouter가 재평가하게 만든다.
-class _AuthListenable extends ChangeNotifier {
-  _AuthListenable(this._ref) {
-    _ref.listen(authControllerProvider, (_, __) => notifyListeners());
-  }
-  final Ref _ref;
-}
-
-final routerProvider = Provider<GoRouter>((ref) {
-  final listenable = _AuthListenable(ref);
-  ref.onDispose(listenable.dispose);
-
-  final shellKey = GlobalKey<NavigatorState>();
-
-  return GoRouter(
-    initialLocation: '/courses',
-    refreshListenable: listenable,
-    redirect: (context, state) {
-      final auth = ref.read(authControllerProvider);
-      // 세션 복원 중에는 아무 데도 보내지 않는다.
-      if (auth.isLoading) return null;
-
-      final loggedIn = auth.value is AuthAuthenticated;
-      final onLogin = state.matchedLocation == '/login';
-
-      if (!loggedIn) return onLogin ? null : '/login';
-      if (onLogin) return '/courses';
-      return null;
-    },
-    routes: [
-      GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
-      StatefulShellRoute.indexedStack(
-        navigatorKey: shellKey,
-        builder: (_, __, shell) => HomeShell(navigationShell: shell),
-        branches: [
-          StatefulShellBranch(routes: [
-            GoRoute(path: '/courses', builder: (_, __) => const CourseListScreen()),
-          ]),
-          StatefulShellBranch(routes: [
-            GoRoute(path: '/assignments', builder: (_, __) => const AssignmentsScreen()),
-          ]),
-          StatefulShellBranch(routes: [
-            GoRoute(path: '/announcements', builder: (_, __) => const AnnouncementsScreen()),
-          ]),
-          StatefulShellBranch(routes: [
-            GoRoute(path: '/settings', builder: (_, __) => const SettingsScreen()),
-          ]),
-        ],
-      ),
-    ],
-  );
-});
-```
-
-- [ ] **Step 7: app.dart 와 main.dart 구현**
-
-`lib/app.dart`:
-```dart
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import 'core/config/theme.dart';
-import 'core/router/app_router.dart';
-
-class KumohLmsApp extends ConsumerWidget {
-  const KumohLmsApp({super.key});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return MaterialApp.router(
-      title: '금오 LMS',
-      debugShowCheckedModeBanner: false,
-      theme: buildLightTheme(),
-      darkTheme: buildDarkTheme(),
-      routerConfig: ref.watch(routerProvider),
-    );
-  }
-}
-```
-
-`lib/main.dart` (전체 교체):
-```dart
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/date_symbol_data_local.dart';
-
-import 'app.dart';
-
-Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await initializeDateFormatting('ko_KR');
-  runApp(const ProviderScope(child: KumohLmsApp()));
-}
-```
-
-- [ ] **Step 8: 커밋**
-
-> 이 시점에는 아직 화면 파일들이 없어 컴파일이 되지 않는다. Task 13~17에서 채운 뒤 `flutter analyze`가 통과한다. 지금은 테마 테스트만 통과하면 된다.
+- [ ] **Step 6: 커밋**
 
 Run: `flutter test test/core/theme_test.dart`
 Expected: `All tests passed!`
 
+Run: `flutter analyze`
+Expected: `No issues found!` — 이 태스크가 만든 파일은 아직 배선되지 않은 상태로도 독립적으로 컴파일된다.
+
 ```bash
-git add lib/core/config/theme.dart lib/core/router lib/features/shell lib/app.dart lib/main.dart test/core/theme_test.dart
-git commit -m "feat: KIT 테마, go_router 인증 가드, 하단 탭 셸 추가
+git add lib/core/config/theme.dart lib/features/shell test/core/theme_test.dart
+git commit -m "feat: KIT 테마와 하단 탭 셸 추가
 
 Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 ```
@@ -5182,16 +5070,21 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 
 ## Task 17: 공지 화면 + 설정 화면 + 최종 통합
 
+마지막 두 화면을 만든 뒤, 지금까지의 모든 화면을 라우터·앱 진입점에 배선한다. 이 태스크가 끝나면 앱 전체가 처음으로 컴파일되고 실행된다.
+
 **Files:**
-- Create: `lib/features/announcements/presentation/announcements_providers.dart`, `lib/features/announcements/presentation/announcements_screen.dart`, `lib/features/settings/presentation/settings_screen.dart`
+- Create: `lib/features/announcements/presentation/announcements_providers.dart`, `lib/features/announcements/presentation/announcements_screen.dart`, `lib/features/settings/presentation/settings_screen.dart`, `lib/core/router/app_router.dart`, `lib/app.dart`
+- Modify: `lib/main.dart` (전체 교체)
 - Test: `test/features/announcements/announcements_screen_test.dart`
 
 **Interfaces:**
-- Consumes: `announcementsRepositoryProvider`, `authControllerProvider`, `activeTermIdProvider`, `termsProvider`, `selectedTermIdProvider`
+- Consumes: `announcementsRepositoryProvider`, `authControllerProvider`, `AuthState`, `activeTermIdProvider`, `termsProvider`, `selectedTermIdProvider`, `HomeShell`(Task 12), `buildLightTheme`/`buildDarkTheme`(Task 12), 그리고 Task 13·15·16의 화면 위젯
 - Produces:
   - `final termAnnouncementsProvider = StreamProvider.family<List<AnnouncementRow>, int>`
   - `class AnnouncementsScreen extends ConsumerWidget`
   - `class SettingsScreen extends ConsumerWidget`
+  - `final routerProvider = Provider<GoRouter>` — 경로 `/login`, `/courses`, `/assignments`, `/announcements`, `/settings`
+  - `class KumohLmsApp extends ConsumerWidget`
 
 - [ ] **Step 1: 실패 테스트 작성**
 
@@ -5559,7 +5452,119 @@ class SettingsScreen extends ConsumerWidget {
 Run: `flutter test test/features/announcements/announcements_screen_test.dart`
 Expected: `All tests passed!` (2개 테스트)
 
-- [ ] **Step 7: 정적 분석 + 전체 테스트**
+- [ ] **Step 7: app_router.dart 구현**
+
+`lib/core/router/app_router.dart`:
+```dart
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../features/announcements/presentation/announcements_screen.dart';
+import '../../features/assignments/presentation/assignments_screen.dart';
+import '../../features/auth/presentation/auth_controller.dart';
+import '../../features/auth/presentation/login_screen.dart';
+import '../../features/courses/presentation/course_list_screen.dart';
+import '../../features/settings/presentation/settings_screen.dart';
+import '../../features/shell/home_shell.dart';
+import '../../providers.dart';
+
+/// AsyncValue 변화를 Listenable로 바꿔 GoRouter가 재평가하게 만든다.
+class _AuthListenable extends ChangeNotifier {
+  _AuthListenable(this._ref) {
+    _ref.listen(authControllerProvider, (_, __) => notifyListeners());
+  }
+  final Ref _ref;
+}
+
+final routerProvider = Provider<GoRouter>((ref) {
+  final listenable = _AuthListenable(ref);
+  ref.onDispose(listenable.dispose);
+
+  final shellKey = GlobalKey<NavigatorState>();
+
+  return GoRouter(
+    initialLocation: '/courses',
+    refreshListenable: listenable,
+    redirect: (context, state) {
+      final auth = ref.read(authControllerProvider);
+      // 세션 복원 중에는 아무 데도 보내지 않는다.
+      if (auth.isLoading) return null;
+
+      final loggedIn = auth.value is AuthAuthenticated;
+      final onLogin = state.matchedLocation == '/login';
+
+      if (!loggedIn) return onLogin ? null : '/login';
+      if (onLogin) return '/courses';
+      return null;
+    },
+    routes: [
+      GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
+      StatefulShellRoute.indexedStack(
+        navigatorKey: shellKey,
+        builder: (_, __, shell) => HomeShell(navigationShell: shell),
+        branches: [
+          StatefulShellBranch(routes: [
+            GoRoute(path: '/courses', builder: (_, __) => const CourseListScreen()),
+          ]),
+          StatefulShellBranch(routes: [
+            GoRoute(path: '/assignments', builder: (_, __) => const AssignmentsScreen()),
+          ]),
+          StatefulShellBranch(routes: [
+            GoRoute(path: '/announcements', builder: (_, __) => const AnnouncementsScreen()),
+          ]),
+          StatefulShellBranch(routes: [
+            GoRoute(path: '/settings', builder: (_, __) => const SettingsScreen()),
+          ]),
+        ],
+      ),
+    ],
+  );
+});
+```
+
+- [ ] **Step 8: app.dart 와 main.dart 구현**
+
+`lib/app.dart`:
+```dart
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'core/config/theme.dart';
+import 'core/router/app_router.dart';
+
+class KumohLmsApp extends ConsumerWidget {
+  const KumohLmsApp({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return MaterialApp.router(
+      title: '금오 LMS',
+      debugShowCheckedModeBanner: false,
+      theme: buildLightTheme(),
+      darkTheme: buildDarkTheme(),
+      routerConfig: ref.watch(routerProvider),
+    );
+  }
+}
+```
+
+`lib/main.dart` (전체 교체):
+```dart
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/date_symbol_data_local.dart';
+
+import 'app.dart';
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await initializeDateFormatting('ko_KR');
+  runApp(const ProviderScope(child: KumohLmsApp()));
+}
+```
+
+- [ ] **Step 9: 정적 분석 + 전체 테스트**
 
 Run:
 ```bash
@@ -5570,7 +5575,7 @@ Expected: `No issues found!` 그리고 `All tests passed!` — 전체 테스트�
 
 > `flutter analyze`가 `firstOrNull` 관련 오류를 내면 `settings_screen.dart` 상단에 `import 'dart:collection';` 대신 `import 'package:collection/collection.dart';` 를 추가하고 `pubspec.yaml` dependencies에 `collection: ^1.19.0` 을 넣은 뒤 `flutter pub get` 을 다시 돌린다.
 
-- [ ] **Step 8: 실기기/에뮬레이터 수동 검증**
+- [ ] **Step 10: 실기기/에뮬레이터 수동 검증**
 
 Android 에뮬레이터나 실기기를 연결하고:
 ```bash
@@ -5588,7 +5593,7 @@ flutter run
 7. 비행기 모드로 바꾼 뒤 재실행하면 캐시된 강좌·과제가 그대로 보이고 새로고침 배너가 뜬다
 8. 설정 → 로그아웃하면 로그인 화면으로 돌아가고, 재실행해도 로그인 화면이다
 
-- [ ] **Step 9: 커밋**
+- [ ] **Step 11: 커밋**
 
 ```bash
 git add -A
