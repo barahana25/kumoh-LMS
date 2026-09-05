@@ -29,7 +29,7 @@ class AnnouncementsScreen extends ConsumerWidget {
               error: (e, _) => EmptyState(
                 icon: Icons.error_outline,
                 title: '학기 정보를 불러오지 못했습니다',
-                description: '$e',
+                description: userMessage(e),
               ),
               data: (termId) => termId == null
                   ? const EmptyState(
@@ -80,7 +80,7 @@ class _AnnouncementListState extends ConsumerState<_AnnouncementList> {
         error: (e, _) => EmptyState(
           icon: Icons.error_outline,
           title: '공지를 불러오지 못했습니다',
-          description: '$e',
+          description: userMessage(e),
         ),
         data: (items) {
           if (items.isEmpty) {

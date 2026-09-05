@@ -1,3 +1,4 @@
+import '../error/failure.dart';
 import 'package:flutter/material.dart';
 
 class EmptyState extends StatelessWidget {
@@ -41,3 +42,9 @@ class EmptyState extends StatelessWidget {
     );
   }
 }
+
+/// 화면에 띄울 오류 문구. Failure는 자체 한국어 메시지를 갖고 있고,
+/// 그 밖의 예외는 클래스 이름이 그대로 새어 나가지 않도록 일반 문구로 바꾼다.
+/// (학생에게 "SqliteException(26): file is not a database"를 보여줄 수는 없다.)
+String userMessage(Object error) =>
+    error is Failure ? error.message : '알 수 없는 오류가 발생했습니다.';

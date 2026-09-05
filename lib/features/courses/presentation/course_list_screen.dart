@@ -26,7 +26,7 @@ class CourseListScreen extends ConsumerWidget {
               error: (e, _) => EmptyState(
                 icon: Icons.error_outline,
                 title: '학기 정보를 불러오지 못했습니다',
-                description: '$e',
+                description: userMessage(e),
               ),
               data: (termId) {
                 if (termId == null) {
@@ -81,7 +81,7 @@ class _CourseListState extends ConsumerState<_CourseList> {
         error: (e, _) => EmptyState(
           icon: Icons.error_outline,
           title: '강좌를 불러오지 못했습니다',
-          description: '$e',
+          description: userMessage(e),
         ),
         data: (courses) {
           if (courses.isEmpty) {

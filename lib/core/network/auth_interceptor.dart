@@ -221,6 +221,15 @@ class AuthInterceptor extends Interceptor {
       reject(_asDioException(options, e));
     } finally {
       _refreshing = false;
+      // _failSession()이나 _replay()를 await 하는 사이에 새로 합류한 대기자는
+      // 위 어느 경로에서도 settle 되지 않는다. 그대로 두면 그 요청의 Future가
+      // 영원히 완료되지 않아 runRefresh가 돌아오지 않고, 당겨서 새로고침
+      // 인디케이터가 끝없이 돈다. 재시도 가능한 실패로 반드시 정리한다.
+      if (_waiters.isNotEmpty) {
+        _rejectWaiters(
+          const NetworkFailure('요청이 중단되었습니다. 다시 시도해 주세요.'),
+        );
+      }
     }
   }
 

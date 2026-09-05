@@ -24,6 +24,18 @@ class AuthOffline extends AuthState {
   const AuthOffline();
 }
 
+/// 일시적 장애(네트워크 단절, 서버 5xx)인가?
+/// 이런 실패로 저장된 토큰이나 자격증명을 지우면, 지하철에서 앱을 한 번 연
+/// 것만으로 자동 로그인이 영구히 꺼지고 캐시까지 못 보게 된다.
+bool _isTransient(Object error) {
+  if (error is NetworkFailure) return true;
+  if (error is ServerFailure) {
+    final status = int.tryParse(error.code);
+    return status != null && status >= 500;
+  }
+  return false;
+}
+
 class AuthController extends AsyncNotifier<AuthState> {
   int _generation = 0;
   @override
@@ -46,9 +58,10 @@ class AuthController extends AsyncNotifier<AuthState> {
         );
         final profile = await authApi.fetchProfile();
         return AuthAuthenticated(profile: profile);
-      } on NetworkFailure {
-        return const AuthOffline();
-      } on Object {
+      } on Object catch (e) {
+        // 서버 점검(5xx)이나 연결 실패로 토큰을 버리면 콜드 스타트 한 번에
+        // 재로그인을 강요당한다. 진짜 인증 거부일 때만 토큰을 지운다.
+        if (_isTransient(e)) return const AuthOffline();
         await store.clearTokens();
       }
     }
@@ -68,7 +81,9 @@ class AuthController extends AsyncNotifier<AuthState> {
         password: creds.password,
         rememberMe: true,
       );
-    } on Object {
+    } on Object catch (e) {
+      // 일시적 장애면 자격증명을 지키고 캐시를 연다.
+      if (_isTransient(e)) return const AuthOffline();
       await store.clearAll();
       return const AuthUnauthenticated();
     }
@@ -82,6 +97,7 @@ class AuthController extends AsyncNotifier<AuthState> {
     final store = ref.read(tokenStoreProvider);
     final authApi = ref.read(authApiProvider);
 
+    final generation = _generation;
     final tokens = await authApi.login(userId: userId, password: password);
     if (!tokens.isValid) throw const AuthFailure();
     await store.saveTokens(
@@ -95,6 +111,13 @@ class AuthController extends AsyncNotifier<AuthState> {
       await store.clearCredentials();
     }
 
+    // 저장하는 동안 로그아웃이 끼어들었다면 방금 쓴 것을 되돌린다.
+    // 그러지 않으면 로그아웃했는데도 토큰과 비밀번호가 디스크에 남아
+    // 다음 실행에서 조용히 다시 로그인된다.
+    if (generation != _generation) {
+      await store.clearAll();
+      return const AuthUnauthenticated();
+    }
     final profile = await authApi.fetchProfile();
     return AuthAuthenticated(profile: profile);
   }
@@ -121,8 +144,18 @@ class AuthController extends AsyncNotifier<AuthState> {
       return authenticated;
     });
     if (generation == _generation) {
-      if (result.hasValue) ref.read(cacheSessionProvider).start();
+      _openCacheIfReadable(result);
       state = result;
+    }
+  }
+
+  /// 읽을 수 있는 상태(인증/오프라인)로 복귀했으면 캐시 세션을 다시 연다.
+  /// 이걸 빠뜨리면 리포지토리들이 조용히 no-op 해서 화면 네 개가 에러도 없이
+  /// 텅 빈 채로 남는다.
+  void _openCacheIfReadable(AsyncValue<AuthState> result) {
+    final value = result.valueOrNull;
+    if (value is AuthAuthenticated || value is AuthOffline) {
+      ref.read(cacheSessionProvider).start();
     }
   }
 
@@ -131,6 +164,7 @@ class AuthController extends AsyncNotifier<AuthState> {
     state = const AsyncLoading();
     final result = await AsyncValue.guard(_restoreSession);
     if (generation == _generation) {
+      _openCacheIfReadable(result);
       state = result;
       ref.invalidate(activeTermIdProvider);
     }
@@ -139,14 +173,18 @@ class AuthController extends AsyncNotifier<AuthState> {
   Future<void> logout() async {
     ++_generation;
     ref.read(cacheSessionProvider).end();
-    state = const AsyncLoading();
+    // AsyncLoading으로 두면 라우터가 /loading으로 보내, 오프라인에서는
+    // 서버 응답을 기다리는 내내 빠져나갈 수 없는 스피너에 갇힌다.
     final store = ref.read(tokenStoreProvider);
     final db = ref.read(appDatabaseProvider);
     // 저장소나 DB가 던지더라도 세션은 반드시 끝난 상태로 남겨야 한다.
     // 그러지 않으면 사용자가 쓸 수 없는 세션에 갇힌 채 로그인 화면으로도 못 간다.
     try {
       try {
-        await ref.read(authApiProvider).logout();
+        await ref
+            .read(authApiProvider)
+            .logout()
+            .timeout(const Duration(seconds: 5));
       } finally {
         try {
           await store.clearAll();
@@ -184,6 +222,9 @@ class AuthController extends AsyncNotifier<AuthState> {
   Future<void> _recoverSession() async {
     final generation = _generation;
     final result = await _autoLoginOrUnauthenticated();
-    if (generation == _generation) state = AsyncData(result);
+    if (generation == _generation) {
+      _openCacheIfReadable(AsyncData(result));
+      state = AsyncData(result);
+    }
   }
 }

@@ -11,7 +11,10 @@ class CacheSession {
     _revision++;
   }
 
+  /// 이미 열려 있으면 아무 것도 하지 않는다. 멱등해야 모든 인증 전환
+  /// 지점에서 안전하게 부를 수 있고, 진행 중인 요청을 헛되이 무효화하지 않는다.
   void start() {
+    if (_active) return;
     _revision++;
     _active = true;
   }

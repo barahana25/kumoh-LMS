@@ -290,6 +290,65 @@ void main() {
     expect(c.read(authControllerProvider).value, isA<AuthUnauthenticated>(),
         reason: '실패해도 로그인 화면으로 갈 수 있어야 한다');
   });
+
+  test('자동 로그인 중 네트워크가 끊겨도 자격증명을 지우지 않는다', () async {
+    // 지하철·엘리베이터에서 재발급이 끊기는 상황. 여기서 자격증명을 지우면
+    // 자동 로그인이 영구히 꺼지고 캐시까지 못 보게 된다.
+    await store.saveCredentials(userId: '20250000', password: 'pw');
+    await store.saveTokens(accessToken: 'a', refreshToken: 'r');
+    authAdapter.onPost(
+      '/reissue',
+      (s) => s.throws(
+        0,
+        DioException(
+          requestOptions: RequestOptions(path: '/reissue'),
+          type: DioExceptionType.connectionError,
+        ),
+      ),
+    );
+    authAdapter.onPost(
+      '/login',
+      (s) => s.throws(
+        0,
+        DioException(
+          requestOptions: RequestOptions(path: '/login'),
+          type: DioExceptionType.connectionError,
+        ),
+      ),
+      data: {'userId': '20250000', 'password': 'pw'},
+    );
+
+    final state = await makeContainer().read(authControllerProvider.future);
+
+    expect(state, isA<AuthOffline>(), reason: '캐시를 열어야 한다');
+    expect(
+      (await store.readCredentials())?.userId,
+      '20250000',
+      reason: '네트워크 장애로 저장된 비밀번호를 지우면 안 된다',
+    );
+  });
+
+  test('서버 점검(5xx)으로 재발급이 실패해도 토큰을 지키고 캐시를 연다', () async {
+    await store.saveTokens(accessToken: 'a', refreshToken: 'r');
+    authAdapter.onPost(
+      '/reissue',
+      (s) => s.reply(503, {
+        'timestamp': 'x',
+        'status': 503,
+        'error': 'Service Unavailable',
+        'path': '/reissue',
+      }),
+    );
+
+    final state = await makeContainer().read(authControllerProvider.future);
+
+    expect(state, isA<AuthOffline>());
+    expect(
+      await store.readRefreshToken(),
+      'r',
+      reason: '점검 중 콜드 스타트 한 번에 재로그인을 강요하면 안 된다',
+    );
+  });
 }
 
 /// clearAll이 실패하는 저장소(기기 보안 저장소 장애 재현).

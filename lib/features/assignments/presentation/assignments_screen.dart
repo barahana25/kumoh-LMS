@@ -37,7 +37,7 @@ class AssignmentsScreen extends ConsumerWidget {
                 error: (e, _) => EmptyState(
                   icon: Icons.error_outline,
                   title: '학기 정보를 불러오지 못했습니다',
-                  description: '$e',
+                  description: userMessage(e),
                 ),
                 data: (termId) => termId == null
                     ? const EmptyState(
@@ -98,7 +98,7 @@ class _AssignmentsBodyState extends ConsumerState<_AssignmentsBody> {
       error: (e, _) => EmptyState(
         icon: Icons.error_outline,
         title: '과제를 불러오지 못했습니다',
-        description: '$e',
+        description: userMessage(e),
       ),
       data: (events) => TabBarView(
         children: [
