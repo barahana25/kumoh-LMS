@@ -202,4 +202,88 @@ void main() {
       expect(state, isA<AuthAuthenticated>());
     },
   );
+
+  test('앞선 복구가 끝난 뒤의 새 만료는 다시 복구를 시도한다', () async {
+    // single-flight 가드가 완료 후 풀리지 않으면 이후 만료가 영원히 무시된다.
+    await store.saveCredentials(userId: '20250000', password: 'pw');
+    // onPost 콜백은 등록 시점에 1회만 실행된다. 실제 요청 수는 인터셉터로 센다.
+    var loginCalls = 0;
+    authDio.interceptors.add(InterceptorsWrapper(onRequest: (o, h) {
+      if (o.path == '/login') loginCalls++;
+      h.next(o);
+    }));
+    authAdapter.onPost('/login', (s) => s.reply(200, loginSuccessJson),
+        data: {'userId': '20250000', 'password': 'pw'});
+    authAdapter.onPost('/reissue', (s) => s.reply(401, springAuthErrorJson));
+    authAdapter.onGet('/user/profile', (s) => s.reply(200, userProfileJson));
+
+    final notifier = container.read(authControllerProvider.notifier);
+    // build()의 최초 세션 복원도 로그인을 한 번 쓰므로, 절대값이 아니라
+    // 만료 처리 전후의 증분을 본다.
+    await container.read(authControllerProvider.future);
+    final base = loginCalls;
+
+    await notifier.handleSessionExpired();
+    final afterFirst = loginCalls;
+    await notifier.handleSessionExpired();
+
+    expect(afterFirst - base, 1, reason: '첫 만료가 복구되어야 한다');
+    expect(loginCalls - afterFirst, 1,
+        reason: 'single-flight 가드가 완료 후 풀려 다음 만료도 복구되어야 한다');
+  });
+
+  test('로그아웃 중 저장소가 실패해도 세션은 종료된다', () async {
+    await store.saveTokens(accessToken: 'a', refreshToken: 'r');
+    authAdapter.onPost('/logout',
+        (s) => s.reply(200, {'code': '200', 'message': 'Success', 'data': null}));
+
+    final failing = _ThrowingClearAllStore(store);
+    final c = ProviderContainer(overrides: [
+      tokenStoreProvider.overrideWithValue(failing),
+      appDatabaseProvider.overrideWithValue(db),
+      authDioProvider.overrideWithValue(authDio),
+    ]);
+    addTearDown(c.dispose);
+
+    await expectLater(
+      c.read(authControllerProvider.notifier).logout(),
+      throwsA(anything),
+    );
+    expect(c.read(authControllerProvider).value, isA<AuthUnauthenticated>(),
+        reason: '실패해도 로그인 화면으로 갈 수 있어야 한다');
+  });
+}
+
+/// clearAll이 실패하는 저장소(기기 보안 저장소 장애 재현).
+class _ThrowingClearAllStore implements TokenStore {
+  _ThrowingClearAllStore(this._inner);
+  final TokenStore _inner;
+
+  @override
+  Future<void> clearAll() async => throw StateError('keystore unavailable');
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      Function.apply(_delegate(invocation), null);
+
+  Function _delegate(Invocation i) => () => throw UnimplementedError();
+
+  @override
+  Future<String?> readAccessToken() => _inner.readAccessToken();
+  @override
+  Future<String?> readRefreshToken() => _inner.readRefreshToken();
+  @override
+  Future<void> saveTokens({required String accessToken, required String refreshToken}) =>
+      _inner.saveTokens(accessToken: accessToken, refreshToken: refreshToken);
+  @override
+  Future<void> clearTokens() => _inner.clearTokens();
+  @override
+  Future<String> ensureDbKey() => _inner.ensureDbKey();
+  @override
+  Future<void> saveCredentials({required String userId, required String password}) =>
+      _inner.saveCredentials(userId: userId, password: password);
+  @override
+  Future<Credentials?> readCredentials() => _inner.readCredentials();
+  @override
+  Future<void> clearCredentials() => _inner.clearCredentials();
 }

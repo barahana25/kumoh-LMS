@@ -105,10 +105,15 @@ class AuthController extends AsyncNotifier<AuthState> {
   Future<void> logout() async {
     final store = ref.read(tokenStoreProvider);
     final db = ref.read(appDatabaseProvider);
-    await ref.read(authApiProvider).logout();
-    await store.clearAll();
-    await db.wipe();
-    state = const AsyncData(AuthUnauthenticated());
+    // 저장소나 DB가 던지더라도 세션은 반드시 끝난 상태로 남겨야 한다.
+    // 그러지 않으면 사용자가 쓸 수 없는 세션에 갇힌 채 로그인 화면으로도 못 간다.
+    try {
+      await ref.read(authApiProvider).logout();
+      await store.clearAll();
+      await db.wipe();
+    } finally {
+      state = const AsyncData(AuthUnauthenticated());
+    }
   }
 
   /// 진행 중인 [handleSessionExpired] 복구. null이면 아무도 복구 중이 아니다.
