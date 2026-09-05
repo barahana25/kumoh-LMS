@@ -119,48 +119,78 @@ class AuthInterceptor extends Interceptor {
     if (_refreshing) {
       final waiter = Completer<String>();
       _waiters.add(waiter);
+      final String token;
       try {
-        final token = await waiter.future;
-        resolve(await _replay(options, token));
+        token = await waiter.future;
       } on Object {
+        // 재발급 자체가 실패한 경우에만 AuthFailure로 통일한다.
         reject(_authError(options));
+        return;
+      }
+      try {
+        resolve(await _replay(options, token));
+      } on Object catch (e) {
+        // 재발급은 성공했다. 재시도 실패는 세션 문제가 아니라 원인 그대로 전달한다.
+        reject(_asDioException(options, e));
       }
       return;
     }
+
+    // check-then-act 경쟁을 막기 위해 await(readRefreshToken) 이전에 플래그부터 세운다.
+    // 동시 요청은 이 지점부터 위 waiter 분기로 들어와 재발급을 공유하게 된다.
+    _refreshing = true;
 
     final refresh = await _tokenStore.readRefreshToken();
     if (refresh == null || refresh.isEmpty) {
+      _refreshing = false;
+      _rejectWaiters(const AuthFailure());
       await _failSession();
       reject(_authError(options));
       return;
     }
 
-    _refreshing = true;
+    // reissue 실패와 replay 실패를 분리한다: reissue 자체가 실패했을 때만
+    // 세션을 지우고 AuthFailure로 통일한다. reissue가 성공한 뒤 replay가
+    // 실패하면(예: 방금 저장한 새 토큰과는 무관한 일회성 500/timeout) 세션은
+    // 멀쩡하므로 지우지 않고, 에러도 그 원인 그대로 전달한다.
+    late final AuthTokens tokens;
     try {
-      final tokens = await _reissue(refresh);
+      tokens = await _reissue(refresh);
       if (!tokens.isValid) {
         throw const AuthFailure();
       }
-      await _tokenStore.saveTokens(
-        accessToken: tokens.accessToken,
-        refreshToken: tokens.refreshToken,
-      );
-      _refreshing = false;
-      for (final w in _waiters) {
-        w.complete(tokens.accessToken);
-      }
-      _waiters.clear();
-
-      resolve(await _replay(options, tokens.accessToken));
     } on Object catch (e) {
       _refreshing = false;
-      for (final w in _waiters) {
-        w.completeError(e);
-      }
-      _waiters.clear();
+      _rejectWaiters(e);
       await _failSession();
       reject(_authError(options));
+      return;
     }
+
+    await _tokenStore.saveTokens(
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+    );
+    _refreshing = false;
+    for (final w in _waiters) {
+      w.complete(tokens.accessToken);
+    }
+    _waiters.clear();
+
+    try {
+      resolve(await _replay(options, tokens.accessToken));
+    } on Object catch (e) {
+      // 재발급은 이미 성공해서 새 토큰이 저장돼 있다. 재시도 실패는 세션을
+      // 지우지 않고(_failSession 호출 안 함) 원인 그대로 전달한다.
+      reject(_asDioException(options, e));
+    }
+  }
+
+  void _rejectWaiters(Object error) {
+    for (final w in _waiters) {
+      w.completeError(error);
+    }
+    _waiters.clear();
   }
 
   Future<Response<dynamic>> _replay(RequestOptions options, String accessToken) {
@@ -178,4 +208,12 @@ class AuthInterceptor extends Interceptor {
         type: DioExceptionType.unknown,
         error: const AuthFailure(),
       );
+
+  /// 재시도(replay) 실패를 세션 문제로 오분류하지 않고 그대로 전달하기 위한 변환.
+  /// Dio 5.x는 던져지는 에러를 항상 DioException으로 감싸므로 보통 이미
+  /// DioException이지만, 방어적으로 다른 타입도 감싸서 반환한다.
+  DioException _asDioException(RequestOptions options, Object error) {
+    if (error is DioException) return error;
+    return DioException(requestOptions: options, error: error);
+  }
 }
