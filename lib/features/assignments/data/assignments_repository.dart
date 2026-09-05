@@ -1,0 +1,74 @@
+import 'package:drift/drift.dart';
+
+import '../../../core/config/env.dart';
+import '../../../core/storage/cache_policy.dart';
+import '../../../core/storage/db/app_database.dart';
+import 'calendar_api.dart';
+
+export 'calendar_api.dart' show courseIdFromContextCode;
+
+/// 과제 마감을 포함한 캘린더 이벤트 저장소.
+/// 서버가 강좌 단위 조회만 지원하므로 캐시된 강좌를 순회해 한 학기분을 모은다.
+class AssignmentsRepository {
+  AssignmentsRepository({required CalendarApi api, required AppDatabase db})
+      : _api = api,
+        _db = db;
+
+  final CalendarApi _api;
+  final AppDatabase _db;
+
+  String _cacheKey(int termId) => 'calendar:$termId';
+
+  Stream<List<CalendarEventRow>> watchTerm(int termId) =>
+      _db.calendarEventsDao.watchByTerm(termId).map(_normalizeAll);
+
+  Stream<List<CalendarEventRow>> watchBetween({
+    required DateTime from,
+    required DateTime to,
+  }) =>
+      _db.calendarEventsDao.watchBetween(from: from, to: to).map(_normalizeAll);
+
+  Future<void> refresh(
+    int termId, {
+    bool force = false,
+    DateTime? from,
+    DateTime? to,
+  }) async {
+    if (!force) {
+      final at = await _db.cacheMetaDao.fetchedAt(_cacheKey(termId));
+      if (CachePolicy.isFresh(at, Env.calendarTtl)) return;
+    }
+
+    final courses = await _db.coursesDao.watchByTerm(termId).first;
+    if (courses.isEmpty) return; // 강좌 캐시가 먼저 채워져야 한다.
+
+    final start = from ?? DateTime.now().toUtc().subtract(const Duration(days: 60));
+    final end = to ?? DateTime.now().toUtc().add(const Duration(days: 180));
+
+    final all = <CalendarEventsCompanion>[];
+    for (final c in courses) {
+      final events = await _api.fetchEvents(
+        termId: termId,
+        courseId: c.id,
+        from: start,
+        to: end,
+      );
+      all.addAll(events);
+    }
+
+    await _db.calendarEventsDao.replaceForTerm(termId, all);
+    await _db.cacheMetaDao.touch(_cacheKey(termId));
+  }
+
+  // Drift는 DateTime 컬럼을 유닉스 타임스탬프로 저장하고, 읽어올 때는
+  // isUtc가 false인 로컬 DateTime으로 되돌린다(가리키는 시각 자체는 맞다).
+  // Dart의 DateTime.==는 시각뿐 아니라 isUtc도 비교하므로, UTC로 명시해
+  // 저장 전후 값이 그대로 비교 가능하도록 맞춘다.
+  List<CalendarEventRow> _normalizeAll(List<CalendarEventRow> rows) =>
+      rows.map(_normalize).toList();
+
+  CalendarEventRow _normalize(CalendarEventRow row) => row.copyWith(
+        startAt: Value(row.startAt?.toUtc()),
+        endAt: Value(row.endAt?.toUtc()),
+      );
+}
