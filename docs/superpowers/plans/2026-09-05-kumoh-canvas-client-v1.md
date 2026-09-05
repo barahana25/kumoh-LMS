@@ -1436,6 +1436,15 @@ void main() {
 Run: `flutter test test/core/auth_interceptor_test.dart`
 Expected: FAIL — `Target of URI doesn't exist: 'package:kumoh_lms/core/network/auth_interceptor.dart'`
 
+> **구현 후 정정 (실제 코드가 정본):** 아래 코드는 초안이며 리뷰에서 결함 4개가 나와 수정됐다.
+> 실제 동작하는 판본은 `lib/core/network/auth_interceptor.dart`를 볼 것.
+> ① `_refreshing = true`를 `await readRefreshToken()` **이전에** 세워야 한다(경쟁 조건).
+> ② 재발급 실패와 재시도(replay) 실패를 분리한다. 재시도가 비인증 오류(500/timeout)면
+>    세션을 지우지 말고 원인을 그대로 전달한다.
+> ③ 단, 재시도가 또 204/401이면 새 토큰이 거부된 것이므로 세션을 종료한다.
+> ④ 플래그 구간 전체를 `try/finally`로 감싸 TokenStore I/O 예외에도 `_refreshing`이
+>    반드시 해제되게 한다(안 그러면 인터셉터가 영구 정지한다).
+
 - [ ] **Step 3: auth_interceptor.dart 구현**
 
 `lib/core/network/auth_interceptor.dart`:
