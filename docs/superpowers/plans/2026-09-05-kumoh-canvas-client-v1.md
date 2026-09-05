@@ -1840,7 +1840,7 @@ void main() {
       event('assignment_3', 4831, now.subtract(const Duration(days: 2))),
     ]);
 
-    final upcoming = await db.events
+    final upcoming = await db.calendarEventsDao
         .watchBetween(from: now, to: now.add(const Duration(days: 7)))
         .first;
 

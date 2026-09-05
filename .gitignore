@@ -31,3 +31,6 @@ ios/Flutter/Flutter.framework/
 
 # SDD scratch
 .superpowers/
+
+# Windows sqlite3 native lib for `flutter test` (Drift)
+sqlite3.dll
