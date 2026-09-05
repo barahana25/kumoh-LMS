@@ -75,6 +75,44 @@ void main() {
     expect(await store.readCredentials(), isNull);
   });
 
+  test('로그인 후 프로필 조회에는 회전된 토큰 두 개를 붙인다', () async {
+    final requests = <RequestOptions>[];
+    authDio.interceptors.add(InterceptorsWrapper(onRequest: (o, h) {
+      requests.add(o);
+      h.next(o);
+    }));
+    authAdapter.onPost('/login', (s) => s.reply(200, loginSuccessJson),
+        data: {'userId': '20250000', 'password': 'pw'});
+    authAdapter.onGet('/user/profile', (s) => s.reply(200, userProfileJson));
+    await container.read(authControllerProvider.future);
+    await container.read(authControllerProvider.notifier).login(
+      userId: '20250000', password: 'pw', rememberMe: false,
+    );
+    final profileRequest = requests.singleWhere((o) => o.path == '/user/profile');
+    expect(profileRequest.headers['Authorization'], 'Bearer header.accessPayload.sig');
+    expect(profileRequest.headers['X-Refresh-Token'], 'header.refreshPayload.sig');
+  });
+
+  test('오프라인 재시작은 기존 토큰과 캐시를 유지한다', () async {
+    await store.saveTokens(accessToken: 'old', refreshToken: 'oldRefresh');
+    await db.cacheMetaDao.touch('courses:8');
+    authAdapter.onPost('/reissue', (s) => s.throws(0, DioException(
+      requestOptions: RequestOptions(path: '/reissue'),
+      type: DioExceptionType.connectionError,
+    )));
+    final state = await container.read(authControllerProvider.future);
+    expect(state, isA<AuthOffline>());
+    expect(await store.readRefreshToken(), 'oldRefresh');
+    expect(await db.cacheMetaDao.fetchedAt('courses:8'), isNotNull);
+  });
+
+  test('서버가 세션을 거부하면 오프라인 상태로 인증을 우회하지 않는다', () async {
+    await store.saveTokens(accessToken: 'old', refreshToken: 'oldRefresh');
+    authAdapter.onPost('/reissue', (s) => s.reply(401, springAuthErrorJson));
+    expect(await container.read(authControllerProvider.future), isA<AuthUnauthenticated>());
+    expect(await store.readRefreshToken(), isNull);
+  });
+
   test('rememberMe가 true면 자격증명을 저장한다', () async {
     authAdapter.onPost('/login', (s) => s.reply(200, loginSuccessJson),
         data: {'userId': '20250000', 'password': 'pw'});

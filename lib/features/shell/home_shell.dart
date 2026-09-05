@@ -1,16 +1,29 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../providers.dart';
+import '../auth/presentation/auth_controller.dart';
 
 /// 하단 탭 네비게이션 셸. 각 탭은 자기 네비게이션 스택을 유지한다.
-class HomeShell extends StatelessWidget {
+class HomeShell extends ConsumerWidget {
   const HomeShell({required this.navigationShell, super.key});
 
   final StatefulNavigationShell navigationShell;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
-      body: navigationShell,
+      body: Column(children: [
+        if (ref.watch(authControllerProvider).valueOrNull is AuthOffline)
+          SafeArea(bottom: false, child: MaterialBanner(
+            content: const Text('오프라인에서 저장된 데이터를 보고 있습니다.'),
+            actions: [TextButton(
+              onPressed: () => ref.read(authControllerProvider.notifier).retrySession(),
+              child: const Text('다시 연결'),
+            )],
+          )),
+        Expanded(child: navigationShell),
+      ]),
       bottomNavigationBar: NavigationBar(
         selectedIndex: navigationShell.currentIndex,
         onDestinationSelected: (i) => navigationShell.goBranch(

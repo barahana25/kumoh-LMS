@@ -48,7 +48,6 @@ class AppDatabase extends _$AppDatabase {
 LazyDatabase _openEncrypted(Future<String> Function() keyProvider) {
   return LazyDatabase(() async {
     await applyWorkaroundToOpenSqlCipherOnOldAndroidVersions();
-    open.overrideForAll(openCipherOnAndroid);
 
     final dir = await getApplicationDocumentsDirectory();
     final file = File(p.join(dir.path, 'kumoh_lms.sqlite'));
@@ -57,7 +56,15 @@ LazyDatabase _openEncrypted(Future<String> Function() keyProvider) {
 
     return NativeDatabase.createInBackground(
       file,
-      setup: (db) => db.execute("PRAGMA key = '$escaped';"),
+      isolateSetup: () {
+        open.overrideFor(OperatingSystem.android, openCipherOnAndroid);
+      },
+      setup: (db) {
+        if (db.select('PRAGMA cipher_version;').isEmpty) {
+          throw StateError('SQLCipher is not available');
+        }
+        db.execute("PRAGMA key = '$escaped';");
+      },
     );
   });
 }

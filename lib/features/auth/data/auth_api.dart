@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 
 import '../../../core/error/failure.dart';
 import '../../../core/network/api_envelope.dart';
+import '../../../core/network/token_store.dart';
 import 'auth_dto.dart';
 
 /// DioException을 앱의 Failure 타입으로 정규화한다.
@@ -31,8 +32,18 @@ Never throwAsFailure(DioException e) {
 }
 
 class AuthApi {
-  AuthApi(this._dio);
+  AuthApi(this._dio, {TokenStore? tokenStore}) : _tokenStore = tokenStore;
   final Dio _dio;
+  final TokenStore? _tokenStore;
+
+  Future<Options> _sessionOptions() async {
+    final access = await _tokenStore?.readAccessToken();
+    final refresh = await _tokenStore?.readRefreshToken();
+    return Options(headers: {
+      if (access != null) 'Authorization': 'Bearer $access',
+      if (refresh != null) 'X-Refresh-Token': refresh,
+    });
+  }
 
   /// 학번은 서버가 대문자를 기대한다(웹앱도 대문자로 변환해 보낸다).
   Future<AuthTokens> login({required String userId, required String password}) async {
@@ -69,7 +80,7 @@ class AuthApi {
 
   Future<UserProfile> fetchProfile() async {
     try {
-      final res = await _dio.get<Object?>('/user/profile');
+      final res = await _dio.get<Object?>('/user/profile', options: await _sessionOptions());
       return unwrapEnvelope<UserProfile>(
         res.data,
           (d) => UserProfile.fromJson(d! as Map<String, dynamic>),
@@ -82,7 +93,7 @@ class AuthApi {
   /// 서버 세션 정리. 실패해도 로컬 로그아웃은 진행해야 하므로 예외를 삼킨다.
   Future<void> logout() async {
     try {
-      await _dio.post<Object?>('/logout');
+      await _dio.post<Object?>('/logout', options: await _sessionOptions());
     } on DioException {
       return;
     }

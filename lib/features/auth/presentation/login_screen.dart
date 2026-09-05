@@ -72,6 +72,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     TextFormField(
                       key: const Key('login_user_id'),
                       controller: _userIdController,
+                      autofillHints: const [AutofillHints.username],
                       autocorrect: false,
                       textInputAction: TextInputAction.next,
                       decoration: const InputDecoration(labelText: '학번'),
@@ -82,12 +83,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     TextFormField(
                       key: const Key('login_password'),
                       controller: _passwordController,
+                      autofillHints: const [AutofillHints.password],
                       obscureText: _obscure,
                       textInputAction: TextInputAction.done,
                       onFieldSubmitted: (_) => busy ? null : _submit(),
                       decoration: InputDecoration(
                         labelText: '비밀번호',
                         suffixIcon: IconButton(
+                          tooltip: _obscure ? '비밀번호 표시' : '비밀번호 숨기기',
                           icon: Icon(_obscure ? Icons.visibility_off : Icons.visibility),
                           onPressed: () => setState(() => _obscure = !_obscure),
                         ),

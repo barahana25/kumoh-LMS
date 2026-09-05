@@ -45,14 +45,18 @@ class RefreshBanner extends ConsumerWidget {
 /// 리포지토리 새로고침을 감싸 실패를 배너 메시지로 바꾼다.
 /// 예외를 삼키므로 캐시 화면은 그대로 유지된다.
 Future<void> runRefresh(WidgetRef ref, Future<void> Function() action) async {
+  if (!ref.context.mounted) return;
   try {
     await action();
+    if (!ref.context.mounted) return;
     ref.read(refreshErrorProvider.notifier).state = null;
   } on Failure catch (e) {
+    if (!ref.context.mounted) return;
     // Failure는 사용자에게 보여줄 한국어 메시지를 이미 갖고 있다.
     ref.read(refreshErrorProvider.notifier).state =
         '${e.message} 저장된 데이터를 표시합니다.';
   } on Exception {
+    if (!ref.context.mounted) return;
     ref.read(refreshErrorProvider.notifier).state =
         '새로고침에 실패했습니다. 저장된 데이터를 표시합니다.';
   }

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -65,5 +66,15 @@ void main() {
     await tester.pump();
     expect(find.textContaining('저장된 데이터를 표시합니다'), findsNothing);
     expect(ref.read(refreshErrorProvider), isNull);
+  });
+
+  testWidgets('새로고침 중 화면이 닫히면 dispose된 ref를 쓰지 않는다', (tester) async {
+    final ref = await pumpBanner(tester);
+    final completed = Completer<void>();
+    final refresh = runRefresh(ref, () => completed.future);
+    await tester.pumpWidget(const SizedBox.shrink());
+    completed.completeError(const NetworkFailure());
+    await refresh;
+    expect(tester.takeException(), isNull);
   });
 }

@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../providers.dart';
+import '../../../core/error/failure.dart';
+import '../../reference/presentation/term_providers.dart';
 import '../data/auth_dto.dart';
 
 /// 세션 상태. 라우터가 이 값을 보고 로그인 화면 여부를 결정한다.
@@ -17,7 +19,13 @@ class AuthAuthenticated extends AuthState {
   final UserProfile profile;
 }
 
+/// 이전 로그인 토큰이 있는 기기에서 연결 실패 시 캐시를 연다.
+class AuthOffline extends AuthState {
+  const AuthOffline();
+}
+
 class AuthController extends AsyncNotifier<AuthState> {
+  int _generation = 0;
   @override
   Future<AuthState> build() => _restoreSession();
 
@@ -31,12 +39,15 @@ class AuthController extends AsyncNotifier<AuthState> {
     if (refresh != null && refresh.isNotEmpty) {
       try {
         final tokens = await authApi.reissue(refresh);
+        if (!tokens.isValid) throw const AuthFailure();
         await store.saveTokens(
           accessToken: tokens.accessToken,
           refreshToken: tokens.refreshToken,
         );
         final profile = await authApi.fetchProfile();
         return AuthAuthenticated(profile: profile);
+      } on NetworkFailure {
+        return const AuthOffline();
       } on Object {
         await store.clearTokens();
       }
@@ -72,6 +83,7 @@ class AuthController extends AsyncNotifier<AuthState> {
     final authApi = ref.read(authApiProvider);
 
     final tokens = await authApi.login(userId: userId, password: password);
+    if (!tokens.isValid) throw const AuthFailure();
     await store.saveTokens(
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
@@ -92,26 +104,60 @@ class AuthController extends AsyncNotifier<AuthState> {
     required String password,
     required bool rememberMe,
   }) async {
+    final generation = ++_generation;
+    ref.read(cacheSessionProvider).end();
     state = const AsyncLoading();
-    state = await AsyncValue.guard(
-      () => _performLogin(
+    final result = await AsyncValue.guard(() async {
+      // 새 계정 토큰을 저장하기 전에 이전 계정 데이터를 비운다.
+      // 프로필 조회가 실패한 뒤 오프라인 재시작해도 이전 캐시가 노출되지 않는다.
+      await ref.read(appDatabaseProvider).wipe();
+      final authenticated = await _performLogin(
         userId: userId,
         password: password,
         rememberMe: rememberMe,
-      ),
-    );
+      );
+      ref.read(selectedTermIdProvider.notifier).state = null;
+      ref.invalidate(activeTermIdProvider);
+      return authenticated;
+    });
+    if (generation == _generation) {
+      if (result.hasValue) ref.read(cacheSessionProvider).start();
+      state = result;
+    }
+  }
+
+  Future<void> retrySession() async {
+    final generation = ++_generation;
+    state = const AsyncLoading();
+    final result = await AsyncValue.guard(_restoreSession);
+    if (generation == _generation) {
+      state = result;
+      ref.invalidate(activeTermIdProvider);
+    }
   }
 
   Future<void> logout() async {
+    ++_generation;
+    ref.read(cacheSessionProvider).end();
+    state = const AsyncLoading();
     final store = ref.read(tokenStoreProvider);
     final db = ref.read(appDatabaseProvider);
     // 저장소나 DB가 던지더라도 세션은 반드시 끝난 상태로 남겨야 한다.
     // 그러지 않으면 사용자가 쓸 수 없는 세션에 갇힌 채 로그인 화면으로도 못 간다.
     try {
-      await ref.read(authApiProvider).logout();
-      await store.clearAll();
-      await db.wipe();
+      try {
+        await ref.read(authApiProvider).logout();
+      } finally {
+        try {
+          await store.clearAll();
+        } finally {
+          await db.wipe();
+        }
+      }
     } finally {
+      ref.read(selectedTermIdProvider.notifier).state = null;
+      ref.read(refreshErrorProvider.notifier).state = null;
+      ref.invalidate(activeTermIdProvider);
       state = const AsyncData(AuthUnauthenticated());
     }
   }
@@ -136,7 +182,8 @@ class AuthController extends AsyncNotifier<AuthState> {
   }
 
   Future<void> _recoverSession() async {
+    final generation = _generation;
     final result = await _autoLoginOrUnauthenticated();
-    state = AsyncData(result);
+    if (generation == _generation) state = AsyncData(result);
   }
 }
