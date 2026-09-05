@@ -2358,10 +2358,21 @@ class AccountInfo {
       );
 }
 
-/// 서버가 주는 'yyyy-MM-ddTHH:mm:ss' 또는 ISO8601을 관대하게 파싱한다.
+/// 서버는 두 가지 형태로 시각을 준다.
+///  - 오프셋이 있는 값('...Z', '+09:00'): 그대로 UTC로 변환한다.
+///  - 오프셋이 없는 값('2026-09-01T00:01:00'): KST(UTC+9) 벽시계 시각이다.
+///    DateTime.tryParse는 이를 기기 로컬 시간대로 읽으므로 KST가 아닌
+///    기기에서 어긋난다. 그래서 명시적으로 KST로 못박는다.
 DateTime? parseServerDate(Object? raw) {
   if (raw is! String || raw.isEmpty) return null;
-  return DateTime.tryParse(raw)?.toUtc();
+  final parsed = DateTime.tryParse(raw);
+  if (parsed == null) return null;
+  final hasZone =
+      raw.endsWith('Z') || RegExp(r'[+-]\d{2}:?\d{2}$').hasMatch(raw);
+  if (hasZone) return parsed.toUtc();
+  return DateTime.utc(parsed.year, parsed.month, parsed.day, parsed.hour,
+          parsed.minute, parsed.second, parsed.millisecond)
+      .subtract(const Duration(hours: 9));
 }
 
 class ReferenceApi {
