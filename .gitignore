@@ -34,3 +34,6 @@ ios/Flutter/Flutter.framework/
 
 # Windows sqlite3 native lib for `flutter test` (Drift)
 sqlite3.dll
+
+# Flutter tool crash logs
+flutter_*.log
