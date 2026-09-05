@@ -58,9 +58,4 @@ class AssignmentsRepository {
     await _db.calendarEventsDao.replaceForTerm(termId, all);
     await _db.cacheMetaDao.touch(_cacheKey(termId));
   }
-
-  // Drift는 DateTime 컬럼을 유닉스 타임스탬프로 저장하고, 읽어올 때는
-  // isUtc가 false인 로컬 DateTime으로 되돌린다(가리키는 시각 자체는 맞다).
-  // Dart의 DateTime.==는 시각뿐 아니라 isUtc도 비교하므로, UTC로 명시해
-  // 저장 전후 값이 그대로 비교 가능하도록 맞춘다.
 }

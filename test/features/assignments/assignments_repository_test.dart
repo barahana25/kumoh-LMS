@@ -121,4 +121,58 @@ void main() {
     expect(calls, 0);
     expect(await repo.watchTerm(8).first, isEmpty);
   });
+
+  test('여러 강좌의 이벤트를 한 학기로 모은다', () async {
+    // 서버는 강좌 하나씩만 캘린더를 준다. 이 루프가 이 리포지토리의 핵심이다.
+    await db.coursesDao.upsertAll([
+      CoursesCompanion.insert(
+        id: const Value(5682),
+        termId: 8,
+        name: '모두를위한아두이노-02',
+        courseCode: 'LA0424-02',
+      ),
+    ]);
+
+    const secondCourseJson = {
+      'code': '200',
+      'message': 'Success',
+      'data': {
+        'calendarEvents': [
+          {
+            'id': 'assignment_8888',
+            'title': '아두이노 1주차 과제',
+            'start_at': '2026-09-10T14:59:00Z',
+            'end_at': '2026-09-10T14:59:00Z',
+            'workflow_state': 'published',
+            'description': '',
+            'context_code': 'course_5682',
+            'context_name': '모두를위한아두이노-02',
+            'html_url': 'https://canvas.kumoh.ac.kr/courses/5682/assignments/8888',
+            'all_day': false,
+          },
+        ],
+      },
+    };
+
+    adapter.onGet('/calendar-events', (s) => s.reply(200, calendarEventsJson),
+        queryParameters: {
+          'start_date': '2026-09-01',
+          'end_date': '2026-12-31',
+          'context_code': 'course_4831',
+        });
+    adapter.onGet('/calendar-events', (s) => s.reply(200, secondCourseJson),
+        queryParameters: {
+          'start_date': '2026-09-01',
+          'end_date': '2026-12-31',
+          'context_code': 'course_5682',
+        });
+
+    await repo.refresh(8,
+        from: DateTime.utc(2026, 9, 1), to: DateTime.utc(2026, 12, 31));
+
+    final rows = await repo.watchTerm(8).first;
+    expect(rows.map((e) => e.id).toSet(),
+        {'assignment_7931', 'assignment_8888'});
+    expect(rows.map((e) => e.courseId).toSet(), {4831, 5682});
+  });
 }
