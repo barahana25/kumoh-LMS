@@ -88,4 +88,32 @@ void main() {
   test('캐시가 비어 있으면 currentTermId는 null이다', () async {
     expect(await repo.currentTermId(), isNull);
   });
+
+  group('parseServerDate', () {
+    test('naive 문자열은 KST로 읽는다', () {
+      // '2026-09-01T00:01:00' (naive, no offset)는 KST 벽시계 시각이다.
+      // UTC로는 9시간 앞이므로 2026-08-31T15:01:00Z가 되어야 한다.
+      final result = parseServerDate('2026-09-01T00:01:00');
+      expect(result, DateTime.utc(2026, 8, 31, 15, 1));
+    });
+
+    test('Z 문자열은 변하지 않는다', () {
+      // Z로 끝나는 문자열은 이미 UTC이므로 그대로 반환한다.
+      final result = parseServerDate('2026-09-02T14:59:00Z');
+      expect(result, DateTime.utc(2026, 9, 2, 14, 59));
+    });
+
+    test('명시적 오프셋이 있는 문자열은 작동한다', () {
+      // +09:00 오프셋이 있으면 UTC로 변환한다: 09:00 - 09:00 = 00:00
+      final result = parseServerDate('2026-09-01T09:00:00+09:00');
+      expect(result, DateTime.utc(2026, 9, 1, 0, 0));
+    });
+
+    test('null, 비문자열, 빈 문자열, 잘못된 형식은 null을 반환한다', () {
+      expect(parseServerDate(null), isNull);
+      expect(parseServerDate(123), isNull);
+      expect(parseServerDate(''), isNull);
+      expect(parseServerDate('not a date'), isNull);
+    });
+  });
 }
