@@ -19,15 +19,15 @@ void main() {
 
   test('clearTokens는 토큰만 지우고 자격증명은 남긴다', () async {
     await store.saveTokens(accessToken: 'AAA', refreshToken: 'RRR');
-    await store.saveCredentials(userId: '2025114794', password: 'pw');
+    await store.saveCredentials(userId: '20250000', password: 'pw');
     await store.clearTokens();
     expect(await store.readAccessToken(), isNull);
-    expect((await store.readCredentials())?.userId, '2025114794');
+    expect((await store.readCredentials())?.userId, '20250000');
   });
 
   test('clearAll은 토큰과 자격증명을 모두 지운다', () async {
     await store.saveTokens(accessToken: 'AAA', refreshToken: 'RRR');
-    await store.saveCredentials(userId: '2025114794', password: 'pw');
+    await store.saveCredentials(userId: '20250000', password: 'pw');
     await store.clearAll();
     expect(await store.readAccessToken(), isNull);
     expect(await store.readCredentials(), isNull);

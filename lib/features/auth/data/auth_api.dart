@@ -37,10 +37,9 @@ class AuthApi {
         '/login',
         data: {'userId': userId.toUpperCase().trim(), 'password': password},
       );
-      // ignore: unawaited_return_in_try_block
-      return unwrapEnvelope(
+      return unwrapEnvelope<AuthTokens>(
         res.data,
-        (d) => AuthTokens.fromJson(d! as Map<String, dynamic>),
+          (d) => AuthTokens.fromJson(d! as Map<String, dynamic>),
       );
     } on DioException catch (e) {
       throwAsFailure(e);
@@ -55,10 +54,9 @@ class AuthApi {
         '/reissue',
         options: Options(headers: {'X-Refresh-Token': refreshToken}),
       );
-      // ignore: unawaited_return_in_try_block
-      return unwrapEnvelope(
+      return unwrapEnvelope<AuthTokens>(
         res.data,
-        (d) => AuthTokens.fromJson(d! as Map<String, dynamic>),
+          (d) => AuthTokens.fromJson(d! as Map<String, dynamic>),
       );
     } on DioException catch (e) {
       throwAsFailure(e);
@@ -68,10 +66,9 @@ class AuthApi {
   Future<UserProfile> fetchProfile() async {
     try {
       final res = await _dio.get<Object?>('/user/profile');
-      // ignore: unawaited_return_in_try_block
-      return unwrapEnvelope(
+      return unwrapEnvelope<UserProfile>(
         res.data,
-        (d) => UserProfile.fromJson(d! as Map<String, dynamic>),
+          (d) => UserProfile.fromJson(d! as Map<String, dynamic>),
       );
     } on DioException catch (e) {
       throwAsFailure(e);

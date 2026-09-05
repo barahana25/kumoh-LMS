@@ -35,6 +35,10 @@
   - 모델은 여전히 불변(`final` 필드 + `const` 생성자)이다.
 - **커밋**: 각 태스크 끝에서 커밋. 커밋 메시지 끝에 다음 줄을 붙인다:
   `Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>`
+- **`unwrapEnvelope` 호출 시 타입 인자를 명시할 것**: `unwrapEnvelope<Course>(...)` 처럼.
+  async 함수의 `return` 문맥에서 `T`가 `FutureOr<...>`로 추론되어
+  `unawaited_return_in_try_block` 경고가 뜬다. 타입 인자를 못 박으면 사라진다.
+  (억제 주석 `// ignore:` 로 덮지 말 것 — Task 4에서 실제로 겪은 문제다.)
 - **자격증명 파일 `env`는 절대 커밋 금지** (`.gitignore`에 이미 등록됨).
 
 ---
@@ -526,15 +530,15 @@ void main() {
 
   test('clearTokens는 토큰만 지우고 자격증명은 남긴다', () async {
     await store.saveTokens(accessToken: 'AAA', refreshToken: 'RRR');
-    await store.saveCredentials(userId: '2025114794', password: 'pw');
+    await store.saveCredentials(userId: '20250000', password: 'pw');
     await store.clearTokens();
     expect(await store.readAccessToken(), isNull);
-    expect((await store.readCredentials())?.userId, '2025114794');
+    expect((await store.readCredentials())?.userId, '20250000');
   });
 
   test('clearAll은 토큰과 자격증명을 모두 지운다', () async {
     await store.saveTokens(accessToken: 'AAA', refreshToken: 'RRR');
-    await store.saveCredentials(userId: '2025114794', password: 'pw');
+    await store.saveCredentials(userId: '20250000', password: 'pw');
     await store.clearAll();
     expect(await store.readAccessToken(), isNull);
     expect(await store.readCredentials(), isNull);
@@ -780,7 +784,7 @@ const userProfileJson = {
     'birth': '20000110',
     'mobile': '',
     'email': 'student@example.com',
-    'loginId': '2025114794',
+    'loginId': '20250000',
     'division': '컴퓨터공학부',
     'subDivision': '인공지능공학전공',
     'agreementFlag': false,
@@ -969,10 +973,10 @@ void main() {
     adapter.onPost(
       '/login',
       (server) => server.reply(200, loginSuccessJson),
-      data: {'userId': '2025114794', 'password': 'pw'},
+      data: {'userId': '20250000', 'password': 'pw'},
     );
 
-    final tokens = await api.login(userId: '2025114794', password: 'pw');
+    final tokens = await api.login(userId: '20250000', password: 'pw');
 
     expect(tokens.accessToken, 'header.accessPayload.sig');
     expect(tokens.refreshToken, 'header.refreshPayload.sig');
@@ -986,11 +990,11 @@ void main() {
         'message': '아이디 또는 비밀번호가 올바르지 않습니다.',
         'data': null,
       }),
-      data: {'userId': '2025114794', 'password': 'wrong'},
+      data: {'userId': '20250000', 'password': 'wrong'},
     );
 
     expect(
-      () => api.login(userId: '2025114794', password: 'wrong'),
+      () => api.login(userId: '20250000', password: 'wrong'),
       throwsA(isA<ServerFailure>().having((f) => f.code, 'code', 'U001')),
     );
   });
@@ -1017,7 +1021,7 @@ void main() {
 
     final profile = await api.fetchProfile();
 
-    expect(profile.loginId, '2025114794');
+    expect(profile.loginId, '20250000');
     expect(profile.name, '홍길동');
     expect(profile.canvasId, 59580);
     expect(profile.division, '컴퓨터공학부');
@@ -3289,12 +3293,12 @@ void main() {
 
   test('로그인 성공 시 토큰을 저장하고 인증 상태가 된다', () async {
     authAdapter.onPost('/login', (s) => s.reply(200, loginSuccessJson),
-        data: {'userId': '2025114794', 'password': 'pw'});
+        data: {'userId': '20250000', 'password': 'pw'});
     authAdapter.onGet('/user/profile', (s) => s.reply(200, userProfileJson));
 
     await container.read(authControllerProvider.future);
     await container.read(authControllerProvider.notifier).login(
-          userId: '2025114794',
+          userId: '20250000',
           password: 'pw',
           rememberMe: false,
         );
@@ -3308,12 +3312,12 @@ void main() {
 
   test('rememberMe가 false면 자격증명을 저장하지 않는다', () async {
     authAdapter.onPost('/login', (s) => s.reply(200, loginSuccessJson),
-        data: {'userId': '2025114794', 'password': 'pw'});
+        data: {'userId': '20250000', 'password': 'pw'});
     authAdapter.onGet('/user/profile', (s) => s.reply(200, userProfileJson));
 
     await container.read(authControllerProvider.future);
     await container.read(authControllerProvider.notifier).login(
-          userId: '2025114794',
+          userId: '20250000',
           password: 'pw',
           rememberMe: false,
         );
@@ -3323,17 +3327,17 @@ void main() {
 
   test('rememberMe가 true면 자격증명을 저장한다', () async {
     authAdapter.onPost('/login', (s) => s.reply(200, loginSuccessJson),
-        data: {'userId': '2025114794', 'password': 'pw'});
+        data: {'userId': '20250000', 'password': 'pw'});
     authAdapter.onGet('/user/profile', (s) => s.reply(200, userProfileJson));
 
     await container.read(authControllerProvider.future);
     await container.read(authControllerProvider.notifier).login(
-          userId: '2025114794',
+          userId: '20250000',
           password: 'pw',
           rememberMe: true,
         );
 
-    expect((await store.readCredentials())?.userId, '2025114794');
+    expect((await store.readCredentials())?.userId, '20250000');
   });
 
   test('로그인 실패는 에러 상태가 되고 토큰을 저장하지 않는다', () async {
@@ -3344,12 +3348,12 @@ void main() {
         'message': '아이디 또는 비밀번호가 올바르지 않습니다.',
         'data': null,
       }),
-      data: {'userId': '2025114794', 'password': 'wrong'},
+      data: {'userId': '20250000', 'password': 'wrong'},
     );
 
     await container.read(authControllerProvider.future);
     await container.read(authControllerProvider.notifier).login(
-          userId: '2025114794',
+          userId: '20250000',
           password: 'wrong',
           rememberMe: false,
         );
@@ -3379,7 +3383,7 @@ void main() {
 
   test('로그아웃은 토큰·자격증명·캐시를 모두 비운다', () async {
     await store.saveTokens(accessToken: 'a', refreshToken: 'r');
-    await store.saveCredentials(userId: '2025114794', password: 'pw');
+    await store.saveCredentials(userId: '20250000', password: 'pw');
     await db.cacheMetaDao.touch('courses:8');
     authAdapter.onPost('/logout', (s) => s.reply(200, {'code': '200', 'message': 'Success', 'data': null}));
 
@@ -3868,13 +3872,13 @@ void main() {
         'message': '아이디 또는 비밀번호가 올바르지 않습니다.',
         'data': null,
       }),
-      data: {'userId': '2025114794', 'password': 'wrong'},
+      data: {'userId': '20250000', 'password': 'wrong'},
     );
 
     await tester.pumpWidget(wrap());
     await tester.pumpAndSettle();
 
-    await tester.enterText(find.byKey(const Key('login_user_id')), '2025114794');
+    await tester.enterText(find.byKey(const Key('login_user_id')), '20250000');
     await tester.enterText(find.byKey(const Key('login_password')), 'wrong');
     await tester.tap(find.widgetWithText(FilledButton, '로그인'));
     await tester.pumpAndSettle();
@@ -3884,13 +3888,13 @@ void main() {
 
   testWidgets('로그인 성공 시 토큰이 저장된다', (tester) async {
     authAdapter.onPost('/login', (s) => s.reply(200, loginSuccessJson),
-        data: {'userId': '2025114794', 'password': 'pw'});
+        data: {'userId': '20250000', 'password': 'pw'});
     authAdapter.onGet('/user/profile', (s) => s.reply(200, userProfileJson));
 
     await tester.pumpWidget(wrap());
     await tester.pumpAndSettle();
 
-    await tester.enterText(find.byKey(const Key('login_user_id')), '2025114794');
+    await tester.enterText(find.byKey(const Key('login_user_id')), '20250000');
     await tester.enterText(find.byKey(const Key('login_password')), 'pw');
     await tester.tap(find.widgetWithText(FilledButton, '로그인'));
     await tester.pumpAndSettle();

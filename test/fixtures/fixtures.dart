@@ -18,7 +18,7 @@ const userProfileJson = {
     'birth': '20000110',
     'mobile': '',
     'email': 'student@example.com',
-    'loginId': '2025114794',
+    'loginId': '20250000',
     'division': '컴퓨터공학부',
     'subDivision': '인공지능공학전공',
     'agreementFlag': false,

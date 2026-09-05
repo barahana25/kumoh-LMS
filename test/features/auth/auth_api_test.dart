@@ -22,10 +22,10 @@ void main() {
     adapter.onPost(
       '/login',
       (server) => server.reply(200, loginSuccessJson),
-      data: {'userId': '2025114794', 'password': 'pw'},
+      data: {'userId': '20250000', 'password': 'pw'},
     );
 
-    final tokens = await api.login(userId: '2025114794', password: 'pw');
+    final tokens = await api.login(userId: '20250000', password: 'pw');
 
     expect(tokens.accessToken, 'header.accessPayload.sig');
     expect(tokens.refreshToken, 'header.refreshPayload.sig');
@@ -39,11 +39,11 @@ void main() {
         'message': '아이디 또는 비밀번호가 올바르지 않습니다.',
         'data': null,
       }),
-      data: {'userId': '2025114794', 'password': 'wrong'},
+      data: {'userId': '20250000', 'password': 'wrong'},
     );
 
     expect(
-      () => api.login(userId: '2025114794', password: 'wrong'),
+      () => api.login(userId: '20250000', password: 'wrong'),
       throwsA(isA<ServerFailure>().having((f) => f.code, 'code', 'U001')),
     );
   });
@@ -70,7 +70,7 @@ void main() {
 
     final profile = await api.fetchProfile();
 
-    expect(profile.loginId, '2025114794');
+    expect(profile.loginId, '20250000');
     expect(profile.name, '홍길동');
     expect(profile.canvasId, 59580);
     expect(profile.division, '컴퓨터공학부');
