@@ -2262,10 +2262,13 @@ void main() {
 
   test('TTL 안에서는 두 번째 호출이 네트워크를 치지 않는다', () async {
     var calls = 0;
-    adapter.onGet('/terms', (s) {
+    // http_mock_adapter의 onGet 콜백은 등록 시점에 1회만 실행되고 실제 요청
+    // 횟수와 무관하다. 진짜 네트워크 호출 수는 Dio 인터셉터로 센다.
+    dio.interceptors.add(InterceptorsWrapper(onRequest: (options, handler) {
       calls++;
-      return s.reply(200, termsJson);
-    }, queryParameters: {'accountId': 1});
+      handler.next(options);
+    }));
+    adapter.onGet('/terms', (s) => s.reply(200, termsJson), queryParameters: {'accountId': 1});
 
     await repo.refreshTerms();
     await repo.refreshTerms();
@@ -2275,10 +2278,13 @@ void main() {
 
   test('force가 true면 TTL을 무시하고 다시 받아온다', () async {
     var calls = 0;
-    adapter.onGet('/terms', (s) {
+    // http_mock_adapter의 onGet 콜백은 등록 시점에 1회만 실행되고 실제 요청
+    // 횟수와 무관하다. 진짜 네트워크 호출 수는 Dio 인터셉터로 센다.
+    dio.interceptors.add(InterceptorsWrapper(onRequest: (options, handler) {
       calls++;
-      return s.reply(200, termsJson);
-    }, queryParameters: {'accountId': 1});
+      handler.next(options);
+    }));
+    adapter.onGet('/terms', (s) => s.reply(200, termsJson), queryParameters: {'accountId': 1});
 
     await repo.refreshTerms();
     await repo.refreshTerms(force: true);
@@ -2541,10 +2547,13 @@ void main() {
 
   test('TTL 안에서는 네트워크를 다시 치지 않는다', () async {
     var calls = 0;
-    adapter.onGet('/courses', (s) {
+    // http_mock_adapter의 onGet 콜백은 등록 시점에 1회만 실행되고 실제 요청
+    // 횟수와 무관하다. 진짜 네트워크 호출 수는 Dio 인터셉터로 센다.
+    dio.interceptors.add(InterceptorsWrapper(onRequest: (options, handler) {
       calls++;
-      return s.reply(200, coursesJson);
-    }, queryParameters: query);
+      handler.next(options);
+    }));
+    adapter.onGet('/courses', (s) => s.reply(200, coursesJson), queryParameters: query);
 
     await repo.refresh(8);
     await repo.refresh(8);
@@ -2830,10 +2839,13 @@ void main() {
 
   test('TTL 안에서는 네트워크를 다시 치지 않는다', () async {
     var calls = 0;
-    adapter.onGet('/calendar-events', (s) {
+    // http_mock_adapter의 onGet 콜백은 등록 시점에 1회만 실행되고 실제 요청
+    // 횟수와 무관하다. 진짜 네트워크 호출 수는 Dio 인터셉터로 센다.
+    dio.interceptors.add(InterceptorsWrapper(onRequest: (options, handler) {
       calls++;
-      return s.reply(200, calendarEventsJson);
-    }, queryParameters: {
+      handler.next(options);
+    }));
+    adapter.onGet('/calendar-events', (s) => s.reply(200, calendarEventsJson), queryParameters: {
       'start_date': '2026-09-01',
       'end_date': '2026-12-31',
       'context_code': 'course_4831',
@@ -2850,10 +2862,13 @@ void main() {
   test('캐시된 강좌가 없으면 네트워크를 치지 않는다', () async {
     await db.wipe();
     var calls = 0;
-    adapter.onGet('/calendar-events', (s) {
+    // http_mock_adapter의 onGet 콜백은 등록 시점에 1회만 실행되고 실제 요청
+    // 횟수와 무관하다. 진짜 네트워크 호출 수는 Dio 인터셉터로 센다.
+    dio.interceptors.add(InterceptorsWrapper(onRequest: (options, handler) {
       calls++;
-      return s.reply(200, calendarEventsJson);
-    });
+      handler.next(options);
+    }));
+    adapter.onGet('/calendar-events', (s) => s.reply(200, calendarEventsJson));
 
     await repo.refresh(8,
         from: DateTime.utc(2026, 9, 1), to: DateTime.utc(2026, 12, 31));
@@ -3102,10 +3117,13 @@ void main() {
 
   test('TTL 안에서는 네트워크를 다시 치지 않는다', () async {
     var calls = 0;
-    adapter.onGet('/dashboard/total/announcement', (s) {
+    // http_mock_adapter의 onGet 콜백은 등록 시점에 1회만 실행되고 실제 요청
+    // 횟수와 무관하다. 진짜 네트워크 호출 수는 Dio 인터셉터로 센다.
+    dio.interceptors.add(InterceptorsWrapper(onRequest: (options, handler) {
       calls++;
-      return s.reply(200, announcementsJson);
-    }, queryParameters: {'termId': 8});
+      handler.next(options);
+    }));
+    adapter.onGet('/dashboard/total/announcement', (s) => s.reply(200, announcementsJson), queryParameters: {'termId': 8});
 
     await repo.refresh(8);
     await repo.refresh(8);
@@ -3115,10 +3133,13 @@ void main() {
 
   test('force면 다시 받아온다', () async {
     var calls = 0;
-    adapter.onGet('/dashboard/total/announcement', (s) {
+    // http_mock_adapter의 onGet 콜백은 등록 시점에 1회만 실행되고 실제 요청
+    // 횟수와 무관하다. 진짜 네트워크 호출 수는 Dio 인터셉터로 센다.
+    dio.interceptors.add(InterceptorsWrapper(onRequest: (options, handler) {
       calls++;
-      return s.reply(200, announcementsJson);
-    }, queryParameters: {'termId': 8});
+      handler.next(options);
+    }));
+    adapter.onGet('/dashboard/total/announcement', (s) => s.reply(200, announcementsJson), queryParameters: {'termId': 8});
 
     await repo.refresh(8);
     await repo.refresh(8, force: true);
