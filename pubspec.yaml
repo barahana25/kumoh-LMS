@@ -23,6 +23,8 @@ dependencies:
   path: ^1.9.0
   flutter_widget_from_html_core: ^0.15.2
   url_launcher: ^6.3.1
+  cookie_jar: ^4.0.9
+  dio_cookie_manager: ^3.5.0
 
 dev_dependencies:
   flutter_test:

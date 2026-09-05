@@ -4,6 +4,11 @@ class Env {
 
   static const String apiBaseUrl = 'https://lms.kumoh.ac.kr:82/api/v1';
   static const String canvasHost = 'https://canvas.kumoh.ac.kr';
+  static const String canvasApiBaseUrl = '$canvasHost/api/v1';
+
+  /// SAML 힌트 쿠키를 심는 기준 URL. 쿠키 도메인은 .kumoh.ac.kr 이라
+  /// lms/canvas 양쪽 요청에 함께 실린다.
+  static const String canvasBridgeCookieHost = 'https://lms.kumoh.ac.kr';
 
   /// 내부 API가 CORS/Referer 검사를 하므로 웹앱과 동일한 Origin을 보낸다.
   static const String webOrigin = 'https://lms.kumoh.ac.kr';
