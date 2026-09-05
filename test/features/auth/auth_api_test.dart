@@ -97,4 +97,23 @@ void main() {
 
     expect(() => api.fetchProfile(), throwsA(isA<NetworkFailure>()));
   });
+
+  test('인터셉터가 판정한 AuthFailure는 NetworkFailure로 변환되지 않고 통과한다', () async {
+    adapter.onGet(
+      '/user/profile',
+      (server) => server.throws(
+        0,
+        DioException(
+          requestOptions: RequestOptions(path: '/user/profile'),
+          type: DioExceptionType.unknown,
+          error: const AuthFailure(),
+        ),
+      ),
+    );
+
+    expect(
+      () => api.fetchProfile(),
+      throwsA(isA<AuthFailure>()),
+    );
+  });
 }
