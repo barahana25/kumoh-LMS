@@ -1772,7 +1772,7 @@ void main() {
   tearDown(() => db.close());
 
   TermsCompanion term(int id, String name) => TermsCompanion.insert(
-        id: id,
+        id: Value(id),
         name: name,
         startAt: Value(DateTime.utc(2026, 9, 1)),
         endAt: Value(DateTime.utc(2026, 12, 22)),
@@ -1780,7 +1780,7 @@ void main() {
       );
 
   CoursesCompanion course(int id, int termId, String name) => CoursesCompanion.insert(
-        id: id,
+        id: Value(id),
         termId: termId,
         name: name,
         courseCode: '$name-CODE',
@@ -1791,7 +1791,7 @@ void main() {
 
   CalendarEventsCompanion event(String id, int courseId, DateTime dueAt) =>
       CalendarEventsCompanion.insert(
-        id: id,
+        id: Value(id),
         courseId: Value(courseId),
         termId: 8,
         title: '과제 $id',
@@ -2385,7 +2385,7 @@ class ReferenceApi {
         return list
             .cast<Map<String, dynamic>>()
             .map((t) => TermsCompanion.insert(
-                  id: (t['id'] as num).toInt(),
+                  id: Value((t['id'] as num).toInt()),
                   name: t['name'] as String? ?? '',
                   startAt: Value(parseServerDate(t['startAt'])),
                   endAt: Value(parseServerDate(t['endAt'])),
@@ -2658,7 +2658,7 @@ CoursesCompanion _toCompanion(Map<String, dynamic> c, int fallbackTermId) {
       .join(', ');
 
   return CoursesCompanion.insert(
-    id: (c['id'] as num).toInt(),
+    id: Value((c['id'] as num).toInt()),
     termId: (c['enrollmentTermId'] as num?)?.toInt() ?? fallbackTermId,
     name: c['name'] as String? ?? '',
     courseCode: c['courseCode'] as String? ?? '',
@@ -2770,7 +2770,7 @@ void main() {
     // 캘린더는 캐시된 강좌를 기준으로 조회하므로 강좌를 먼저 심는다.
     await db.coursesDao.upsertAll([
       CoursesCompanion.insert(
-        id: 4831,
+        id: const Value(4831),
         termId: 8,
         name: '리눅스시스템프로그래밍-01',
         courseCode: 'GA2015-01',
@@ -4380,7 +4380,7 @@ void main() {
   testWidgets('캐시된 강좌를 카드로 보여준다', (tester) async {
     await db.coursesDao.upsertAll([
       CoursesCompanion.insert(
-        id: 4831,
+        id: const Value(4831),
         termId: 8,
         name: '리눅스시스템프로그래밍-01',
         courseCode: 'GA2015-01',
