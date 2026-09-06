@@ -155,6 +155,13 @@ class CanvasGrade {
       currentGrade == null &&
       finalScore == null &&
       finalGrade == null;
+
+  /// 채점된 성적이 실제로 공개됐는가.
+  ///
+  /// Canvas의 final_score는 아직 채점하지 않은 과제를 0으로 계산한 값이라
+  /// 학기 초에는 거의 항상 0이다. 이걸 "최종 성적 0점"으로 보여주면 학생이
+  /// F를 받은 것으로 오해한다. 채점 여부는 current 쪽으로만 판단한다.
+  bool get hasPublishedGrade => currentScore != null || currentGrade != null;
 }
 
 /// 토론 주제.

@@ -242,4 +242,46 @@ void main() {
     expect(find.textContaining('네트워크에 연결할 수 없습니다'), findsOneWidget);
     expect(find.textContaining('NetworkFailure'), findsNothing);
   });
+
+  group('성적 오해 방지', () {
+    testWidgets('채점 전인데 final_score가 0이면 성적으로 보여주지 않는다', (tester) async {
+      // Canvas의 final_score는 미채점 과제를 0으로 계산한 값이다. 학기 초에
+      // "최종 성적 0점"으로 보이면 학생이 F를 받은 것으로 오해한다.
+      await tester.pumpWidget(wrap(
+        const GradesTab(courseId: 1),
+        [
+          courseGradeProvider(1).overrideWith(
+              (ref) => fresh<CanvasGrade?>(const CanvasGrade(finalScore: 0)))
+        ],
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.text('아직 공개된 성적이 없습니다'), findsOneWidget);
+      expect(find.textContaining('0.0점'), findsNothing);
+      expect(find.textContaining('0점'), findsNothing);
+    });
+
+    testWidgets('채점된 성적이 있으면 보여준다', (tester) async {
+      await tester.pumpWidget(wrap(
+        const GradesTab(courseId: 1),
+        [
+          courseGradeProvider(1).overrideWith((ref) => fresh<CanvasGrade?>(
+              const CanvasGrade(currentScore: 85.5, currentGrade: 'B+', finalScore: 80)))
+        ],
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.text('현재 성적'), findsOneWidget);
+      expect(find.textContaining('B+'), findsOneWidget);
+    });
+
+    test('채점 여부 판정', () {
+      expect(const CanvasGrade(finalScore: 0).hasPublishedGrade, isFalse,
+          reason: 'final_score만 0인 것은 채점 전이다');
+      expect(const CanvasGrade(currentScore: 0).hasPublishedGrade, isTrue,
+          reason: '실제로 0점을 받은 경우는 보여줘야 한다');
+      expect(const CanvasGrade(currentGrade: 'F').hasPublishedGrade, isTrue);
+      expect(const CanvasGrade().hasPublishedGrade, isFalse);
+    });
+  });
 }

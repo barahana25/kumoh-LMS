@@ -326,7 +326,7 @@ class GradesTab extends StatelessWidget {
           ? '성적은 기기에 저장하지 않습니다. 연결된 상태에서만 확인할 수 있습니다.'
           : userMessage(e),
       builder: (context, grade) {
-        if (grade == null || grade.isEmpty) {
+        if (grade == null || !grade.hasPublishedGrade) {
           return const EmptyState(
             icon: Icons.grade_outlined,
             title: '아직 공개된 성적이 없습니다',
@@ -342,8 +342,10 @@ class GradesTab extends StatelessWidget {
               letter: grade.currentGrade,
             ),
             const SizedBox(height: 12),
+            // 미채점 과제를 0으로 friendly 계산한 값이므로 그대로 "최종"이라
+            // 부르면 오해를 준다.
             _GradeCard(
-              label: '최종 성적',
+              label: '학기말 예상',
               score: grade.finalScore,
               letter: grade.finalGrade,
             ),
