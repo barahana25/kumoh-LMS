@@ -6,6 +6,7 @@ import '../../features/announcements/presentation/announcements_screen.dart';
 import '../../features/assignments/presentation/assignments_screen.dart';
 import '../../features/auth/presentation/auth_controller.dart';
 import '../../features/auth/presentation/login_screen.dart';
+import '../../features/canvas/presentation/course_detail_screen.dart';
 import '../../features/courses/presentation/course_list_screen.dart';
 import '../../features/settings/presentation/settings_screen.dart';
 import '../../features/shell/home_shell.dart';
@@ -40,7 +41,21 @@ final routerProvider = Provider<GoRouter>((ref) {
       StatefulShellRoute.indexedStack(
         builder: (_, __, shell) => HomeShell(navigationShell: shell),
         branches: [
-          StatefulShellBranch(routes: [GoRoute(path: '/courses', builder: (_, __) => const CourseListScreen())]),
+          StatefulShellBranch(routes: [
+            GoRoute(
+              path: '/courses',
+              builder: (_, __) => const CourseListScreen(),
+              routes: [
+                GoRoute(
+                  path: ':courseId',
+                  builder: (_, state) => CourseDetailScreen(
+                    courseId: int.tryParse(state.pathParameters['courseId'] ?? '') ?? 0,
+                    courseName: state.uri.queryParameters['name'] ?? '강좌',
+                  ),
+                ),
+              ],
+            ),
+          ]),
           StatefulShellBranch(routes: [GoRoute(path: '/assignments', builder: (_, __) => const AssignmentsScreen())]),
           StatefulShellBranch(routes: [GoRoute(path: '/announcements', builder: (_, __) => const AnnouncementsScreen())]),
           StatefulShellBranch(routes: [GoRoute(path: '/settings', builder: (_, __) => const SettingsScreen())]),

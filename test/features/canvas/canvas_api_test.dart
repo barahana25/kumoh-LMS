@@ -156,4 +156,33 @@ void main() {
         await jar.loadForRequest(Uri.parse('https://canvas.kumoh.ac.kr/api/v1/courses'));
     expect(cookies.map((c) => c.name), contains('_normandy_session'));
   });
+
+  test('첫 요청 전에 세션을 보장한다', () async {
+    var ensured = 0;
+    final seq = _Sequence([200], [
+      {'id': 'home', 'label': '홈', 'position': 1},
+    ]);
+    dio.httpClientAdapter = seq;
+    dio.interceptors.add(canvasSessionInterceptor(
+      dio: dio,
+      reBridge: () async => bridges++,
+      ensureSession: () async => ensured++,
+    ));
+
+    await api.fetchTabs(4831);
+
+    expect(ensured, 1, reason: '401을 기다리면 사용자가 매번 실패 왕복을 겪는다');
+    expect(bridges, 0);
+  });
+
+  test('세션 보장이 실패하면 그 원인을 그대로 전달한다', () async {
+    dio.httpClientAdapter = _Sequence([200], const <Object>[]);
+    dio.interceptors.add(canvasSessionInterceptor(
+      dio: dio,
+      reBridge: () async => bridges++,
+      ensureSession: () async => throw const AuthFailure('연결 실패'),
+    ));
+
+    await expectLater(api.fetchTabs(4831), throwsA(isA<AuthFailure>()));
+  });
 }

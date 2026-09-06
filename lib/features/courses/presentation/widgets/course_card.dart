@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/storage/db/app_database.dart';
 
@@ -16,7 +17,12 @@ class CourseCard extends StatelessWidget {
     ];
 
     return Card(
-      child: Padding(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: () => context.push(
+          '/courses/${course.id}?name=${Uri.encodeQueryComponent(course.name)}',
+        ),
+        child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -55,6 +61,7 @@ class CourseCard extends StatelessWidget {
               ],
             ),
           ],
+        ),
         ),
       ),
     );
