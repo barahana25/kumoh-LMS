@@ -4,6 +4,7 @@ import '../../../../core/ui/empty_state.dart';
 import '../../data/canvas_api.dart';
 import 'assignments_tab.dart';
 import 'content_tabs.dart';
+import 'home_tab.dart';
 
 /// 탭 id에 맞는 내용을 그린다.
 ///
@@ -18,6 +19,8 @@ class CourseTabView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     switch (tab.id) {
+      case 'home':
+        return HomeTab(courseId: courseId);
       case 'assignments':
         return AssignmentsTab(courseId: courseId);
       case 'syllabus':

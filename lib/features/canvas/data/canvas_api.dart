@@ -307,6 +307,9 @@ class CanvasApi {
         courseId,
       );
 
+  Future<String?> fetchFrontPage(int courseId) async =>
+      parseFrontPage(await getRaw('/courses/$courseId/front_page'));
+
   Future<List<CanvasDiscussion>> fetchDiscussions(int courseId) async =>
       parseDiscussions(await getRaw(
         '/courses/$courseId/discussion_topics',
@@ -427,3 +430,17 @@ List<CanvasDiscussion> parseDiscussions(Object? json) => _asList(json)
           htmlUrl: d['html_url'] as String? ?? '',
         ))
     .toList();
+
+/// 강좌 홈이 무엇을 보여줄지. Canvas 기본값은 feed다.
+String parseDefaultView(Object? json) {
+  if (json is! Map) throw const ParseFailure();
+  final view = json['default_view'] as String?;
+  return (view == null || view.isEmpty) ? 'feed' : view;
+}
+
+/// 강좌 대문 페이지 본문. 비어 있으면 null.
+String? parseFrontPage(Object? json) {
+  if (json is! Map) throw const ParseFailure();
+  final body = json['body'] as String?;
+  return (body == null || body.trim().isEmpty) ? null : body;
+}
