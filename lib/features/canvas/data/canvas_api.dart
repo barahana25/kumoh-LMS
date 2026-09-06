@@ -181,6 +181,34 @@ class CanvasDiscussion {
   final String htmlUrl;
 }
 
+/// 모듈(주차) 안의 항목 하나. 파일·과제·페이지·토론 등이 섞여 있다.
+class CanvasModuleItem {
+  const CanvasModuleItem({
+    required this.id,
+    required this.title,
+    required this.type,
+    this.htmlUrl = '',
+    this.contentId,
+    this.indent = 0,
+  });
+
+  final int id;
+  final String title;
+  final String type;
+  final String htmlUrl;
+  final int? contentId;
+  final int indent;
+
+  bool get isFile => type == 'File' && contentId != null;
+
+  /// 파일은 WebView로 열면 빈 화면이 된다. 내려받아 기기 뷰어로 넘긴다.
+  String get downloadUrl =>
+      'https://canvas.kumoh.ac.kr/files/$contentId/download?download_frd=1';
+
+  /// SubHeader는 내용이 아니라 목록의 소제목이라 누를 것이 없다.
+  bool get isOpenable => isFile || (type != 'SubHeader' && htmlUrl.isNotEmpty);
+}
+
 /// Canvas 세션이 끊겼을 때 다시 다리를 건너고 원요청을 재시도한다.
 ///
 /// Canvas는 세션이 만료되면 401을 준다. [reBridge]는 single-flight이므로
@@ -313,6 +341,15 @@ class CanvasApi {
         ),
         courseId,
       );
+
+  Future<List<CanvasModuleItem>> fetchModuleItems(
+    int courseId,
+    int moduleId,
+  ) async =>
+      parseModuleItems(await getRaw(
+        '/courses/$courseId/modules/$moduleId/items',
+        query: const {'per_page': 100},
+      ));
 
   Future<String?> fetchFrontPage(int courseId) async =>
       parseFrontPage(await getRaw('/courses/$courseId/front_page'));
@@ -451,3 +488,14 @@ String? parseFrontPage(Object? json) {
   final body = json['body'] as String?;
   return (body == null || body.trim().isEmpty) ? null : body;
 }
+
+List<CanvasModuleItem> parseModuleItems(Object? json) => _asList(json)
+    .map((i) => CanvasModuleItem(
+          id: (i['id'] as num?)?.toInt() ?? 0,
+          title: i['title'] as String? ?? '',
+          type: i['type'] as String? ?? '',
+          htmlUrl: i['html_url'] as String? ?? '',
+          contentId: (i['content_id'] as num?)?.toInt(),
+          indent: (i['indent'] as num?)?.toInt() ?? 0,
+        ))
+    .toList();

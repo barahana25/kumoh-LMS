@@ -11,6 +11,7 @@ import '../../../../core/config/env.dart';
 import '../../../../providers.dart';
 import '../../data/canvas_api.dart';
 import '../../data/canvas_cache.dart';
+import 'module_items_screen.dart';
 import 'stale_notice.dart';
 
 // ---------- providers ----------
@@ -227,6 +228,20 @@ class ModulesTab extends StatelessWidget {
             final m = mods[i];
             return Card(
               child: ListTile(
+                onTap: m.locked
+                    ? null
+                    : () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => ModuleItemsScreen(
+                              courseId: courseId,
+                              moduleId: m.id,
+                              moduleName: m.name,
+                            ),
+                          ),
+                        ),
+                trailing: m.locked
+                    ? null
+                    : const Icon(Icons.chevron_right, size: 20),
                 leading: Icon(
                   m.locked
                       ? Icons.lock_outline
