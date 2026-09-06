@@ -26,6 +26,7 @@ dependencies:
   cookie_jar: ^4.0.9
   dio_cookie_manager: ^3.5.0
   webview_flutter: ^4.14.1
+  open_filex: ^4.7.0
 
 dev_dependencies:
   flutter_test:

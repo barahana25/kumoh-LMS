@@ -6,6 +6,8 @@ import '../../../core/error/failure.dart';
 import '../../../core/ui/empty_state.dart';
 import '../../../providers.dart';
 import '../../auth/presentation/auth_controller.dart';
+import '../data/canvas_download.dart';
+import 'canvas_file_open.dart';
 import 'canvas_web_target.dart';
 
 /// Canvas 페이지를 로그인된 상태로 연다.
@@ -79,6 +81,20 @@ class _CanvasWebScreenState extends ConsumerState<CanvasWebScreen> {
         // IdP가 돌려주는 폼은 자바스크립트로 자동 제출된다.
         ..setJavaScriptMode(JavaScriptMode.unrestricted)
         ..setNavigationDelegate(NavigationDelegate(
+          onNavigationRequest: (request) {
+            // WebView는 PDF를 그리지 못하고 다운로드도 처리하지 않는다.
+            // 그대로 두면 빈 화면만 남으므로 우리가 받아서 기기 뷰어로 넘긴다.
+            if (isCanvasFileUrl(request.url)) {
+              openCanvasFile(
+                context,
+                ref,
+                url: request.url,
+                displayName: Uri.parse(request.url).pathSegments.last,
+              );
+              return NavigationDecision.prevent;
+            }
+            return NavigationDecision.navigate;
+          },
           onPageFinished: (_) {
             if (mounted) setState(() => _loading = false);
           },

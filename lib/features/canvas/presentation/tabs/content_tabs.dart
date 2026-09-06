@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/error/failure.dart';
 import '../../../../core/ui/empty_state.dart';
+import '../canvas_file_open.dart';
 import '../canvas_web_target.dart';
 import '../../../../core/config/env.dart';
 import '../../../../providers.dart';
@@ -260,12 +261,12 @@ String formatBytes(int? bytes) {
   return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
 }
 
-class FilesTab extends StatelessWidget {
+class FilesTab extends ConsumerWidget {
   const FilesTab({required this.courseId, super.key});
   final int courseId;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return _TabBody<List<CanvasFile>>(
       provider: courseFilesProvider(courseId),
       errorTitle: '강의자료를 불러오지 못했습니다',
@@ -299,8 +300,8 @@ class FilesTab extends StatelessWidget {
                 ),
                 onTap: (f.locked || f.url.isEmpty)
                     ? null
-                    : () => openCanvasPage(context,
-                        title: f.displayName, url: f.url),
+                    : () => openCanvasFile(context, ref,
+                        url: f.url, displayName: f.displayName),
               ),
             );
           },

@@ -15,6 +15,7 @@ import 'features/auth/data/auth_api.dart';
 import 'features/canvas/data/canvas_api.dart';
 import 'features/canvas/data/canvas_cache.dart';
 import 'features/canvas/data/canvas_client.dart';
+import 'features/canvas/data/canvas_download.dart';
 import 'features/canvas/data/canvas_session.dart';
 import 'features/canvas/data/saml_bridge_api.dart';
 import 'features/auth/presentation/auth_controller.dart';
@@ -152,3 +153,7 @@ final courseTabsProvider =
 
 final canvasCacheProvider =
     Provider<CanvasCache>((ref) => CanvasCache(ref.watch(appDatabaseProvider)));
+
+final canvasDownloaderProvider = Provider<CanvasDownloader>(
+  (ref) => CanvasDownloader(ref.watch(canvasDioProvider)),
+);
