@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_filex/open_filex.dart';
@@ -17,13 +19,26 @@ Future<void> openCanvasFile(
   required String displayName,
 }) async {
   final messenger = ScaffoldMessenger.of(context);
-  final progress = ValueNotifier<double?>(null);
 
-  showDialog<void>(
+  // showDialog는 기본으로 루트 네비게이터에 올린다. 닫을 때 가장 가까운
+  // 네비게이터를 팝하면(이 앱은 go_router 셸 때문에 중첩돼 있다) 다이얼로그가
+  // 아니라 엉뚱한 화면이 사라지고 "받는 중" 문구가 화면에 남는다.
+  final navigator = Navigator.of(context, rootNavigator: true);
+
+  final progress = ValueNotifier<double?>(null);
+  var dialogOpen = true;
+  void closeDialog() {
+    if (!dialogOpen) return;
+    dialogOpen = false;
+    navigator.pop();
+  }
+
+  unawaited(showDialog<void>(
     context: context,
+    useRootNavigator: true,
     barrierDismissible: false,
     builder: (_) => _DownloadDialog(name: displayName, progress: progress),
-  );
+  ));
 
   try {
     final file = await ref.read(canvasDownloaderProvider).download(
@@ -33,8 +48,7 @@ Future<void> openCanvasFile(
             progress.value = total > 0 ? received / total : null;
           },
         );
-
-    if (context.mounted) Navigator.of(context).pop();
+    closeDialog();
 
     final result = await OpenFilex.open(file.path);
     if (result.type != ResultType.done) {
@@ -44,10 +58,14 @@ Future<void> openCanvasFile(
       );
     }
   } on Object catch (e) {
-    if (context.mounted) Navigator.of(context).pop();
+    closeDialog();
     messenger.showSnackBar(SnackBar(content: Text(userMessage(e))));
   } finally {
-    progress.dispose();
+    closeDialog();
+    // 닫히는 애니메이션 동안 다이얼로그가 다시 그려질 수 있으므로
+    // 프레임이 끝난 뒤에 버린다.
+    WidgetsBinding.instance
+        .addPostFrameCallback((_) => progress.dispose());
   }
 }
 
