@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/ui/empty_state.dart';
 import '../../data/canvas_api.dart';
 import 'assignments_tab.dart';
+import 'content_tabs.dart';
 
 /// 탭 id에 맞는 내용을 그린다.
 ///
@@ -19,6 +20,18 @@ class CourseTabView extends StatelessWidget {
     switch (tab.id) {
       case 'assignments':
         return AssignmentsTab(courseId: courseId);
+      case 'syllabus':
+        return SyllabusTab(courseId: courseId);
+      case 'modules':
+        return ModulesTab(courseId: courseId);
+      case 'files':
+        return FilesTab(courseId: courseId);
+      case 'grades':
+        return GradesTab(courseId: courseId);
+      case 'discussions':
+        return DiscussionsTab(courseId: courseId);
+      case 'people':
+        return PeopleTab(courseId: courseId);
       default:
         return EmptyState(
           icon: Icons.construction_outlined,

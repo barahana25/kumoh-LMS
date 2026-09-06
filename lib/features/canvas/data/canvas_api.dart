@@ -67,6 +67,113 @@ DateTime? _canvasDate(Object? raw) {
   return DateTime.tryParse(raw)?.toUtc();
 }
 
+
+/// 강의실(모듈) 한 주차.
+class CanvasModule {
+  const CanvasModule({
+    required this.id,
+    required this.name,
+    required this.position,
+    required this.itemsCount,
+    required this.state,
+  });
+
+  final int id;
+  final String name;
+  final int position;
+  final int itemsCount;
+  final String state;
+
+  bool get completed => state == 'completed';
+  bool get locked => state == 'locked';
+}
+
+/// 강의자료실 파일.
+class CanvasFile {
+  const CanvasFile({
+    required this.id,
+    required this.displayName,
+    required this.locked,
+    this.contentType = '',
+    this.sizeBytes,
+    this.url = '',
+  });
+
+  final int id;
+  final String displayName;
+  final bool locked;
+  final String contentType;
+  final int? sizeBytes;
+  final String url;
+}
+
+/// 강좌 구성원.
+class CanvasPerson {
+  const CanvasPerson({
+    required this.userId,
+    required this.name,
+    required this.enrollmentType,
+  });
+
+  final int userId;
+  final String name;
+  final String enrollmentType;
+
+  bool get isTeacher =>
+      enrollmentType == 'TeacherEnrollment' || enrollmentType == 'TaEnrollment';
+}
+
+/// 그룹.
+class CanvasGroup {
+  const CanvasGroup({
+    required this.id,
+    required this.name,
+    required this.membersCount,
+  });
+
+  final int id;
+  final String name;
+  final int membersCount;
+}
+
+/// 이 강좌에서의 내 성적.
+class CanvasGrade {
+  const CanvasGrade({
+    this.currentScore,
+    this.currentGrade,
+    this.finalScore,
+    this.finalGrade,
+  });
+
+  final num? currentScore;
+  final String? currentGrade;
+  final num? finalScore;
+  final String? finalGrade;
+
+  bool get isEmpty =>
+      currentScore == null &&
+      currentGrade == null &&
+      finalScore == null &&
+      finalGrade == null;
+}
+
+/// 토론 주제.
+class CanvasDiscussion {
+  const CanvasDiscussion({
+    required this.id,
+    required this.title,
+    required this.replyCount,
+    this.postedAt,
+    this.htmlUrl = '',
+  });
+
+  final int id;
+  final String title;
+  final int replyCount;
+  final DateTime? postedAt;
+  final String htmlUrl;
+}
+
 /// Canvas 세션이 끊겼을 때 다시 다리를 건너고 원요청을 재시도한다.
 ///
 /// Canvas는 세션이 만료되면 401을 준다. [reBridge]는 single-flight이므로
@@ -204,6 +311,149 @@ class CanvasApi {
             submittedAt: _canvasDate(s['submitted_at']),
           ),
       };
+    } on DioException catch (e) {
+      throwAsFailure(e);
+    }
+  }
+
+  /// 강의 계획. 비어 있으면 null.
+  Future<String?> fetchSyllabus(int courseId) async {
+    try {
+      final res = await _dio.get<Object?>(
+        '/courses/$courseId',
+        queryParameters: {'include[]': 'syllabus_body'},
+      );
+      final body = res.data;
+      if (body is! Map) throw const ParseFailure();
+      final syllabus = body['syllabus_body'] as String?;
+      return (syllabus == null || syllabus.trim().isEmpty) ? null : syllabus;
+    } on DioException catch (e) {
+      throwAsFailure(e);
+    }
+  }
+
+  Future<List<CanvasModule>> fetchModules(int courseId) async {
+    try {
+      final res = await _dio.get<Object?>(
+        '/courses/$courseId/modules',
+        queryParameters: {'per_page': 50},
+      );
+      return _asList(res.data)
+          .map((m) => CanvasModule(
+                id: (m['id'] as num?)?.toInt() ?? 0,
+                name: m['name'] as String? ?? '',
+                position: (m['position'] as num?)?.toInt() ?? 0,
+                itemsCount: (m['items_count'] as num?)?.toInt() ?? 0,
+                state: m['state'] as String? ?? '',
+              ))
+          .toList()
+        ..sort((a, b) => a.position.compareTo(b.position));
+    } on DioException catch (e) {
+      throwAsFailure(e);
+    }
+  }
+
+  Future<List<CanvasFile>> fetchFiles(int courseId) async {
+    try {
+      final res = await _dio.get<Object?>(
+        '/courses/$courseId/files',
+        queryParameters: {
+          'per_page': 50,
+          'sort': 'created_at',
+          'order': 'desc',
+        },
+      );
+      return _asList(res.data)
+          .map((f) => CanvasFile(
+                id: (f['id'] as num?)?.toInt() ?? 0,
+                displayName: f['display_name'] as String? ?? '',
+                locked: f['locked_for_user'] == true,
+                contentType: f['content-type'] as String? ?? '',
+                sizeBytes: (f['size'] as num?)?.toInt(),
+                url: f['url'] as String? ?? '',
+              ))
+          .toList();
+    } on DioException catch (e) {
+      throwAsFailure(e);
+    }
+  }
+
+  Future<List<CanvasPerson>> fetchPeople(int courseId) async {
+    try {
+      final res = await _dio.get<Object?>(
+        '/courses/$courseId/enrollments',
+        queryParameters: {'per_page': 100},
+      );
+      return _asList(res.data).map((e) {
+        final user = (e['user'] as Map?) ?? const {};
+        return CanvasPerson(
+          userId: (user['id'] as num?)?.toInt() ?? 0,
+          name: user['name'] as String? ?? '',
+          enrollmentType: e['type'] as String? ?? '',
+        );
+      }).toList();
+    } on DioException catch (e) {
+      throwAsFailure(e);
+    }
+  }
+
+  Future<List<CanvasGroup>> fetchGroups(int courseId) async {
+    try {
+      final res = await _dio.get<Object?>(
+        '/courses/$courseId/groups',
+        queryParameters: {'per_page': 50},
+      );
+      return _asList(res.data)
+          .map((g) => CanvasGroup(
+                id: (g['id'] as num?)?.toInt() ?? 0,
+                name: g['name'] as String? ?? '',
+                membersCount: (g['members_count'] as num?)?.toInt() ?? 0,
+              ))
+          .toList();
+    } on DioException catch (e) {
+      throwAsFailure(e);
+    }
+  }
+
+  /// 이 강좌에서의 내 성적. 수강 정보가 없으면 null.
+  Future<CanvasGrade?> fetchMyGrade(int courseId) async {
+    try {
+      final res = await _dio.get<Object?>(
+        '/users/self/enrollments',
+        queryParameters: {'per_page': 100, 'state[]': 'active'},
+      );
+      for (final e in _asList(res.data)) {
+        if ((e['course_id'] as num?)?.toInt() != courseId) continue;
+        final g = (e['grades'] as Map?) ?? const {};
+        return CanvasGrade(
+          currentScore: g['current_score'] as num?,
+          currentGrade: g['current_grade'] as String?,
+          finalScore: g['final_score'] as num?,
+          finalGrade: g['final_grade'] as String?,
+        );
+      }
+      return null;
+    } on DioException catch (e) {
+      throwAsFailure(e);
+    }
+  }
+
+  Future<List<CanvasDiscussion>> fetchDiscussions(int courseId) async {
+    try {
+      final res = await _dio.get<Object?>(
+        '/courses/$courseId/discussion_topics',
+        queryParameters: {'per_page': 50},
+      );
+      return _asList(res.data)
+          .map((d) => CanvasDiscussion(
+                id: (d['id'] as num?)?.toInt() ?? 0,
+                title: d['title'] as String? ?? '',
+                replyCount:
+                    (d['discussion_subentry_count'] as num?)?.toInt() ?? 0,
+                postedAt: _canvasDate(d['posted_at']),
+                htmlUrl: d['html_url'] as String? ?? '',
+              ))
+          .toList();
     } on DioException catch (e) {
       throwAsFailure(e);
     }
