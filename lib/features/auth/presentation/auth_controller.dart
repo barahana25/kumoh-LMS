@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../providers.dart';
@@ -144,6 +145,12 @@ class AuthController extends AsyncNotifier<AuthState> {
       return authenticated;
     });
     if (generation == _generation) {
+      // Failure가 아닌 예외는 화면에 일반 문구로만 나와 원인을 알 수 없다.
+      // 개발 중에 원인을 확인할 수 있도록 남긴다.
+      final err = result.error;
+      if (err != null && err is! Failure) {
+        debugPrint('LOGIN_UNEXPECTED ${err.runtimeType}: $err');
+      }
       _openCacheIfReadable(result);
       state = result;
     }

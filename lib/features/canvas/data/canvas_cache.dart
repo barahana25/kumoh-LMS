@@ -36,6 +36,11 @@ class CanvasCache {
     }
   }
 
+  Future<void> delete(String key) async {
+    await (_db.delete(_db.canvasCacheEntries)..where((e) => e.key.equals(key)))
+        .go();
+  }
+
   Future<void> write(String key, Object? payload) async {
     await _db.into(_db.canvasCacheEntries).insertOnConflictUpdate(
           CanvasCacheEntriesCompanion.insert(

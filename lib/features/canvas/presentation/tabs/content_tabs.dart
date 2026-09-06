@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/error/failure.dart';
 import '../../../../core/ui/empty_state.dart';
 import '../../../../core/ui/open_link.dart';
 import '../../../../core/config/env.dart';
@@ -72,16 +73,25 @@ final courseDiscussionsProvider =
   );
 });
 
+/// 성적만은 캐시하지 않는다.
+///
+/// 다른 탭과 달리 여기서 걸리는 건 최신성이 아니라 프라이버시다. 기기를
+/// 잃어버렸을 때 성적이 로컬에 남아 있지 않도록, 연결된 상태에서만 보여준다.
+/// 이전 빌드가 남겨 둔 항목이 있을 수 있으므로 열 때마다 지운다.
 final courseGradeProvider =
-    StreamProvider.family<CanvasSnapshot<CanvasGrade?>, int>((ref, courseId) {
-  final api = ref.watch(canvasApiProvider);
-  return watchCanvas<CanvasGrade?>(
-    cache: ref.watch(canvasCacheProvider),
-    key: 'grade:$courseId',
-    ttl: Env.canvasAlwaysRevalidate,
-    fetch: () => api.getRaw('/users/self/enrollments',
-        query: const {'per_page': 100, 'state[]': 'active'}),
-    parse: (json) => parseMyGrade(json, courseId),
+    StreamProvider.family<CanvasSnapshot<CanvasGrade?>, int>(
+        (ref, courseId) async* {
+  final cache = ref.watch(canvasCacheProvider);
+  await cache.delete('grade:$courseId');
+
+  final json = await ref.watch(canvasApiProvider).getRaw(
+        '/users/self/enrollments',
+        query: const {'per_page': 100, 'state[]': 'active'},
+      );
+  yield CanvasSnapshot<CanvasGrade?>(
+    data: parseMyGrade(json, courseId),
+    stale: false,
+    fetchedAt: DateTime.now().toUtc(),
   );
 });
 
@@ -126,11 +136,13 @@ class _TabBody<T> extends ConsumerWidget {
     required this.provider,
     required this.errorTitle,
     required this.builder,
+    this.errorDescription,
     super.key,
   });
 
   final ProviderListenable<AsyncValue<CanvasSnapshot<T>>> provider;
   final String errorTitle;
+  final String Function(Object error)? errorDescription;
   final Widget Function(BuildContext context, T data) builder;
 
   @override
@@ -140,7 +152,7 @@ class _TabBody<T> extends ConsumerWidget {
           error: (e, _) => EmptyState(
             icon: Icons.error_outline,
             title: errorTitle,
-            description: userMessage(e),
+            description: (errorDescription ?? userMessage)(e),
           ),
           data: (snap) => Column(
             children: [
@@ -305,6 +317,9 @@ class GradesTab extends StatelessWidget {
     return _TabBody<CanvasGrade?>(
       provider: courseGradeProvider(courseId),
       errorTitle: '성적을 불러오지 못했습니다',
+      errorDescription: (e) => e is NetworkFailure
+          ? '성적은 기기에 저장하지 않습니다. 연결된 상태에서만 확인할 수 있습니다.'
+          : userMessage(e),
       builder: (context, grade) {
         if (grade == null || grade.isEmpty) {
           return const EmptyState(

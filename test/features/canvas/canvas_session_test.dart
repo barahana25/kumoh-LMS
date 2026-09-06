@@ -8,9 +8,11 @@ import 'package:kumoh_lms/features/canvas/data/canvas_session.dart';
 /// SAML 왕복을 대본대로 재현하는 최소 어댑터.
 /// 실제 흐름: redirect.do -> (IdP) 자동제출 폼 HTML -> Canvas ACS로 POST -> 302
 class _SamlScript implements HttpClientAdapter {
-  _SamlScript({this.idpBody});
+  _SamlScript({this.idpBody, this.redirectToIdp = false});
 
   final String? idpBody;
+  final bool redirectToIdp;
+  bool idpSawCookie = false;
   final List<String> calls = [];
 
   static const ssoUrl = 'https://canvas.kumoh.ac.kr/login/saml?RelayState=/courses';
@@ -25,6 +27,22 @@ class _SamlScript implements HttpClientAdapter {
 
     if (options.uri.path.endsWith('/saml/redirect.do')) {
       return ResponseBody.fromString(ssoUrl, 200);
+    }
+    // 실제 서버는 canvas -> lms(IdP) 로 리다이렉트한다.
+    if (options.uri.host == 'canvas.kumoh.ac.kr' &&
+        options.method == 'GET' &&
+        options.uri.path == '/login/saml' &&
+        redirectToIdp) {
+      return ResponseBody.fromString('', 302, headers: {
+        'location': ['https://lms.kumoh.ac.kr:82/api/v1/saml/login.do?SAMLRequest=x'],
+      });
+    }
+    // IdP는 요청에 실린 쿠키로 사용자를 식별한다.
+    if (options.uri.path.endsWith('/saml/login.do')) {
+      idpSawCookie = (options.headers['cookie'] ?? '')
+          .toString()
+          .contains('_linus_saml_login');
+      return ResponseBody.fromString(idpBody ?? '', 200);
     }
     // IdP가 자동제출 폼을 돌려주는 지점
     if (options.uri.host == 'canvas.kumoh.ac.kr' &&
@@ -164,5 +182,19 @@ void main() {
     await session.ensure();
 
     expect(script.calls.length, greaterThan(afterFirst));
+  });
+
+  test('리다이렉트된 IdP 요청에도 SAML 힌트 쿠키가 실린다', () async {
+    // dio는 리다이렉트마다 인터셉터를 다시 실행하지 않는다. followRedirects에
+    // 맡기면 쿠키 매니저가 첫 홉(canvas)에만 붙어 IdP가 사용자를 식별하지 못한다.
+    final script = _SamlScript(
+      idpBody: autoSubmitForm('BLOB=='),
+      redirectToIdp: true,
+    );
+
+    await build(script).ensure();
+
+    expect(script.idpSawCookie, isTrue,
+        reason: '쿠키가 빠지면 IdP가 A001로 거부해 강좌 상세를 열 수 없다');
   });
 }

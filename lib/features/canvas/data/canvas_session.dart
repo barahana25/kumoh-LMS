@@ -76,6 +76,30 @@ class CanvasSession {
     return _bridging ??= _bridge().whenComplete(() => _bridging = null);
   }
 
+
+  /// 홉마다 요청을 새로 보내 쿠키 매니저가 매번 동작하게 한다.
+  Future<String> _followRedirects(Uri start, {int maxHops = 10}) async {
+    var url = start;
+    for (var hop = 0; hop < maxHops; hop++) {
+      final res = await _dio.getUri<String>(
+        url,
+        options: Options(
+          responseType: ResponseType.plain,
+          followRedirects: false,
+          validateStatus: (s) => s != null && s < 400,
+        ),
+      );
+      final location = res.headers.value('location');
+      final status = res.statusCode ?? 0;
+      if (status >= 300 && status < 400 && location != null) {
+        url = url.resolve(location);
+        continue;
+      }
+      return res.data ?? '';
+    }
+    throw const AuthFailure('Canvas 연결이 계속 우회되고 있습니다.');
+  }
+
   Future<void> _bridge({String relayState = '/courses'}) async {
     final id = await _loginId();
     if (id == null || id.isEmpty) {
@@ -94,18 +118,13 @@ class CanvasSession {
 
     final ssoUrl = await _fetchSsoUrl(relayState);
 
-    // IdP까지 리다이렉트를 따라가면 자동 제출 폼 HTML이 돌아온다.
-    final idp = await _dio.getUri<String>(
-      Uri.parse(ssoUrl),
-      options: Options(
-        responseType: ResponseType.plain,
-        followRedirects: true,
-        maxRedirects: 10,
-        validateStatus: (s) => s != null && s < 400,
-      ),
-    );
+    // 리다이렉트를 직접 따라간다. dio는 리다이렉트마다 인터셉터를 다시
+    // 실행하지 않아서, followRedirects에 맡기면 쿠키 매니저가 첫 홉(canvas)에만
+    // 쿠키를 붙인다. 그러면 리다이렉트된 IdP(lms) 요청에 _linus_saml_login이
+    // 빠져 폼 대신 오류가 돌아온다.
+    final idp = await _followRedirects(Uri.parse(ssoUrl));
 
-    final form = parseSamlForm(idp.data ?? '');
+    final form = parseSamlForm(idp);
     if (form == null) {
       throw const AuthFailure('Canvas 연결에 실패했습니다. 다시 로그인해 주세요.');
     }

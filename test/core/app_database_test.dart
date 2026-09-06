@@ -169,4 +169,40 @@ void main() {
 
     expect(healthy.existsSync(), isTrue, reason: '멀쩡한 캐시를 버리면 안 된다');
   });
+
+  group('스키마 마이그레이션', () {
+    // 버전을 올리면서 마이그레이션을 빠뜨리면 기존 사용자의 기기에서 DB가
+    // 아예 열리지 않는다. 새 설치에서는 재현되지 않아 일반 테스트로는
+    // 잡히지 않으므로 업그레이드 경로를 직접 태운다.
+    test('v1 -> v2 업그레이드가 캔버스 캐시 테이블을 만든다', () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+
+      // v1 상태 재현: v2에서 추가된 테이블을 없앤다.
+      await db.customStatement('DROP TABLE canvas_cache_entries');
+
+      await db.migration.onUpgrade(Migrator(db), 1, 2);
+
+      // 업그레이드 후에는 읽고 쓸 수 있어야 한다.
+      await db.into(db.canvasCacheEntries).insertOnConflictUpdate(
+            CanvasCacheEntriesCompanion.insert(
+              key: 'k',
+              payload: '1',
+              fetchedAt: DateTime.now().toUtc(),
+            ),
+          );
+      final row = await (db.select(db.canvasCacheEntries)
+            ..where((e) => e.key.equals('k')))
+          .getSingleOrNull();
+      expect(row, isNotNull);
+    });
+
+    test('현재 schemaVersion과 마이그레이션 단계가 어긋나지 않는다', () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      // 버전을 올렸는데 단계를 안 넣으면 이 테스트가 신호를 준다.
+      expect(db.schemaVersion, 2,
+          reason: 'schemaVersion을 올렸다면 onUpgrade에 해당 단계를 추가할 것');
+    });
+  });
 }

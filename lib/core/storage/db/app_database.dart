@@ -36,6 +36,22 @@ class AppDatabase extends _$AppDatabase {
   @override
   int get schemaVersion => 2;
 
+  /// 스키마를 올릴 때마다 여기에 단계를 추가한다.
+  ///
+  /// 이걸 빠뜨리면 기존 사용자의 기기에서 DB가 아예 열리지 않는다. 새로
+  /// 설치한 기기에서는 재현되지 않아 테스트로도 잡히지 않으므로, 버전을
+  /// 올리면 반드시 대응하는 단계를 함께 넣어야 한다.
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onCreate: (m) => m.createAll(),
+        onUpgrade: (m, from, to) async {
+          // v2: 강좌 상세 탭 캐시 추가
+          if (from < 2) {
+            await m.createTable(canvasCacheEntries);
+          }
+        },
+      );
+
   /// 로그아웃 시 캐시 전체 삭제.
   Future<void> wipe() async {
     await transaction(() async {

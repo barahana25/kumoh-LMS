@@ -125,7 +125,12 @@ final canvasDioProvider = Provider<Dio>((ref) {
   final dio = buildCanvasDio(ref.watch(canvasCookieJarProvider))
     ..options.baseUrl = Env.canvasApiBaseUrl;
   final session = ref.watch(canvasSessionProvider);
-  dio.interceptors.add(canvasSessionInterceptor(
+  // 반드시 CookieManager보다 앞에 둔다. 뒤에 두면 첫 요청에서 쿠키 매니저가
+  // 아직 비어 있는 저장소를 읽은 뒤에야 브릿지가 돌아, 세션 쿠키 없이 요청이
+  // 나가고 Canvas가 강좌를 404로 숨긴다.
+  dio.interceptors.insert(
+      0,
+      canvasSessionInterceptor(
     dio: dio,
     ensureSession: session.ensure,
     reBridge: () async {
