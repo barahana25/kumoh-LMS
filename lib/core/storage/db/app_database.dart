@@ -13,7 +13,7 @@ import 'tables.dart';
 part 'app_database.g.dart';
 
 @DriftDatabase(
-  tables: [Terms, Courses, CalendarEvents, Announcements, CacheMetaEntries],
+  tables: [Terms, Courses, CalendarEvents, Announcements, CacheMetaEntries, CanvasCacheEntries],
   daos: [TermsDao, CoursesDao, CalendarEventsDao, AnnouncementsDao, CacheMetaDao],
 )
 class AppDatabase extends _$AppDatabase {
@@ -34,7 +34,7 @@ class AppDatabase extends _$AppDatabase {
       const DriftDatabaseOptions(storeDateTimeAsText: true);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   /// 로그아웃 시 캐시 전체 삭제.
   Future<void> wipe() async {

@@ -5,47 +5,117 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/ui/empty_state.dart';
 import '../../../../core/ui/open_link.dart';
+import '../../../../core/config/env.dart';
 import '../../../../providers.dart';
 import '../../data/canvas_api.dart';
+import '../../data/canvas_cache.dart';
+import 'stale_notice.dart';
 
 // ---------- providers ----------
+//
+// TTL 0 = 온라인이면 항상 다시 받는다. 언제 바뀔지 모르는 자료·토론·모듈까지
+// TTL로 요청을 건너뛰면 학생이 새 내용을 놓친다. 캐시는 첫 화면과 오프라인용.
+// 강의 계획과 구성원 명단만 학기 초 이후 거의 안 바뀌므로 24시간을 둔다.
 
-final courseSyllabusProvider = FutureProvider.family<String?, int>(
-  (ref, courseId) => ref.watch(canvasApiProvider).fetchSyllabus(courseId),
-);
+final courseSyllabusProvider =
+    StreamProvider.family<CanvasSnapshot<String?>, int>((ref, courseId) {
+  final api = ref.watch(canvasApiProvider);
+  return watchCanvas<String?>(
+    cache: ref.watch(canvasCacheProvider),
+    key: 'syllabus:$courseId',
+    ttl: Env.canvasStableTtl,
+    fetch: () => api.getRaw('/courses/$courseId',
+        query: const {'include[]': 'syllabus_body'}),
+    parse: parseSyllabus,
+  );
+});
 
-final courseModulesProvider = FutureProvider.family<List<CanvasModule>, int>(
-  (ref, courseId) => ref.watch(canvasApiProvider).fetchModules(courseId),
-);
+final courseModulesProvider =
+    StreamProvider.family<CanvasSnapshot<List<CanvasModule>>, int>(
+        (ref, courseId) {
+  final api = ref.watch(canvasApiProvider);
+  return watchCanvas<List<CanvasModule>>(
+    cache: ref.watch(canvasCacheProvider),
+    key: 'modules:$courseId',
+    ttl: Env.canvasAlwaysRevalidate,
+    fetch: () =>
+        api.getRaw('/courses/$courseId/modules', query: const {'per_page': 50}),
+    parse: parseModules,
+  );
+});
 
-final courseFilesProvider = FutureProvider.family<List<CanvasFile>, int>(
-  (ref, courseId) => ref.watch(canvasApiProvider).fetchFiles(courseId),
-);
+final courseFilesProvider =
+    StreamProvider.family<CanvasSnapshot<List<CanvasFile>>, int>(
+        (ref, courseId) {
+  final api = ref.watch(canvasApiProvider);
+  return watchCanvas<List<CanvasFile>>(
+    cache: ref.watch(canvasCacheProvider),
+    key: 'files:$courseId',
+    ttl: Env.canvasAlwaysRevalidate,
+    fetch: () => api.getRaw('/courses/$courseId/files',
+        query: const {'per_page': 50, 'sort': 'created_at', 'order': 'desc'}),
+    parse: parseFiles,
+  );
+});
 
 final courseDiscussionsProvider =
-    FutureProvider.family<List<CanvasDiscussion>, int>(
-  (ref, courseId) => ref.watch(canvasApiProvider).fetchDiscussions(courseId),
-);
+    StreamProvider.family<CanvasSnapshot<List<CanvasDiscussion>>, int>(
+        (ref, courseId) {
+  final api = ref.watch(canvasApiProvider);
+  return watchCanvas<List<CanvasDiscussion>>(
+    cache: ref.watch(canvasCacheProvider),
+    key: 'discussions:$courseId',
+    ttl: Env.canvasAlwaysRevalidate,
+    fetch: () => api.getRaw('/courses/$courseId/discussion_topics',
+        query: const {'per_page': 50}),
+    parse: parseDiscussions,
+  );
+});
 
-final courseGradeProvider = FutureProvider.family<CanvasGrade?, int>(
-  (ref, courseId) => ref.watch(canvasApiProvider).fetchMyGrade(courseId),
-);
+final courseGradeProvider =
+    StreamProvider.family<CanvasSnapshot<CanvasGrade?>, int>((ref, courseId) {
+  final api = ref.watch(canvasApiProvider);
+  return watchCanvas<CanvasGrade?>(
+    cache: ref.watch(canvasCacheProvider),
+    key: 'grade:$courseId',
+    ttl: Env.canvasAlwaysRevalidate,
+    fetch: () => api.getRaw('/users/self/enrollments',
+        query: const {'per_page': 100, 'state[]': 'active'}),
+    parse: (json) => parseMyGrade(json, courseId),
+  );
+});
 
-final coursePeopleProvider = FutureProvider.family<
-    ({List<CanvasPerson> people, List<CanvasGroup> groups}), int>(
-  (ref, courseId) async {
-    final api = ref.watch(canvasApiProvider);
-    final people = await api.fetchPeople(courseId);
-    // 그룹이 없는 강좌가 흔하다. 그룹 조회 실패가 명단을 막지 않게 한다.
-    List<CanvasGroup> groups = const [];
-    try {
-      groups = await api.fetchGroups(courseId);
-    } on Object {
-      groups = const [];
-    }
-    return (people: people, groups: groups);
-  },
-);
+typedef PeopleData = ({List<CanvasPerson> people, List<CanvasGroup> groups});
+
+final coursePeopleProvider =
+    StreamProvider.family<CanvasSnapshot<PeopleData>, int>((ref, courseId) {
+  final api = ref.watch(canvasApiProvider);
+  return watchCanvas<PeopleData>(
+    cache: ref.watch(canvasCacheProvider),
+    key: 'people:$courseId',
+    ttl: Env.canvasStableTtl,
+    fetch: () async => {
+      'people': await api
+          .getRaw('/courses/$courseId/enrollments', query: const {'per_page': 100}),
+      // 그룹이 없는 강좌가 흔하다. 그룹 실패가 명단을 막지 않게 한다.
+      'groups': await () async {
+        try {
+          return await api.getRaw('/courses/$courseId/groups',
+              query: const {'per_page': 50});
+        } on Object {
+          return const <Object>[];
+        }
+      }(),
+    },
+    parse: (json) {
+      final map = json! as Map;
+      return (
+        people: parsePeople(map['people']),
+        groups: parseGroups(map['groups']),
+      );
+    },
+  );
+});
 
 // ---------- 공통 껍데기 ----------
 
@@ -59,7 +129,7 @@ class _TabBody<T> extends ConsumerWidget {
     super.key,
   });
 
-  final ProviderListenable<AsyncValue<T>> provider;
+  final ProviderListenable<AsyncValue<CanvasSnapshot<T>>> provider;
   final String errorTitle;
   final Widget Function(BuildContext context, T data) builder;
 
@@ -72,7 +142,13 @@ class _TabBody<T> extends ConsumerWidget {
             title: errorTitle,
             description: userMessage(e),
           ),
-          data: (data) => builder(context, data),
+          data: (snap) => Column(
+            children: [
+              if (snap.stale)
+                StaleNotice(fetchedAt: snap.fetchedAt, error: snap.error),
+              Expanded(child: builder(context, snap.data)),
+            ],
+          ),
         );
   }
 }

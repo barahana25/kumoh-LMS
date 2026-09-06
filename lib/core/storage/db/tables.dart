@@ -74,3 +74,15 @@ class CacheMetaEntries extends Table {
   @override
   Set<Column<Object>> get primaryKey => {key};
 }
+
+/// 강좌 상세 탭 캐시. 원본 JSON을 그대로 보관한다.
+/// 탭마다 테이블을 두면 문서 없는 API의 응답이 바뀔 때마다 마이그레이션이
+/// 필요하지만, 이 데이터는 테이블 간 조회가 없어 그럴 이유가 없다.
+class CanvasCacheEntries extends Table {
+  TextColumn get key => text()();
+  TextColumn get payload => text()();
+  DateTimeColumn get fetchedAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {key};
+}

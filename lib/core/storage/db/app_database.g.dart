@@ -1975,6 +1975,238 @@ class CacheMetaEntriesCompanion extends UpdateCompanion<CacheMetaEntry> {
   }
 }
 
+class $CanvasCacheEntriesTable extends CanvasCacheEntries
+    with TableInfo<$CanvasCacheEntriesTable, CanvasCacheEntry> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CanvasCacheEntriesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _keyMeta = const VerificationMeta('key');
+  @override
+  late final GeneratedColumn<String> key = GeneratedColumn<String>(
+      'key', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _payloadMeta =
+      const VerificationMeta('payload');
+  @override
+  late final GeneratedColumn<String> payload = GeneratedColumn<String>(
+      'payload', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _fetchedAtMeta =
+      const VerificationMeta('fetchedAt');
+  @override
+  late final GeneratedColumn<DateTime> fetchedAt = GeneratedColumn<DateTime>(
+      'fetched_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns => [key, payload, fetchedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'canvas_cache_entries';
+  @override
+  VerificationContext validateIntegrity(Insertable<CanvasCacheEntry> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('key')) {
+      context.handle(
+          _keyMeta, key.isAcceptableOrUnknown(data['key']!, _keyMeta));
+    } else if (isInserting) {
+      context.missing(_keyMeta);
+    }
+    if (data.containsKey('payload')) {
+      context.handle(_payloadMeta,
+          payload.isAcceptableOrUnknown(data['payload']!, _payloadMeta));
+    } else if (isInserting) {
+      context.missing(_payloadMeta);
+    }
+    if (data.containsKey('fetched_at')) {
+      context.handle(_fetchedAtMeta,
+          fetchedAt.isAcceptableOrUnknown(data['fetched_at']!, _fetchedAtMeta));
+    } else if (isInserting) {
+      context.missing(_fetchedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {key};
+  @override
+  CanvasCacheEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CanvasCacheEntry(
+      key: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}key'])!,
+      payload: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}payload'])!,
+      fetchedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}fetched_at'])!,
+    );
+  }
+
+  @override
+  $CanvasCacheEntriesTable createAlias(String alias) {
+    return $CanvasCacheEntriesTable(attachedDatabase, alias);
+  }
+}
+
+class CanvasCacheEntry extends DataClass
+    implements Insertable<CanvasCacheEntry> {
+  final String key;
+  final String payload;
+  final DateTime fetchedAt;
+  const CanvasCacheEntry(
+      {required this.key, required this.payload, required this.fetchedAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['key'] = Variable<String>(key);
+    map['payload'] = Variable<String>(payload);
+    map['fetched_at'] = Variable<DateTime>(fetchedAt);
+    return map;
+  }
+
+  CanvasCacheEntriesCompanion toCompanion(bool nullToAbsent) {
+    return CanvasCacheEntriesCompanion(
+      key: Value(key),
+      payload: Value(payload),
+      fetchedAt: Value(fetchedAt),
+    );
+  }
+
+  factory CanvasCacheEntry.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CanvasCacheEntry(
+      key: serializer.fromJson<String>(json['key']),
+      payload: serializer.fromJson<String>(json['payload']),
+      fetchedAt: serializer.fromJson<DateTime>(json['fetchedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'key': serializer.toJson<String>(key),
+      'payload': serializer.toJson<String>(payload),
+      'fetchedAt': serializer.toJson<DateTime>(fetchedAt),
+    };
+  }
+
+  CanvasCacheEntry copyWith(
+          {String? key, String? payload, DateTime? fetchedAt}) =>
+      CanvasCacheEntry(
+        key: key ?? this.key,
+        payload: payload ?? this.payload,
+        fetchedAt: fetchedAt ?? this.fetchedAt,
+      );
+  CanvasCacheEntry copyWithCompanion(CanvasCacheEntriesCompanion data) {
+    return CanvasCacheEntry(
+      key: data.key.present ? data.key.value : this.key,
+      payload: data.payload.present ? data.payload.value : this.payload,
+      fetchedAt: data.fetchedAt.present ? data.fetchedAt.value : this.fetchedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CanvasCacheEntry(')
+          ..write('key: $key, ')
+          ..write('payload: $payload, ')
+          ..write('fetchedAt: $fetchedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(key, payload, fetchedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CanvasCacheEntry &&
+          other.key == this.key &&
+          other.payload == this.payload &&
+          other.fetchedAt == this.fetchedAt);
+}
+
+class CanvasCacheEntriesCompanion extends UpdateCompanion<CanvasCacheEntry> {
+  final Value<String> key;
+  final Value<String> payload;
+  final Value<DateTime> fetchedAt;
+  final Value<int> rowid;
+  const CanvasCacheEntriesCompanion({
+    this.key = const Value.absent(),
+    this.payload = const Value.absent(),
+    this.fetchedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  CanvasCacheEntriesCompanion.insert({
+    required String key,
+    required String payload,
+    required DateTime fetchedAt,
+    this.rowid = const Value.absent(),
+  })  : key = Value(key),
+        payload = Value(payload),
+        fetchedAt = Value(fetchedAt);
+  static Insertable<CanvasCacheEntry> custom({
+    Expression<String>? key,
+    Expression<String>? payload,
+    Expression<DateTime>? fetchedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (key != null) 'key': key,
+      if (payload != null) 'payload': payload,
+      if (fetchedAt != null) 'fetched_at': fetchedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  CanvasCacheEntriesCompanion copyWith(
+      {Value<String>? key,
+      Value<String>? payload,
+      Value<DateTime>? fetchedAt,
+      Value<int>? rowid}) {
+    return CanvasCacheEntriesCompanion(
+      key: key ?? this.key,
+      payload: payload ?? this.payload,
+      fetchedAt: fetchedAt ?? this.fetchedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (key.present) {
+      map['key'] = Variable<String>(key.value);
+    }
+    if (payload.present) {
+      map['payload'] = Variable<String>(payload.value);
+    }
+    if (fetchedAt.present) {
+      map['fetched_at'] = Variable<DateTime>(fetchedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CanvasCacheEntriesCompanion(')
+          ..write('key: $key, ')
+          ..write('payload: $payload, ')
+          ..write('fetchedAt: $fetchedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -1984,6 +2216,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $AnnouncementsTable announcements = $AnnouncementsTable(this);
   late final $CacheMetaEntriesTable cacheMetaEntries =
       $CacheMetaEntriesTable(this);
+  late final $CanvasCacheEntriesTable canvasCacheEntries =
+      $CanvasCacheEntriesTable(this);
   late final TermsDao termsDao = TermsDao(this as AppDatabase);
   late final CoursesDao coursesDao = CoursesDao(this as AppDatabase);
   late final CalendarEventsDao calendarEventsDao =
@@ -1995,8 +2229,14 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
-  List<DatabaseSchemaEntity> get allSchemaEntities =>
-      [terms, courses, calendarEvents, announcements, cacheMetaEntries];
+  List<DatabaseSchemaEntity> get allSchemaEntities => [
+        terms,
+        courses,
+        calendarEvents,
+        announcements,
+        cacheMetaEntries,
+        canvasCacheEntries
+      ];
 }
 
 typedef $$TermsTableCreateCompanionBuilder = TermsCompanion Function({
@@ -3008,6 +3248,151 @@ typedef $$CacheMetaEntriesTableProcessedTableManager = ProcessedTableManager<
     ),
     CacheMetaEntry,
     PrefetchHooks Function()>;
+typedef $$CanvasCacheEntriesTableCreateCompanionBuilder
+    = CanvasCacheEntriesCompanion Function({
+  required String key,
+  required String payload,
+  required DateTime fetchedAt,
+  Value<int> rowid,
+});
+typedef $$CanvasCacheEntriesTableUpdateCompanionBuilder
+    = CanvasCacheEntriesCompanion Function({
+  Value<String> key,
+  Value<String> payload,
+  Value<DateTime> fetchedAt,
+  Value<int> rowid,
+});
+
+class $$CanvasCacheEntriesTableFilterComposer
+    extends Composer<_$AppDatabase, $CanvasCacheEntriesTable> {
+  $$CanvasCacheEntriesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get key => $composableBuilder(
+      column: $table.key, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get payload => $composableBuilder(
+      column: $table.payload, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get fetchedAt => $composableBuilder(
+      column: $table.fetchedAt, builder: (column) => ColumnFilters(column));
+}
+
+class $$CanvasCacheEntriesTableOrderingComposer
+    extends Composer<_$AppDatabase, $CanvasCacheEntriesTable> {
+  $$CanvasCacheEntriesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get key => $composableBuilder(
+      column: $table.key, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get payload => $composableBuilder(
+      column: $table.payload, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get fetchedAt => $composableBuilder(
+      column: $table.fetchedAt, builder: (column) => ColumnOrderings(column));
+}
+
+class $$CanvasCacheEntriesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CanvasCacheEntriesTable> {
+  $$CanvasCacheEntriesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get key =>
+      $composableBuilder(column: $table.key, builder: (column) => column);
+
+  GeneratedColumn<String> get payload =>
+      $composableBuilder(column: $table.payload, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get fetchedAt =>
+      $composableBuilder(column: $table.fetchedAt, builder: (column) => column);
+}
+
+class $$CanvasCacheEntriesTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $CanvasCacheEntriesTable,
+    CanvasCacheEntry,
+    $$CanvasCacheEntriesTableFilterComposer,
+    $$CanvasCacheEntriesTableOrderingComposer,
+    $$CanvasCacheEntriesTableAnnotationComposer,
+    $$CanvasCacheEntriesTableCreateCompanionBuilder,
+    $$CanvasCacheEntriesTableUpdateCompanionBuilder,
+    (
+      CanvasCacheEntry,
+      BaseReferences<_$AppDatabase, $CanvasCacheEntriesTable, CanvasCacheEntry>
+    ),
+    CanvasCacheEntry,
+    PrefetchHooks Function()> {
+  $$CanvasCacheEntriesTableTableManager(
+      _$AppDatabase db, $CanvasCacheEntriesTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CanvasCacheEntriesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CanvasCacheEntriesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CanvasCacheEntriesTableAnnotationComposer(
+                  $db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> key = const Value.absent(),
+            Value<String> payload = const Value.absent(),
+            Value<DateTime> fetchedAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              CanvasCacheEntriesCompanion(
+            key: key,
+            payload: payload,
+            fetchedAt: fetchedAt,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String key,
+            required String payload,
+            required DateTime fetchedAt,
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              CanvasCacheEntriesCompanion.insert(
+            key: key,
+            payload: payload,
+            fetchedAt: fetchedAt,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$CanvasCacheEntriesTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $CanvasCacheEntriesTable,
+    CanvasCacheEntry,
+    $$CanvasCacheEntriesTableFilterComposer,
+    $$CanvasCacheEntriesTableOrderingComposer,
+    $$CanvasCacheEntriesTableAnnotationComposer,
+    $$CanvasCacheEntriesTableCreateCompanionBuilder,
+    $$CanvasCacheEntriesTableUpdateCompanionBuilder,
+    (
+      CanvasCacheEntry,
+      BaseReferences<_$AppDatabase, $CanvasCacheEntriesTable, CanvasCacheEntry>
+    ),
+    CanvasCacheEntry,
+    PrefetchHooks Function()>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -3022,6 +3407,8 @@ class $AppDatabaseManager {
       $$AnnouncementsTableTableManager(_db, _db.announcements);
   $$CacheMetaEntriesTableTableManager get cacheMetaEntries =>
       $$CacheMetaEntriesTableTableManager(_db, _db.cacheMetaEntries);
+  $$CanvasCacheEntriesTableTableManager get canvasCacheEntries =>
+      $$CanvasCacheEntriesTableTableManager(_db, _db.canvasCacheEntries);
 }
 
 mixin _$TermsDaoMixin on DatabaseAccessor<AppDatabase> {

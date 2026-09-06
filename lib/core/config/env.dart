@@ -22,6 +22,16 @@ class Env {
   static const Duration announcementsTtl = Duration(minutes: 30);
   static const Duration referenceTtl = Duration(hours: 24);
 
+  /// 강좌 상세 탭 캐시 정책.
+  ///
+  /// 과제·공지·성적·자료실·토론·강의실은 언제 바뀔지 알 수 없다. TTL로 요청을
+  /// 건너뛰면 학생이 새 마감일이나 새 자료를 놓친다. 캐시는 첫 화면과 오프라인
+  /// 대비로만 쓰고, 온라인이면 항상 다시 받는다.
+  static const Duration canvasAlwaysRevalidate = Duration.zero;
+
+  /// 강의 계획과 구성원 명단은 학기 초 이후 거의 바뀌지 않는다.
+  static const Duration canvasStableTtl = Duration(hours: 24);
+
   static const Duration connectTimeout = Duration(seconds: 15);
   static const Duration receiveTimeout = Duration(seconds: 20);
 }

@@ -4,23 +4,52 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/ui/empty_state.dart';
 import '../../../../core/ui/open_link.dart';
+import '../../../../core/config/env.dart';
 import '../../../../providers.dart';
+import '../../data/canvas_cache.dart';
+import 'stale_notice.dart';
 import '../../data/canvas_api.dart';
 
 /// 과제 목록 + 내 제출 상태.
-final courseAssignmentsProvider = FutureProvider.family<
-    ({List<CanvasAssignment> items, Map<int, CanvasSubmission> submissions}),
-    int>((ref, courseId) async {
+typedef AssignmentsData = ({
+  List<CanvasAssignment> items,
+  Map<int, CanvasSubmission> submissions,
+});
+
+/// 과제는 마감일이 걸려 있어 낡은 값을 최신인 척 보여주면 실제 손해가 난다.
+/// 캐시는 즉시 그리되 온라인이면 반드시 다시 받는다.
+final courseAssignmentsProvider =
+    StreamProvider.family<CanvasSnapshot<AssignmentsData>, int>((ref, courseId) {
   final api = ref.watch(canvasApiProvider);
-  final items = await api.fetchAssignments(courseId);
-  // 제출 상태는 없어도 과제는 보여줄 수 있다. 실패해도 목록을 막지 않는다.
-  Map<int, CanvasSubmission> submissions = const {};
-  try {
-    submissions = await api.fetchSubmissions(courseId);
-  } on Object {
-    submissions = const {};
-  }
-  return (items: items, submissions: submissions);
+  return watchCanvas<AssignmentsData>(
+    cache: ref.watch(canvasCacheProvider),
+    key: 'assignments:$courseId',
+    ttl: Env.canvasAlwaysRevalidate,
+    fetch: () async => {
+      'assignments': await api.getRaw(
+        '/courses/$courseId/assignments',
+        query: const {'per_page': 50, 'order_by': 'due_at'},
+      ),
+      // 제출 상태가 없어도 과제는 보여줄 수 있다. 실패해도 목록을 막지 않는다.
+      'submissions': await () async {
+        try {
+          return await api.getRaw(
+            '/courses/$courseId/students/submissions',
+            query: const {'per_page': 50, 'student_ids[]': 'self'},
+          );
+        } on Object {
+          return const <Object>[];
+        }
+      }(),
+    },
+    parse: (json) {
+      final map = json! as Map;
+      return (
+        items: parseAssignments(map['assignments']),
+        submissions: parseSubmissions(map['submissions']),
+      );
+    },
+  );
 });
 
 String formatDue(DateTime? at) {
@@ -44,25 +73,34 @@ class AssignmentsTab extends ConsumerWidget {
         title: '과제를 불러오지 못했습니다',
         description: userMessage(e),
       ),
-      data: (data) {
+      data: (snap) {
+        final data = snap.data;
         if (data.items.isEmpty) {
           return const EmptyState(
             icon: Icons.assignment_outlined,
             title: '등록된 과제가 없습니다',
           );
         }
-        return RefreshIndicator(
-          onRefresh: () async =>
-              ref.invalidate(courseAssignmentsProvider(courseId)),
-          child: ListView.separated(
-            padding: const EdgeInsets.all(16),
-            itemCount: data.items.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 12),
-            itemBuilder: (_, i) => _AssignmentCard(
-              assignment: data.items[i],
-              submission: data.submissions[data.items[i].id],
+        return Column(
+          children: [
+            if (snap.stale)
+              StaleNotice(fetchedAt: snap.fetchedAt, error: snap.error),
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: () async =>
+                    ref.invalidate(courseAssignmentsProvider(courseId)),
+                child: ListView.separated(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: data.items.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 12),
+                  itemBuilder: (_, i) => _AssignmentCard(
+                    assignment: data.items[i],
+                    submission: data.submissions[data.items[i].id],
+                  ),
+                ),
+              ),
             ),
-          ),
+          ],
         );
       },
     );

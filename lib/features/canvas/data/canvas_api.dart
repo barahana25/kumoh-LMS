@@ -237,225 +237,193 @@ Interceptor canvasSessionInterceptor({
   );
 }
 
-/// Canvas REST API. LINUS와 달리 `{code,message,data}` 봉투가 아니라
-/// JSON 배열/객체를 그대로 돌려준다.
+/// Canvas REST API의 전송 계층.
+///
+/// 응답 해석은 아래 순수 함수들이 맡는다. 캐시가 원본 JSON을 보관했다가
+/// 나중에 같은 함수로 해석해야 하므로, 받아오는 일과 해석하는 일을 나눈다.
 class CanvasApi {
   CanvasApi(this._dio);
   final Dio _dio;
 
-  List<Map<String, dynamic>> _asList(Object? body) {
-    if (body is! List) throw const ParseFailure();
-    return body.cast<Map<String, dynamic>>();
-  }
-
-  /// 이 강좌가 실제로 노출하는 탭. 강좌마다 구성이 다르므로 하드코딩하지 않는다.
-  Future<List<CourseTab>> fetchTabs(int courseId) async {
+  Future<Object?> getRaw(String path, {Map<String, dynamic>? query}) async {
     try {
-      final res = await _dio.get<Object?>('/courses/$courseId/tabs');
-      final tabs = _asList(res.data)
-          .where((t) => t['hidden'] != true)
-          .map((t) => CourseTab(
-                id: t['id'] as String? ?? '',
-                label: t['label'] as String? ?? '',
-                position: (t['position'] as num?)?.toInt() ?? 0,
-                externalUrl:
-                    (t['type'] == 'external') ? t['url'] as String? : null,
-              ))
-          .where((t) => t.id.isNotEmpty && !t.isExternal)
-          .toList()
-        ..sort((a, b) => a.position.compareTo(b.position));
-      return tabs;
+      final res = await _dio.get<Object?>(path, queryParameters: query);
+      return res.data;
     } on DioException catch (e) {
       throwAsFailure(e);
     }
   }
 
-  /// 이 강좌의 과제. 아직 게시되지 않은 초안은 제외한다.
-  Future<List<CanvasAssignment>> fetchAssignments(int courseId) async {
-    try {
-      final res = await _dio.get<Object?>(
+  Future<List<CourseTab>> fetchTabs(int courseId) async =>
+      parseTabs(await getRaw('/courses/$courseId/tabs'));
+
+  Future<List<CanvasAssignment>> fetchAssignments(int courseId) async =>
+      parseAssignments(await getRaw(
         '/courses/$courseId/assignments',
-        queryParameters: {'per_page': 50, 'order_by': 'due_at'},
-      );
-      return _asList(res.data)
-          .where((a) => a['published'] != false)
-          .map((a) => CanvasAssignment(
-                id: (a['id'] as num?)?.toInt() ?? 0,
-                name: a['name'] as String? ?? '',
-                dueAt: _canvasDate(a['due_at']),
-                pointsPossible: a['points_possible'] as num?,
-                htmlUrl: a['html_url'] as String? ?? '',
-              ))
-          .toList();
-    } on DioException catch (e) {
-      throwAsFailure(e);
-    }
-  }
+        query: const {'per_page': 50, 'order_by': 'due_at'},
+      ));
 
-  /// 내 제출 상태를 과제 id로 찾을 수 있게 묶어 돌려준다.
-  Future<Map<int, CanvasSubmission>> fetchSubmissions(int courseId) async {
-    try {
-      final res = await _dio.get<Object?>(
+  Future<Map<int, CanvasSubmission>> fetchSubmissions(int courseId) async =>
+      parseSubmissions(await getRaw(
         '/courses/$courseId/students/submissions',
-        queryParameters: {'per_page': 50, 'student_ids[]': 'self'},
-      );
-      return {
-        for (final s in _asList(res.data))
-          (s['assignment_id'] as num?)?.toInt() ?? 0: CanvasSubmission(
-            assignmentId: (s['assignment_id'] as num?)?.toInt() ?? 0,
-            submitted: s['workflow_state'] != 'unsubmitted' &&
-                s['submitted_at'] != null,
-            missing: s['missing'] == true,
-            late: s['late'] == true,
-            score: s['score'] as num?,
-            submittedAt: _canvasDate(s['submitted_at']),
-          ),
-      };
-    } on DioException catch (e) {
-      throwAsFailure(e);
-    }
-  }
+        query: const {'per_page': 50, 'student_ids[]': 'self'},
+      ));
 
-  /// 강의 계획. 비어 있으면 null.
-  Future<String?> fetchSyllabus(int courseId) async {
-    try {
-      final res = await _dio.get<Object?>(
+  Future<String?> fetchSyllabus(int courseId) async =>
+      parseSyllabus(await getRaw(
         '/courses/$courseId',
-        queryParameters: {'include[]': 'syllabus_body'},
-      );
-      final body = res.data;
-      if (body is! Map) throw const ParseFailure();
-      final syllabus = body['syllabus_body'] as String?;
-      return (syllabus == null || syllabus.trim().isEmpty) ? null : syllabus;
-    } on DioException catch (e) {
-      throwAsFailure(e);
-    }
-  }
+        query: const {'include[]': 'syllabus_body'},
+      ));
 
-  Future<List<CanvasModule>> fetchModules(int courseId) async {
-    try {
-      final res = await _dio.get<Object?>(
+  Future<List<CanvasModule>> fetchModules(int courseId) async =>
+      parseModules(await getRaw(
         '/courses/$courseId/modules',
-        queryParameters: {'per_page': 50},
-      );
-      return _asList(res.data)
-          .map((m) => CanvasModule(
-                id: (m['id'] as num?)?.toInt() ?? 0,
-                name: m['name'] as String? ?? '',
-                position: (m['position'] as num?)?.toInt() ?? 0,
-                itemsCount: (m['items_count'] as num?)?.toInt() ?? 0,
-                state: m['state'] as String? ?? '',
-              ))
-          .toList()
-        ..sort((a, b) => a.position.compareTo(b.position));
-    } on DioException catch (e) {
-      throwAsFailure(e);
-    }
-  }
+        query: const {'per_page': 50},
+      ));
 
-  Future<List<CanvasFile>> fetchFiles(int courseId) async {
-    try {
-      final res = await _dio.get<Object?>(
+  Future<List<CanvasFile>> fetchFiles(int courseId) async =>
+      parseFiles(await getRaw(
         '/courses/$courseId/files',
-        queryParameters: {
-          'per_page': 50,
-          'sort': 'created_at',
-          'order': 'desc',
-        },
-      );
-      return _asList(res.data)
-          .map((f) => CanvasFile(
-                id: (f['id'] as num?)?.toInt() ?? 0,
-                displayName: f['display_name'] as String? ?? '',
-                locked: f['locked_for_user'] == true,
-                contentType: f['content-type'] as String? ?? '',
-                sizeBytes: (f['size'] as num?)?.toInt(),
-                url: f['url'] as String? ?? '',
-              ))
-          .toList();
-    } on DioException catch (e) {
-      throwAsFailure(e);
-    }
-  }
+        query: const {'per_page': 50, 'sort': 'created_at', 'order': 'desc'},
+      ));
 
-  Future<List<CanvasPerson>> fetchPeople(int courseId) async {
-    try {
-      final res = await _dio.get<Object?>(
+  Future<List<CanvasPerson>> fetchPeople(int courseId) async =>
+      parsePeople(await getRaw(
         '/courses/$courseId/enrollments',
-        queryParameters: {'per_page': 100},
-      );
-      return _asList(res.data).map((e) {
-        final user = (e['user'] as Map?) ?? const {};
-        return CanvasPerson(
-          userId: (user['id'] as num?)?.toInt() ?? 0,
-          name: user['name'] as String? ?? '',
-          enrollmentType: e['type'] as String? ?? '',
-        );
-      }).toList();
-    } on DioException catch (e) {
-      throwAsFailure(e);
-    }
-  }
+        query: const {'per_page': 100},
+      ));
 
-  Future<List<CanvasGroup>> fetchGroups(int courseId) async {
-    try {
-      final res = await _dio.get<Object?>(
+  Future<List<CanvasGroup>> fetchGroups(int courseId) async =>
+      parseGroups(await getRaw(
         '/courses/$courseId/groups',
-        queryParameters: {'per_page': 50},
-      );
-      return _asList(res.data)
-          .map((g) => CanvasGroup(
-                id: (g['id'] as num?)?.toInt() ?? 0,
-                name: g['name'] as String? ?? '',
-                membersCount: (g['members_count'] as num?)?.toInt() ?? 0,
-              ))
-          .toList();
-    } on DioException catch (e) {
-      throwAsFailure(e);
-    }
-  }
+        query: const {'per_page': 50},
+      ));
 
-  /// 이 강좌에서의 내 성적. 수강 정보가 없으면 null.
-  Future<CanvasGrade?> fetchMyGrade(int courseId) async {
-    try {
-      final res = await _dio.get<Object?>(
-        '/users/self/enrollments',
-        queryParameters: {'per_page': 100, 'state[]': 'active'},
+  Future<CanvasGrade?> fetchMyGrade(int courseId) async => parseMyGrade(
+        await getRaw(
+          '/users/self/enrollments',
+          query: const {'per_page': 100, 'state[]': 'active'},
+        ),
+        courseId,
       );
-      for (final e in _asList(res.data)) {
-        if ((e['course_id'] as num?)?.toInt() != courseId) continue;
-        final g = (e['grades'] as Map?) ?? const {};
-        return CanvasGrade(
-          currentScore: g['current_score'] as num?,
-          currentGrade: g['current_grade'] as String?,
-          finalScore: g['final_score'] as num?,
-          finalGrade: g['final_grade'] as String?,
-        );
-      }
-      return null;
-    } on DioException catch (e) {
-      throwAsFailure(e);
-    }
-  }
 
-  Future<List<CanvasDiscussion>> fetchDiscussions(int courseId) async {
-    try {
-      final res = await _dio.get<Object?>(
+  Future<List<CanvasDiscussion>> fetchDiscussions(int courseId) async =>
+      parseDiscussions(await getRaw(
         '/courses/$courseId/discussion_topics',
-        queryParameters: {'per_page': 50},
-      );
-      return _asList(res.data)
-          .map((d) => CanvasDiscussion(
-                id: (d['id'] as num?)?.toInt() ?? 0,
-                title: d['title'] as String? ?? '',
-                replyCount:
-                    (d['discussion_subentry_count'] as num?)?.toInt() ?? 0,
-                postedAt: _canvasDate(d['posted_at']),
-                htmlUrl: d['html_url'] as String? ?? '',
-              ))
-          .toList();
-    } on DioException catch (e) {
-      throwAsFailure(e);
-    }
-  }
+        query: const {'per_page': 50},
+      ));
 }
+
+// ---------- 순수 파싱 ----------
+//
+// 네트워크에서 막 받은 JSON이든, 캐시에서 꺼낸 JSON이든 같은 함수로 해석한다.
+
+List<Map<String, dynamic>> _asList(Object? body) {
+  if (body is! List) throw const ParseFailure();
+  return body.cast<Map<String, dynamic>>();
+}
+
+List<CourseTab> parseTabs(Object? json) => _asList(json)
+    .where((t) => t['hidden'] != true)
+    .map((t) => CourseTab(
+          id: t['id'] as String? ?? '',
+          label: t['label'] as String? ?? '',
+          position: (t['position'] as num?)?.toInt() ?? 0,
+          externalUrl: (t['type'] == 'external') ? t['url'] as String? : null,
+        ))
+    .where((t) => t.id.isNotEmpty && !t.isExternal)
+    .toList()
+  ..sort((a, b) => a.position.compareTo(b.position));
+
+List<CanvasAssignment> parseAssignments(Object? json) => _asList(json)
+    .where((a) => a['published'] != false)
+    .map((a) => CanvasAssignment(
+          id: (a['id'] as num?)?.toInt() ?? 0,
+          name: a['name'] as String? ?? '',
+          dueAt: _canvasDate(a['due_at']),
+          pointsPossible: a['points_possible'] as num?,
+          htmlUrl: a['html_url'] as String? ?? '',
+        ))
+    .toList();
+
+Map<int, CanvasSubmission> parseSubmissions(Object? json) => {
+      for (final s in _asList(json))
+        (s['assignment_id'] as num?)?.toInt() ?? 0: CanvasSubmission(
+          assignmentId: (s['assignment_id'] as num?)?.toInt() ?? 0,
+          submitted:
+              s['workflow_state'] != 'unsubmitted' && s['submitted_at'] != null,
+          missing: s['missing'] == true,
+          late: s['late'] == true,
+          score: s['score'] as num?,
+          submittedAt: _canvasDate(s['submitted_at']),
+        ),
+    };
+
+String? parseSyllabus(Object? json) {
+  if (json is! Map) throw const ParseFailure();
+  final syllabus = json['syllabus_body'] as String?;
+  return (syllabus == null || syllabus.trim().isEmpty) ? null : syllabus;
+}
+
+List<CanvasModule> parseModules(Object? json) => _asList(json)
+    .map((m) => CanvasModule(
+          id: (m['id'] as num?)?.toInt() ?? 0,
+          name: m['name'] as String? ?? '',
+          position: (m['position'] as num?)?.toInt() ?? 0,
+          itemsCount: (m['items_count'] as num?)?.toInt() ?? 0,
+          state: m['state'] as String? ?? '',
+        ))
+    .toList()
+  ..sort((a, b) => a.position.compareTo(b.position));
+
+List<CanvasFile> parseFiles(Object? json) => _asList(json)
+    .map((f) => CanvasFile(
+          id: (f['id'] as num?)?.toInt() ?? 0,
+          displayName: f['display_name'] as String? ?? '',
+          locked: f['locked_for_user'] == true,
+          contentType: f['content-type'] as String? ?? '',
+          sizeBytes: (f['size'] as num?)?.toInt(),
+          url: f['url'] as String? ?? '',
+        ))
+    .toList();
+
+List<CanvasPerson> parsePeople(Object? json) => _asList(json).map((e) {
+      final user = (e['user'] as Map?) ?? const {};
+      return CanvasPerson(
+        userId: (user['id'] as num?)?.toInt() ?? 0,
+        name: user['name'] as String? ?? '',
+        enrollmentType: e['type'] as String? ?? '',
+      );
+    }).toList();
+
+List<CanvasGroup> parseGroups(Object? json) => _asList(json)
+    .map((g) => CanvasGroup(
+          id: (g['id'] as num?)?.toInt() ?? 0,
+          name: g['name'] as String? ?? '',
+          membersCount: (g['members_count'] as num?)?.toInt() ?? 0,
+        ))
+    .toList();
+
+CanvasGrade? parseMyGrade(Object? json, int courseId) {
+  for (final e in _asList(json)) {
+    if ((e['course_id'] as num?)?.toInt() != courseId) continue;
+    final g = (e['grades'] as Map?) ?? const {};
+    return CanvasGrade(
+      currentScore: g['current_score'] as num?,
+      currentGrade: g['current_grade'] as String?,
+      finalScore: g['final_score'] as num?,
+      finalGrade: g['final_grade'] as String?,
+    );
+  }
+  return null;
+}
+
+List<CanvasDiscussion> parseDiscussions(Object? json) => _asList(json)
+    .map((d) => CanvasDiscussion(
+          id: (d['id'] as num?)?.toInt() ?? 0,
+          title: d['title'] as String? ?? '',
+          replyCount: (d['discussion_subentry_count'] as num?)?.toInt() ?? 0,
+          postedAt: _canvasDate(d['posted_at']),
+          htmlUrl: d['html_url'] as String? ?? '',
+        ))
+    .toList();

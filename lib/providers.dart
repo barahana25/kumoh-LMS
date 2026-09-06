@@ -13,6 +13,7 @@ import 'features/assignments/data/assignments_repository.dart';
 import 'features/assignments/data/calendar_api.dart';
 import 'features/auth/data/auth_api.dart';
 import 'features/canvas/data/canvas_api.dart';
+import 'features/canvas/data/canvas_cache.dart';
 import 'features/canvas/data/canvas_client.dart';
 import 'features/canvas/data/canvas_session.dart';
 import 'features/canvas/data/saml_bridge_api.dart';
@@ -143,3 +144,6 @@ final courseTabsProvider =
     FutureProvider.family<List<CourseTab>, int>((ref, courseId) async {
   return ref.watch(canvasApiProvider).fetchTabs(courseId);
 });
+
+final canvasCacheProvider =
+    Provider<CanvasCache>((ref) => CanvasCache(ref.watch(appDatabaseProvider)));
