@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/ui/empty_state.dart';
-import '../../../../core/ui/open_link.dart';
+import '../canvas_web_target.dart';
 import '../../../../core/config/env.dart';
 import '../../../../providers.dart';
 import '../../data/canvas_cache.dart';
@@ -138,7 +138,8 @@ class _AssignmentCard extends StatelessWidget {
         trailing: _StatusChip(submission: submission),
         onTap: assignment.htmlUrl.isEmpty
             ? null
-            : () => openLink(context, assignment.htmlUrl),
+            : () => openCanvasPage(context,
+                title: assignment.name, url: assignment.htmlUrl),
       ),
     );
   }

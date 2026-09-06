@@ -5,7 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/error/failure.dart';
 import '../../../../core/ui/empty_state.dart';
-import '../../../../core/ui/open_link.dart';
+import '../canvas_web_target.dart';
 import '../../../../core/config/env.dart';
 import '../../../../providers.dart';
 import '../../data/canvas_api.dart';
@@ -188,7 +188,10 @@ class SyllabusTab extends StatelessWidget {
           child: HtmlWidget(
             html,
             textStyle: Theme.of(context).textTheme.bodyMedium,
-            onTapUrl: (url) => openLink(context, url),
+            onTapUrl: (url) async {
+              await openCanvasPage(context, title: '강의 계획', url: url);
+              return true;
+            },
           ),
         );
       },
@@ -296,7 +299,8 @@ class FilesTab extends StatelessWidget {
                 ),
                 onTap: (f.locked || f.url.isEmpty)
                     ? null
-                    : () => openLink(context, f.url),
+                    : () => openCanvasPage(context,
+                        title: f.displayName, url: f.url),
               ),
             );
           },
@@ -427,7 +431,8 @@ class DiscussionsTab extends StatelessWidget {
                 ),
                 onTap: d.htmlUrl.isEmpty
                     ? null
-                    : () => openLink(context, d.htmlUrl),
+                    : () => openCanvasPage(context,
+                        title: d.title, url: d.htmlUrl),
               ),
             );
           },
