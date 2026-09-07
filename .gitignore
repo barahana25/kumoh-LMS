@@ -3,6 +3,9 @@ env
 .env
 *.env
 **/secrets.dart
+*.jks
+*.keystore
+key.properties
 
 # ---- Flutter / Dart ----
 .dart_tool/
