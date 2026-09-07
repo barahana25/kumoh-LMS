@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../../../../core/ui/open_link.dart';
+import '../../../canvas/presentation/canvas_web_target.dart';
 
 import '../../../../core/storage/db/app_database.dart';
 
@@ -65,7 +65,7 @@ class EventTile extends StatelessWidget {
               ),
         onTap: event.htmlUrl.isEmpty
             ? null
-            : () => openLink(context, event.htmlUrl),
+            : () => openCanvasPage(context, title: event.title, url: event.htmlUrl),
       ),
     );
   }

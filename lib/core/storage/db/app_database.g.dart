@@ -2207,6 +2207,1245 @@ class CanvasCacheEntriesCompanion extends UpdateCompanion<CanvasCacheEntry> {
   }
 }
 
+class $NotificationSettingsTable extends NotificationSettings
+    with TableInfo<$NotificationSettingsTable, NotificationSetting> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $NotificationSettingsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+      'id', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _ownerMeta = const VerificationMeta('owner');
+  @override
+  late final GeneratedColumn<String> owner = GeneratedColumn<String>(
+      'owner', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _generationMeta =
+      const VerificationMeta('generation');
+  @override
+  late final GeneratedColumn<String> generation = GeneratedColumn<String>(
+      'generation', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _enabledMeta =
+      const VerificationMeta('enabled');
+  @override
+  late final GeneratedColumn<bool> enabled = GeneratedColumn<bool>(
+      'enabled', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: true,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("enabled" IN (0, 1))'));
+  static const VerificationMeta _lastAttemptMeta =
+      const VerificationMeta('lastAttempt');
+  @override
+  late final GeneratedColumn<int> lastAttempt = GeneratedColumn<int>(
+      'last_attempt', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _lastSuccessMeta =
+      const VerificationMeta('lastSuccess');
+  @override
+  late final GeneratedColumn<int> lastSuccess = GeneratedColumn<int>(
+      'last_success', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+      'status', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('아직 확인하지 않았습니다.'));
+  static const VerificationMeta _leaseMeta = const VerificationMeta('lease');
+  @override
+  late final GeneratedColumn<String> lease = GeneratedColumn<String>(
+      'lease', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _cursorMeta = const VerificationMeta('cursor');
+  @override
+  late final GeneratedColumn<int> cursor = GeneratedColumn<int>(
+      'cursor', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _leaseUntilMeta =
+      const VerificationMeta('leaseUntil');
+  @override
+  late final GeneratedColumn<int> leaseUntil = GeneratedColumn<int>(
+      'lease_until', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        owner,
+        generation,
+        enabled,
+        lastAttempt,
+        lastSuccess,
+        status,
+        lease,
+        cursor,
+        leaseUntil
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'notification_settings';
+  @override
+  VerificationContext validateIntegrity(
+      Insertable<NotificationSetting> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('owner')) {
+      context.handle(
+          _ownerMeta, owner.isAcceptableOrUnknown(data['owner']!, _ownerMeta));
+    } else if (isInserting) {
+      context.missing(_ownerMeta);
+    }
+    if (data.containsKey('generation')) {
+      context.handle(
+          _generationMeta,
+          generation.isAcceptableOrUnknown(
+              data['generation']!, _generationMeta));
+    } else if (isInserting) {
+      context.missing(_generationMeta);
+    }
+    if (data.containsKey('enabled')) {
+      context.handle(_enabledMeta,
+          enabled.isAcceptableOrUnknown(data['enabled']!, _enabledMeta));
+    } else if (isInserting) {
+      context.missing(_enabledMeta);
+    }
+    if (data.containsKey('last_attempt')) {
+      context.handle(
+          _lastAttemptMeta,
+          lastAttempt.isAcceptableOrUnknown(
+              data['last_attempt']!, _lastAttemptMeta));
+    }
+    if (data.containsKey('last_success')) {
+      context.handle(
+          _lastSuccessMeta,
+          lastSuccess.isAcceptableOrUnknown(
+              data['last_success']!, _lastSuccessMeta));
+    }
+    if (data.containsKey('status')) {
+      context.handle(_statusMeta,
+          status.isAcceptableOrUnknown(data['status']!, _statusMeta));
+    }
+    if (data.containsKey('lease')) {
+      context.handle(
+          _leaseMeta, lease.isAcceptableOrUnknown(data['lease']!, _leaseMeta));
+    }
+    if (data.containsKey('cursor')) {
+      context.handle(_cursorMeta,
+          cursor.isAcceptableOrUnknown(data['cursor']!, _cursorMeta));
+    }
+    if (data.containsKey('lease_until')) {
+      context.handle(
+          _leaseUntilMeta,
+          leaseUntil.isAcceptableOrUnknown(
+              data['lease_until']!, _leaseUntilMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  NotificationSetting map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return NotificationSetting(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
+      owner: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}owner'])!,
+      generation: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}generation'])!,
+      enabled: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}enabled'])!,
+      lastAttempt: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}last_attempt']),
+      lastSuccess: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}last_success']),
+      status: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}status'])!,
+      lease: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}lease']),
+      cursor: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}cursor'])!,
+      leaseUntil: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}lease_until']),
+    );
+  }
+
+  @override
+  $NotificationSettingsTable createAlias(String alias) {
+    return $NotificationSettingsTable(attachedDatabase, alias);
+  }
+}
+
+class NotificationSetting extends DataClass
+    implements Insertable<NotificationSetting> {
+  final int id;
+  final String owner;
+  final String generation;
+  final bool enabled;
+  final int? lastAttempt;
+  final int? lastSuccess;
+  final String status;
+  final String? lease;
+  final int cursor;
+  final int? leaseUntil;
+  const NotificationSetting(
+      {required this.id,
+      required this.owner,
+      required this.generation,
+      required this.enabled,
+      this.lastAttempt,
+      this.lastSuccess,
+      required this.status,
+      this.lease,
+      required this.cursor,
+      this.leaseUntil});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['owner'] = Variable<String>(owner);
+    map['generation'] = Variable<String>(generation);
+    map['enabled'] = Variable<bool>(enabled);
+    if (!nullToAbsent || lastAttempt != null) {
+      map['last_attempt'] = Variable<int>(lastAttempt);
+    }
+    if (!nullToAbsent || lastSuccess != null) {
+      map['last_success'] = Variable<int>(lastSuccess);
+    }
+    map['status'] = Variable<String>(status);
+    if (!nullToAbsent || lease != null) {
+      map['lease'] = Variable<String>(lease);
+    }
+    map['cursor'] = Variable<int>(cursor);
+    if (!nullToAbsent || leaseUntil != null) {
+      map['lease_until'] = Variable<int>(leaseUntil);
+    }
+    return map;
+  }
+
+  NotificationSettingsCompanion toCompanion(bool nullToAbsent) {
+    return NotificationSettingsCompanion(
+      id: Value(id),
+      owner: Value(owner),
+      generation: Value(generation),
+      enabled: Value(enabled),
+      lastAttempt: lastAttempt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastAttempt),
+      lastSuccess: lastSuccess == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastSuccess),
+      status: Value(status),
+      lease:
+          lease == null && nullToAbsent ? const Value.absent() : Value(lease),
+      cursor: Value(cursor),
+      leaseUntil: leaseUntil == null && nullToAbsent
+          ? const Value.absent()
+          : Value(leaseUntil),
+    );
+  }
+
+  factory NotificationSetting.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return NotificationSetting(
+      id: serializer.fromJson<int>(json['id']),
+      owner: serializer.fromJson<String>(json['owner']),
+      generation: serializer.fromJson<String>(json['generation']),
+      enabled: serializer.fromJson<bool>(json['enabled']),
+      lastAttempt: serializer.fromJson<int?>(json['lastAttempt']),
+      lastSuccess: serializer.fromJson<int?>(json['lastSuccess']),
+      status: serializer.fromJson<String>(json['status']),
+      lease: serializer.fromJson<String?>(json['lease']),
+      cursor: serializer.fromJson<int>(json['cursor']),
+      leaseUntil: serializer.fromJson<int?>(json['leaseUntil']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'owner': serializer.toJson<String>(owner),
+      'generation': serializer.toJson<String>(generation),
+      'enabled': serializer.toJson<bool>(enabled),
+      'lastAttempt': serializer.toJson<int?>(lastAttempt),
+      'lastSuccess': serializer.toJson<int?>(lastSuccess),
+      'status': serializer.toJson<String>(status),
+      'lease': serializer.toJson<String?>(lease),
+      'cursor': serializer.toJson<int>(cursor),
+      'leaseUntil': serializer.toJson<int?>(leaseUntil),
+    };
+  }
+
+  NotificationSetting copyWith(
+          {int? id,
+          String? owner,
+          String? generation,
+          bool? enabled,
+          Value<int?> lastAttempt = const Value.absent(),
+          Value<int?> lastSuccess = const Value.absent(),
+          String? status,
+          Value<String?> lease = const Value.absent(),
+          int? cursor,
+          Value<int?> leaseUntil = const Value.absent()}) =>
+      NotificationSetting(
+        id: id ?? this.id,
+        owner: owner ?? this.owner,
+        generation: generation ?? this.generation,
+        enabled: enabled ?? this.enabled,
+        lastAttempt: lastAttempt.present ? lastAttempt.value : this.lastAttempt,
+        lastSuccess: lastSuccess.present ? lastSuccess.value : this.lastSuccess,
+        status: status ?? this.status,
+        lease: lease.present ? lease.value : this.lease,
+        cursor: cursor ?? this.cursor,
+        leaseUntil: leaseUntil.present ? leaseUntil.value : this.leaseUntil,
+      );
+  NotificationSetting copyWithCompanion(NotificationSettingsCompanion data) {
+    return NotificationSetting(
+      id: data.id.present ? data.id.value : this.id,
+      owner: data.owner.present ? data.owner.value : this.owner,
+      generation:
+          data.generation.present ? data.generation.value : this.generation,
+      enabled: data.enabled.present ? data.enabled.value : this.enabled,
+      lastAttempt:
+          data.lastAttempt.present ? data.lastAttempt.value : this.lastAttempt,
+      lastSuccess:
+          data.lastSuccess.present ? data.lastSuccess.value : this.lastSuccess,
+      status: data.status.present ? data.status.value : this.status,
+      lease: data.lease.present ? data.lease.value : this.lease,
+      cursor: data.cursor.present ? data.cursor.value : this.cursor,
+      leaseUntil:
+          data.leaseUntil.present ? data.leaseUntil.value : this.leaseUntil,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('NotificationSetting(')
+          ..write('id: $id, ')
+          ..write('owner: $owner, ')
+          ..write('generation: $generation, ')
+          ..write('enabled: $enabled, ')
+          ..write('lastAttempt: $lastAttempt, ')
+          ..write('lastSuccess: $lastSuccess, ')
+          ..write('status: $status, ')
+          ..write('lease: $lease, ')
+          ..write('cursor: $cursor, ')
+          ..write('leaseUntil: $leaseUntil')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, owner, generation, enabled, lastAttempt,
+      lastSuccess, status, lease, cursor, leaseUntil);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is NotificationSetting &&
+          other.id == this.id &&
+          other.owner == this.owner &&
+          other.generation == this.generation &&
+          other.enabled == this.enabled &&
+          other.lastAttempt == this.lastAttempt &&
+          other.lastSuccess == this.lastSuccess &&
+          other.status == this.status &&
+          other.lease == this.lease &&
+          other.cursor == this.cursor &&
+          other.leaseUntil == this.leaseUntil);
+}
+
+class NotificationSettingsCompanion
+    extends UpdateCompanion<NotificationSetting> {
+  final Value<int> id;
+  final Value<String> owner;
+  final Value<String> generation;
+  final Value<bool> enabled;
+  final Value<int?> lastAttempt;
+  final Value<int?> lastSuccess;
+  final Value<String> status;
+  final Value<String?> lease;
+  final Value<int> cursor;
+  final Value<int?> leaseUntil;
+  const NotificationSettingsCompanion({
+    this.id = const Value.absent(),
+    this.owner = const Value.absent(),
+    this.generation = const Value.absent(),
+    this.enabled = const Value.absent(),
+    this.lastAttempt = const Value.absent(),
+    this.lastSuccess = const Value.absent(),
+    this.status = const Value.absent(),
+    this.lease = const Value.absent(),
+    this.cursor = const Value.absent(),
+    this.leaseUntil = const Value.absent(),
+  });
+  NotificationSettingsCompanion.insert({
+    this.id = const Value.absent(),
+    required String owner,
+    required String generation,
+    required bool enabled,
+    this.lastAttempt = const Value.absent(),
+    this.lastSuccess = const Value.absent(),
+    this.status = const Value.absent(),
+    this.lease = const Value.absent(),
+    this.cursor = const Value.absent(),
+    this.leaseUntil = const Value.absent(),
+  })  : owner = Value(owner),
+        generation = Value(generation),
+        enabled = Value(enabled);
+  static Insertable<NotificationSetting> custom({
+    Expression<int>? id,
+    Expression<String>? owner,
+    Expression<String>? generation,
+    Expression<bool>? enabled,
+    Expression<int>? lastAttempt,
+    Expression<int>? lastSuccess,
+    Expression<String>? status,
+    Expression<String>? lease,
+    Expression<int>? cursor,
+    Expression<int>? leaseUntil,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (owner != null) 'owner': owner,
+      if (generation != null) 'generation': generation,
+      if (enabled != null) 'enabled': enabled,
+      if (lastAttempt != null) 'last_attempt': lastAttempt,
+      if (lastSuccess != null) 'last_success': lastSuccess,
+      if (status != null) 'status': status,
+      if (lease != null) 'lease': lease,
+      if (cursor != null) 'cursor': cursor,
+      if (leaseUntil != null) 'lease_until': leaseUntil,
+    });
+  }
+
+  NotificationSettingsCompanion copyWith(
+      {Value<int>? id,
+      Value<String>? owner,
+      Value<String>? generation,
+      Value<bool>? enabled,
+      Value<int?>? lastAttempt,
+      Value<int?>? lastSuccess,
+      Value<String>? status,
+      Value<String?>? lease,
+      Value<int>? cursor,
+      Value<int?>? leaseUntil}) {
+    return NotificationSettingsCompanion(
+      id: id ?? this.id,
+      owner: owner ?? this.owner,
+      generation: generation ?? this.generation,
+      enabled: enabled ?? this.enabled,
+      lastAttempt: lastAttempt ?? this.lastAttempt,
+      lastSuccess: lastSuccess ?? this.lastSuccess,
+      status: status ?? this.status,
+      lease: lease ?? this.lease,
+      cursor: cursor ?? this.cursor,
+      leaseUntil: leaseUntil ?? this.leaseUntil,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (owner.present) {
+      map['owner'] = Variable<String>(owner.value);
+    }
+    if (generation.present) {
+      map['generation'] = Variable<String>(generation.value);
+    }
+    if (enabled.present) {
+      map['enabled'] = Variable<bool>(enabled.value);
+    }
+    if (lastAttempt.present) {
+      map['last_attempt'] = Variable<int>(lastAttempt.value);
+    }
+    if (lastSuccess.present) {
+      map['last_success'] = Variable<int>(lastSuccess.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (lease.present) {
+      map['lease'] = Variable<String>(lease.value);
+    }
+    if (cursor.present) {
+      map['cursor'] = Variable<int>(cursor.value);
+    }
+    if (leaseUntil.present) {
+      map['lease_until'] = Variable<int>(leaseUntil.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('NotificationSettingsCompanion(')
+          ..write('id: $id, ')
+          ..write('owner: $owner, ')
+          ..write('generation: $generation, ')
+          ..write('enabled: $enabled, ')
+          ..write('lastAttempt: $lastAttempt, ')
+          ..write('lastSuccess: $lastSuccess, ')
+          ..write('status: $status, ')
+          ..write('lease: $lease, ')
+          ..write('cursor: $cursor, ')
+          ..write('leaseUntil: $leaseUntil')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $NotificationBaselinesTable extends NotificationBaselines
+    with TableInfo<$NotificationBaselinesTable, NotificationBaseline> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $NotificationBaselinesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _scopeMeta = const VerificationMeta('scope');
+  @override
+  late final GeneratedColumn<String> scope = GeneratedColumn<String>(
+      'scope', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns => [scope];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'notification_baselines';
+  @override
+  VerificationContext validateIntegrity(
+      Insertable<NotificationBaseline> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('scope')) {
+      context.handle(
+          _scopeMeta, scope.isAcceptableOrUnknown(data['scope']!, _scopeMeta));
+    } else if (isInserting) {
+      context.missing(_scopeMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {scope};
+  @override
+  NotificationBaseline map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return NotificationBaseline(
+      scope: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}scope'])!,
+    );
+  }
+
+  @override
+  $NotificationBaselinesTable createAlias(String alias) {
+    return $NotificationBaselinesTable(attachedDatabase, alias);
+  }
+}
+
+class NotificationBaseline extends DataClass
+    implements Insertable<NotificationBaseline> {
+  final String scope;
+  const NotificationBaseline({required this.scope});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['scope'] = Variable<String>(scope);
+    return map;
+  }
+
+  NotificationBaselinesCompanion toCompanion(bool nullToAbsent) {
+    return NotificationBaselinesCompanion(
+      scope: Value(scope),
+    );
+  }
+
+  factory NotificationBaseline.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return NotificationBaseline(
+      scope: serializer.fromJson<String>(json['scope']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'scope': serializer.toJson<String>(scope),
+    };
+  }
+
+  NotificationBaseline copyWith({String? scope}) => NotificationBaseline(
+        scope: scope ?? this.scope,
+      );
+  NotificationBaseline copyWithCompanion(NotificationBaselinesCompanion data) {
+    return NotificationBaseline(
+      scope: data.scope.present ? data.scope.value : this.scope,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('NotificationBaseline(')
+          ..write('scope: $scope')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => scope.hashCode;
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is NotificationBaseline && other.scope == this.scope);
+}
+
+class NotificationBaselinesCompanion
+    extends UpdateCompanion<NotificationBaseline> {
+  final Value<String> scope;
+  final Value<int> rowid;
+  const NotificationBaselinesCompanion({
+    this.scope = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  NotificationBaselinesCompanion.insert({
+    required String scope,
+    this.rowid = const Value.absent(),
+  }) : scope = Value(scope);
+  static Insertable<NotificationBaseline> custom({
+    Expression<String>? scope,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (scope != null) 'scope': scope,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  NotificationBaselinesCompanion copyWith(
+      {Value<String>? scope, Value<int>? rowid}) {
+    return NotificationBaselinesCompanion(
+      scope: scope ?? this.scope,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (scope.present) {
+      map['scope'] = Variable<String>(scope.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('NotificationBaselinesCompanion(')
+          ..write('scope: $scope, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $NotificationSeenItemsTable extends NotificationSeenItems
+    with TableInfo<$NotificationSeenItemsTable, NotificationSeenItem> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $NotificationSeenItemsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _scopeMeta = const VerificationMeta('scope');
+  @override
+  late final GeneratedColumn<String> scope = GeneratedColumn<String>(
+      'scope', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _itemIdMeta = const VerificationMeta('itemId');
+  @override
+  late final GeneratedColumn<String> itemId = GeneratedColumn<String>(
+      'item_id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns => [scope, itemId];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'notification_seen_items';
+  @override
+  VerificationContext validateIntegrity(
+      Insertable<NotificationSeenItem> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('scope')) {
+      context.handle(
+          _scopeMeta, scope.isAcceptableOrUnknown(data['scope']!, _scopeMeta));
+    } else if (isInserting) {
+      context.missing(_scopeMeta);
+    }
+    if (data.containsKey('item_id')) {
+      context.handle(_itemIdMeta,
+          itemId.isAcceptableOrUnknown(data['item_id']!, _itemIdMeta));
+    } else if (isInserting) {
+      context.missing(_itemIdMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {scope, itemId};
+  @override
+  NotificationSeenItem map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return NotificationSeenItem(
+      scope: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}scope'])!,
+      itemId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}item_id'])!,
+    );
+  }
+
+  @override
+  $NotificationSeenItemsTable createAlias(String alias) {
+    return $NotificationSeenItemsTable(attachedDatabase, alias);
+  }
+}
+
+class NotificationSeenItem extends DataClass
+    implements Insertable<NotificationSeenItem> {
+  final String scope;
+  final String itemId;
+  const NotificationSeenItem({required this.scope, required this.itemId});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['scope'] = Variable<String>(scope);
+    map['item_id'] = Variable<String>(itemId);
+    return map;
+  }
+
+  NotificationSeenItemsCompanion toCompanion(bool nullToAbsent) {
+    return NotificationSeenItemsCompanion(
+      scope: Value(scope),
+      itemId: Value(itemId),
+    );
+  }
+
+  factory NotificationSeenItem.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return NotificationSeenItem(
+      scope: serializer.fromJson<String>(json['scope']),
+      itemId: serializer.fromJson<String>(json['itemId']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'scope': serializer.toJson<String>(scope),
+      'itemId': serializer.toJson<String>(itemId),
+    };
+  }
+
+  NotificationSeenItem copyWith({String? scope, String? itemId}) =>
+      NotificationSeenItem(
+        scope: scope ?? this.scope,
+        itemId: itemId ?? this.itemId,
+      );
+  NotificationSeenItem copyWithCompanion(NotificationSeenItemsCompanion data) {
+    return NotificationSeenItem(
+      scope: data.scope.present ? data.scope.value : this.scope,
+      itemId: data.itemId.present ? data.itemId.value : this.itemId,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('NotificationSeenItem(')
+          ..write('scope: $scope, ')
+          ..write('itemId: $itemId')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(scope, itemId);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is NotificationSeenItem &&
+          other.scope == this.scope &&
+          other.itemId == this.itemId);
+}
+
+class NotificationSeenItemsCompanion
+    extends UpdateCompanion<NotificationSeenItem> {
+  final Value<String> scope;
+  final Value<String> itemId;
+  final Value<int> rowid;
+  const NotificationSeenItemsCompanion({
+    this.scope = const Value.absent(),
+    this.itemId = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  NotificationSeenItemsCompanion.insert({
+    required String scope,
+    required String itemId,
+    this.rowid = const Value.absent(),
+  })  : scope = Value(scope),
+        itemId = Value(itemId);
+  static Insertable<NotificationSeenItem> custom({
+    Expression<String>? scope,
+    Expression<String>? itemId,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (scope != null) 'scope': scope,
+      if (itemId != null) 'item_id': itemId,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  NotificationSeenItemsCompanion copyWith(
+      {Value<String>? scope, Value<String>? itemId, Value<int>? rowid}) {
+    return NotificationSeenItemsCompanion(
+      scope: scope ?? this.scope,
+      itemId: itemId ?? this.itemId,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (scope.present) {
+      map['scope'] = Variable<String>(scope.value);
+    }
+    if (itemId.present) {
+      map['item_id'] = Variable<String>(itemId.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('NotificationSeenItemsCompanion(')
+          ..write('scope: $scope, ')
+          ..write('itemId: $itemId, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $NotificationOutboxTable extends NotificationOutbox
+    with TableInfo<$NotificationOutboxTable, NotificationOutboxData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $NotificationOutboxTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+      'id', aliasedName, false,
+      hasAutoIncrement: true,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
+  static const VerificationMeta _generationMeta =
+      const VerificationMeta('generation');
+  @override
+  late final GeneratedColumn<String> generation = GeneratedColumn<String>(
+      'generation', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _ownerMeta = const VerificationMeta('owner');
+  @override
+  late final GeneratedColumn<String> owner = GeneratedColumn<String>(
+      'owner', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _courseIdMeta =
+      const VerificationMeta('courseId');
+  @override
+  late final GeneratedColumn<int> courseId = GeneratedColumn<int>(
+      'course_id', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _courseNameMeta =
+      const VerificationMeta('courseName');
+  @override
+  late final GeneratedColumn<String> courseName = GeneratedColumn<String>(
+      'course_name', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _kindMeta = const VerificationMeta('kind');
+  @override
+  late final GeneratedColumn<String> kind = GeneratedColumn<String>(
+      'kind', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+      'title', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [id, generation, owner, courseId, courseName, kind, title];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'notification_outbox';
+  @override
+  VerificationContext validateIntegrity(
+      Insertable<NotificationOutboxData> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('generation')) {
+      context.handle(
+          _generationMeta,
+          generation.isAcceptableOrUnknown(
+              data['generation']!, _generationMeta));
+    } else if (isInserting) {
+      context.missing(_generationMeta);
+    }
+    if (data.containsKey('owner')) {
+      context.handle(
+          _ownerMeta, owner.isAcceptableOrUnknown(data['owner']!, _ownerMeta));
+    } else if (isInserting) {
+      context.missing(_ownerMeta);
+    }
+    if (data.containsKey('course_id')) {
+      context.handle(_courseIdMeta,
+          courseId.isAcceptableOrUnknown(data['course_id']!, _courseIdMeta));
+    } else if (isInserting) {
+      context.missing(_courseIdMeta);
+    }
+    if (data.containsKey('course_name')) {
+      context.handle(
+          _courseNameMeta,
+          courseName.isAcceptableOrUnknown(
+              data['course_name']!, _courseNameMeta));
+    } else if (isInserting) {
+      context.missing(_courseNameMeta);
+    }
+    if (data.containsKey('kind')) {
+      context.handle(
+          _kindMeta, kind.isAcceptableOrUnknown(data['kind']!, _kindMeta));
+    } else if (isInserting) {
+      context.missing(_kindMeta);
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+          _titleMeta, title.isAcceptableOrUnknown(data['title']!, _titleMeta));
+    } else if (isInserting) {
+      context.missing(_titleMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  NotificationOutboxData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return NotificationOutboxData(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
+      generation: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}generation'])!,
+      owner: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}owner'])!,
+      courseId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}course_id'])!,
+      courseName: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}course_name'])!,
+      kind: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}kind'])!,
+      title: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}title'])!,
+    );
+  }
+
+  @override
+  $NotificationOutboxTable createAlias(String alias) {
+    return $NotificationOutboxTable(attachedDatabase, alias);
+  }
+}
+
+class NotificationOutboxData extends DataClass
+    implements Insertable<NotificationOutboxData> {
+  final int id;
+  final String generation;
+  final String owner;
+  final int courseId;
+  final String courseName;
+  final String kind;
+  final String title;
+  const NotificationOutboxData(
+      {required this.id,
+      required this.generation,
+      required this.owner,
+      required this.courseId,
+      required this.courseName,
+      required this.kind,
+      required this.title});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['generation'] = Variable<String>(generation);
+    map['owner'] = Variable<String>(owner);
+    map['course_id'] = Variable<int>(courseId);
+    map['course_name'] = Variable<String>(courseName);
+    map['kind'] = Variable<String>(kind);
+    map['title'] = Variable<String>(title);
+    return map;
+  }
+
+  NotificationOutboxCompanion toCompanion(bool nullToAbsent) {
+    return NotificationOutboxCompanion(
+      id: Value(id),
+      generation: Value(generation),
+      owner: Value(owner),
+      courseId: Value(courseId),
+      courseName: Value(courseName),
+      kind: Value(kind),
+      title: Value(title),
+    );
+  }
+
+  factory NotificationOutboxData.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return NotificationOutboxData(
+      id: serializer.fromJson<int>(json['id']),
+      generation: serializer.fromJson<String>(json['generation']),
+      owner: serializer.fromJson<String>(json['owner']),
+      courseId: serializer.fromJson<int>(json['courseId']),
+      courseName: serializer.fromJson<String>(json['courseName']),
+      kind: serializer.fromJson<String>(json['kind']),
+      title: serializer.fromJson<String>(json['title']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'generation': serializer.toJson<String>(generation),
+      'owner': serializer.toJson<String>(owner),
+      'courseId': serializer.toJson<int>(courseId),
+      'courseName': serializer.toJson<String>(courseName),
+      'kind': serializer.toJson<String>(kind),
+      'title': serializer.toJson<String>(title),
+    };
+  }
+
+  NotificationOutboxData copyWith(
+          {int? id,
+          String? generation,
+          String? owner,
+          int? courseId,
+          String? courseName,
+          String? kind,
+          String? title}) =>
+      NotificationOutboxData(
+        id: id ?? this.id,
+        generation: generation ?? this.generation,
+        owner: owner ?? this.owner,
+        courseId: courseId ?? this.courseId,
+        courseName: courseName ?? this.courseName,
+        kind: kind ?? this.kind,
+        title: title ?? this.title,
+      );
+  NotificationOutboxData copyWithCompanion(NotificationOutboxCompanion data) {
+    return NotificationOutboxData(
+      id: data.id.present ? data.id.value : this.id,
+      generation:
+          data.generation.present ? data.generation.value : this.generation,
+      owner: data.owner.present ? data.owner.value : this.owner,
+      courseId: data.courseId.present ? data.courseId.value : this.courseId,
+      courseName:
+          data.courseName.present ? data.courseName.value : this.courseName,
+      kind: data.kind.present ? data.kind.value : this.kind,
+      title: data.title.present ? data.title.value : this.title,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('NotificationOutboxData(')
+          ..write('id: $id, ')
+          ..write('generation: $generation, ')
+          ..write('owner: $owner, ')
+          ..write('courseId: $courseId, ')
+          ..write('courseName: $courseName, ')
+          ..write('kind: $kind, ')
+          ..write('title: $title')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, generation, owner, courseId, courseName, kind, title);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is NotificationOutboxData &&
+          other.id == this.id &&
+          other.generation == this.generation &&
+          other.owner == this.owner &&
+          other.courseId == this.courseId &&
+          other.courseName == this.courseName &&
+          other.kind == this.kind &&
+          other.title == this.title);
+}
+
+class NotificationOutboxCompanion
+    extends UpdateCompanion<NotificationOutboxData> {
+  final Value<int> id;
+  final Value<String> generation;
+  final Value<String> owner;
+  final Value<int> courseId;
+  final Value<String> courseName;
+  final Value<String> kind;
+  final Value<String> title;
+  const NotificationOutboxCompanion({
+    this.id = const Value.absent(),
+    this.generation = const Value.absent(),
+    this.owner = const Value.absent(),
+    this.courseId = const Value.absent(),
+    this.courseName = const Value.absent(),
+    this.kind = const Value.absent(),
+    this.title = const Value.absent(),
+  });
+  NotificationOutboxCompanion.insert({
+    this.id = const Value.absent(),
+    required String generation,
+    required String owner,
+    required int courseId,
+    required String courseName,
+    required String kind,
+    required String title,
+  })  : generation = Value(generation),
+        owner = Value(owner),
+        courseId = Value(courseId),
+        courseName = Value(courseName),
+        kind = Value(kind),
+        title = Value(title);
+  static Insertable<NotificationOutboxData> custom({
+    Expression<int>? id,
+    Expression<String>? generation,
+    Expression<String>? owner,
+    Expression<int>? courseId,
+    Expression<String>? courseName,
+    Expression<String>? kind,
+    Expression<String>? title,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (generation != null) 'generation': generation,
+      if (owner != null) 'owner': owner,
+      if (courseId != null) 'course_id': courseId,
+      if (courseName != null) 'course_name': courseName,
+      if (kind != null) 'kind': kind,
+      if (title != null) 'title': title,
+    });
+  }
+
+  NotificationOutboxCompanion copyWith(
+      {Value<int>? id,
+      Value<String>? generation,
+      Value<String>? owner,
+      Value<int>? courseId,
+      Value<String>? courseName,
+      Value<String>? kind,
+      Value<String>? title}) {
+    return NotificationOutboxCompanion(
+      id: id ?? this.id,
+      generation: generation ?? this.generation,
+      owner: owner ?? this.owner,
+      courseId: courseId ?? this.courseId,
+      courseName: courseName ?? this.courseName,
+      kind: kind ?? this.kind,
+      title: title ?? this.title,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (generation.present) {
+      map['generation'] = Variable<String>(generation.value);
+    }
+    if (owner.present) {
+      map['owner'] = Variable<String>(owner.value);
+    }
+    if (courseId.present) {
+      map['course_id'] = Variable<int>(courseId.value);
+    }
+    if (courseName.present) {
+      map['course_name'] = Variable<String>(courseName.value);
+    }
+    if (kind.present) {
+      map['kind'] = Variable<String>(kind.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('NotificationOutboxCompanion(')
+          ..write('id: $id, ')
+          ..write('generation: $generation, ')
+          ..write('owner: $owner, ')
+          ..write('courseId: $courseId, ')
+          ..write('courseName: $courseName, ')
+          ..write('kind: $kind, ')
+          ..write('title: $title')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -2218,6 +3457,14 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $CacheMetaEntriesTable(this);
   late final $CanvasCacheEntriesTable canvasCacheEntries =
       $CanvasCacheEntriesTable(this);
+  late final $NotificationSettingsTable notificationSettings =
+      $NotificationSettingsTable(this);
+  late final $NotificationBaselinesTable notificationBaselines =
+      $NotificationBaselinesTable(this);
+  late final $NotificationSeenItemsTable notificationSeenItems =
+      $NotificationSeenItemsTable(this);
+  late final $NotificationOutboxTable notificationOutbox =
+      $NotificationOutboxTable(this);
   late final TermsDao termsDao = TermsDao(this as AppDatabase);
   late final CoursesDao coursesDao = CoursesDao(this as AppDatabase);
   late final CalendarEventsDao calendarEventsDao =
@@ -2235,7 +3482,11 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         calendarEvents,
         announcements,
         cacheMetaEntries,
-        canvasCacheEntries
+        canvasCacheEntries,
+        notificationSettings,
+        notificationBaselines,
+        notificationSeenItems,
+        notificationOutbox
       ];
 }
 
@@ -3393,6 +4644,710 @@ typedef $$CanvasCacheEntriesTableProcessedTableManager = ProcessedTableManager<
     ),
     CanvasCacheEntry,
     PrefetchHooks Function()>;
+typedef $$NotificationSettingsTableCreateCompanionBuilder
+    = NotificationSettingsCompanion Function({
+  Value<int> id,
+  required String owner,
+  required String generation,
+  required bool enabled,
+  Value<int?> lastAttempt,
+  Value<int?> lastSuccess,
+  Value<String> status,
+  Value<String?> lease,
+  Value<int> cursor,
+  Value<int?> leaseUntil,
+});
+typedef $$NotificationSettingsTableUpdateCompanionBuilder
+    = NotificationSettingsCompanion Function({
+  Value<int> id,
+  Value<String> owner,
+  Value<String> generation,
+  Value<bool> enabled,
+  Value<int?> lastAttempt,
+  Value<int?> lastSuccess,
+  Value<String> status,
+  Value<String?> lease,
+  Value<int> cursor,
+  Value<int?> leaseUntil,
+});
+
+class $$NotificationSettingsTableFilterComposer
+    extends Composer<_$AppDatabase, $NotificationSettingsTable> {
+  $$NotificationSettingsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get owner => $composableBuilder(
+      column: $table.owner, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get generation => $composableBuilder(
+      column: $table.generation, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get enabled => $composableBuilder(
+      column: $table.enabled, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get lastAttempt => $composableBuilder(
+      column: $table.lastAttempt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get lastSuccess => $composableBuilder(
+      column: $table.lastSuccess, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get status => $composableBuilder(
+      column: $table.status, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get lease => $composableBuilder(
+      column: $table.lease, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get cursor => $composableBuilder(
+      column: $table.cursor, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get leaseUntil => $composableBuilder(
+      column: $table.leaseUntil, builder: (column) => ColumnFilters(column));
+}
+
+class $$NotificationSettingsTableOrderingComposer
+    extends Composer<_$AppDatabase, $NotificationSettingsTable> {
+  $$NotificationSettingsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get owner => $composableBuilder(
+      column: $table.owner, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get generation => $composableBuilder(
+      column: $table.generation, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get enabled => $composableBuilder(
+      column: $table.enabled, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get lastAttempt => $composableBuilder(
+      column: $table.lastAttempt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get lastSuccess => $composableBuilder(
+      column: $table.lastSuccess, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get status => $composableBuilder(
+      column: $table.status, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get lease => $composableBuilder(
+      column: $table.lease, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get cursor => $composableBuilder(
+      column: $table.cursor, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get leaseUntil => $composableBuilder(
+      column: $table.leaseUntil, builder: (column) => ColumnOrderings(column));
+}
+
+class $$NotificationSettingsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $NotificationSettingsTable> {
+  $$NotificationSettingsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get owner =>
+      $composableBuilder(column: $table.owner, builder: (column) => column);
+
+  GeneratedColumn<String> get generation => $composableBuilder(
+      column: $table.generation, builder: (column) => column);
+
+  GeneratedColumn<bool> get enabled =>
+      $composableBuilder(column: $table.enabled, builder: (column) => column);
+
+  GeneratedColumn<int> get lastAttempt => $composableBuilder(
+      column: $table.lastAttempt, builder: (column) => column);
+
+  GeneratedColumn<int> get lastSuccess => $composableBuilder(
+      column: $table.lastSuccess, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<String> get lease =>
+      $composableBuilder(column: $table.lease, builder: (column) => column);
+
+  GeneratedColumn<int> get cursor =>
+      $composableBuilder(column: $table.cursor, builder: (column) => column);
+
+  GeneratedColumn<int> get leaseUntil => $composableBuilder(
+      column: $table.leaseUntil, builder: (column) => column);
+}
+
+class $$NotificationSettingsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $NotificationSettingsTable,
+    NotificationSetting,
+    $$NotificationSettingsTableFilterComposer,
+    $$NotificationSettingsTableOrderingComposer,
+    $$NotificationSettingsTableAnnotationComposer,
+    $$NotificationSettingsTableCreateCompanionBuilder,
+    $$NotificationSettingsTableUpdateCompanionBuilder,
+    (
+      NotificationSetting,
+      BaseReferences<_$AppDatabase, $NotificationSettingsTable,
+          NotificationSetting>
+    ),
+    NotificationSetting,
+    PrefetchHooks Function()> {
+  $$NotificationSettingsTableTableManager(
+      _$AppDatabase db, $NotificationSettingsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$NotificationSettingsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$NotificationSettingsTableOrderingComposer(
+                  $db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$NotificationSettingsTableAnnotationComposer(
+                  $db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            Value<String> owner = const Value.absent(),
+            Value<String> generation = const Value.absent(),
+            Value<bool> enabled = const Value.absent(),
+            Value<int?> lastAttempt = const Value.absent(),
+            Value<int?> lastSuccess = const Value.absent(),
+            Value<String> status = const Value.absent(),
+            Value<String?> lease = const Value.absent(),
+            Value<int> cursor = const Value.absent(),
+            Value<int?> leaseUntil = const Value.absent(),
+          }) =>
+              NotificationSettingsCompanion(
+            id: id,
+            owner: owner,
+            generation: generation,
+            enabled: enabled,
+            lastAttempt: lastAttempt,
+            lastSuccess: lastSuccess,
+            status: status,
+            lease: lease,
+            cursor: cursor,
+            leaseUntil: leaseUntil,
+          ),
+          createCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            required String owner,
+            required String generation,
+            required bool enabled,
+            Value<int?> lastAttempt = const Value.absent(),
+            Value<int?> lastSuccess = const Value.absent(),
+            Value<String> status = const Value.absent(),
+            Value<String?> lease = const Value.absent(),
+            Value<int> cursor = const Value.absent(),
+            Value<int?> leaseUntil = const Value.absent(),
+          }) =>
+              NotificationSettingsCompanion.insert(
+            id: id,
+            owner: owner,
+            generation: generation,
+            enabled: enabled,
+            lastAttempt: lastAttempt,
+            lastSuccess: lastSuccess,
+            status: status,
+            lease: lease,
+            cursor: cursor,
+            leaseUntil: leaseUntil,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$NotificationSettingsTableProcessedTableManager
+    = ProcessedTableManager<
+        _$AppDatabase,
+        $NotificationSettingsTable,
+        NotificationSetting,
+        $$NotificationSettingsTableFilterComposer,
+        $$NotificationSettingsTableOrderingComposer,
+        $$NotificationSettingsTableAnnotationComposer,
+        $$NotificationSettingsTableCreateCompanionBuilder,
+        $$NotificationSettingsTableUpdateCompanionBuilder,
+        (
+          NotificationSetting,
+          BaseReferences<_$AppDatabase, $NotificationSettingsTable,
+              NotificationSetting>
+        ),
+        NotificationSetting,
+        PrefetchHooks Function()>;
+typedef $$NotificationBaselinesTableCreateCompanionBuilder
+    = NotificationBaselinesCompanion Function({
+  required String scope,
+  Value<int> rowid,
+});
+typedef $$NotificationBaselinesTableUpdateCompanionBuilder
+    = NotificationBaselinesCompanion Function({
+  Value<String> scope,
+  Value<int> rowid,
+});
+
+class $$NotificationBaselinesTableFilterComposer
+    extends Composer<_$AppDatabase, $NotificationBaselinesTable> {
+  $$NotificationBaselinesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get scope => $composableBuilder(
+      column: $table.scope, builder: (column) => ColumnFilters(column));
+}
+
+class $$NotificationBaselinesTableOrderingComposer
+    extends Composer<_$AppDatabase, $NotificationBaselinesTable> {
+  $$NotificationBaselinesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get scope => $composableBuilder(
+      column: $table.scope, builder: (column) => ColumnOrderings(column));
+}
+
+class $$NotificationBaselinesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $NotificationBaselinesTable> {
+  $$NotificationBaselinesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get scope =>
+      $composableBuilder(column: $table.scope, builder: (column) => column);
+}
+
+class $$NotificationBaselinesTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $NotificationBaselinesTable,
+    NotificationBaseline,
+    $$NotificationBaselinesTableFilterComposer,
+    $$NotificationBaselinesTableOrderingComposer,
+    $$NotificationBaselinesTableAnnotationComposer,
+    $$NotificationBaselinesTableCreateCompanionBuilder,
+    $$NotificationBaselinesTableUpdateCompanionBuilder,
+    (
+      NotificationBaseline,
+      BaseReferences<_$AppDatabase, $NotificationBaselinesTable,
+          NotificationBaseline>
+    ),
+    NotificationBaseline,
+    PrefetchHooks Function()> {
+  $$NotificationBaselinesTableTableManager(
+      _$AppDatabase db, $NotificationBaselinesTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$NotificationBaselinesTableFilterComposer(
+                  $db: db, $table: table),
+          createOrderingComposer: () =>
+              $$NotificationBaselinesTableOrderingComposer(
+                  $db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$NotificationBaselinesTableAnnotationComposer(
+                  $db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> scope = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              NotificationBaselinesCompanion(
+            scope: scope,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String scope,
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              NotificationBaselinesCompanion.insert(
+            scope: scope,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$NotificationBaselinesTableProcessedTableManager
+    = ProcessedTableManager<
+        _$AppDatabase,
+        $NotificationBaselinesTable,
+        NotificationBaseline,
+        $$NotificationBaselinesTableFilterComposer,
+        $$NotificationBaselinesTableOrderingComposer,
+        $$NotificationBaselinesTableAnnotationComposer,
+        $$NotificationBaselinesTableCreateCompanionBuilder,
+        $$NotificationBaselinesTableUpdateCompanionBuilder,
+        (
+          NotificationBaseline,
+          BaseReferences<_$AppDatabase, $NotificationBaselinesTable,
+              NotificationBaseline>
+        ),
+        NotificationBaseline,
+        PrefetchHooks Function()>;
+typedef $$NotificationSeenItemsTableCreateCompanionBuilder
+    = NotificationSeenItemsCompanion Function({
+  required String scope,
+  required String itemId,
+  Value<int> rowid,
+});
+typedef $$NotificationSeenItemsTableUpdateCompanionBuilder
+    = NotificationSeenItemsCompanion Function({
+  Value<String> scope,
+  Value<String> itemId,
+  Value<int> rowid,
+});
+
+class $$NotificationSeenItemsTableFilterComposer
+    extends Composer<_$AppDatabase, $NotificationSeenItemsTable> {
+  $$NotificationSeenItemsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get scope => $composableBuilder(
+      column: $table.scope, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get itemId => $composableBuilder(
+      column: $table.itemId, builder: (column) => ColumnFilters(column));
+}
+
+class $$NotificationSeenItemsTableOrderingComposer
+    extends Composer<_$AppDatabase, $NotificationSeenItemsTable> {
+  $$NotificationSeenItemsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get scope => $composableBuilder(
+      column: $table.scope, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get itemId => $composableBuilder(
+      column: $table.itemId, builder: (column) => ColumnOrderings(column));
+}
+
+class $$NotificationSeenItemsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $NotificationSeenItemsTable> {
+  $$NotificationSeenItemsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get scope =>
+      $composableBuilder(column: $table.scope, builder: (column) => column);
+
+  GeneratedColumn<String> get itemId =>
+      $composableBuilder(column: $table.itemId, builder: (column) => column);
+}
+
+class $$NotificationSeenItemsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $NotificationSeenItemsTable,
+    NotificationSeenItem,
+    $$NotificationSeenItemsTableFilterComposer,
+    $$NotificationSeenItemsTableOrderingComposer,
+    $$NotificationSeenItemsTableAnnotationComposer,
+    $$NotificationSeenItemsTableCreateCompanionBuilder,
+    $$NotificationSeenItemsTableUpdateCompanionBuilder,
+    (
+      NotificationSeenItem,
+      BaseReferences<_$AppDatabase, $NotificationSeenItemsTable,
+          NotificationSeenItem>
+    ),
+    NotificationSeenItem,
+    PrefetchHooks Function()> {
+  $$NotificationSeenItemsTableTableManager(
+      _$AppDatabase db, $NotificationSeenItemsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$NotificationSeenItemsTableFilterComposer(
+                  $db: db, $table: table),
+          createOrderingComposer: () =>
+              $$NotificationSeenItemsTableOrderingComposer(
+                  $db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$NotificationSeenItemsTableAnnotationComposer(
+                  $db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> scope = const Value.absent(),
+            Value<String> itemId = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              NotificationSeenItemsCompanion(
+            scope: scope,
+            itemId: itemId,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String scope,
+            required String itemId,
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              NotificationSeenItemsCompanion.insert(
+            scope: scope,
+            itemId: itemId,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$NotificationSeenItemsTableProcessedTableManager
+    = ProcessedTableManager<
+        _$AppDatabase,
+        $NotificationSeenItemsTable,
+        NotificationSeenItem,
+        $$NotificationSeenItemsTableFilterComposer,
+        $$NotificationSeenItemsTableOrderingComposer,
+        $$NotificationSeenItemsTableAnnotationComposer,
+        $$NotificationSeenItemsTableCreateCompanionBuilder,
+        $$NotificationSeenItemsTableUpdateCompanionBuilder,
+        (
+          NotificationSeenItem,
+          BaseReferences<_$AppDatabase, $NotificationSeenItemsTable,
+              NotificationSeenItem>
+        ),
+        NotificationSeenItem,
+        PrefetchHooks Function()>;
+typedef $$NotificationOutboxTableCreateCompanionBuilder
+    = NotificationOutboxCompanion Function({
+  Value<int> id,
+  required String generation,
+  required String owner,
+  required int courseId,
+  required String courseName,
+  required String kind,
+  required String title,
+});
+typedef $$NotificationOutboxTableUpdateCompanionBuilder
+    = NotificationOutboxCompanion Function({
+  Value<int> id,
+  Value<String> generation,
+  Value<String> owner,
+  Value<int> courseId,
+  Value<String> courseName,
+  Value<String> kind,
+  Value<String> title,
+});
+
+class $$NotificationOutboxTableFilterComposer
+    extends Composer<_$AppDatabase, $NotificationOutboxTable> {
+  $$NotificationOutboxTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get generation => $composableBuilder(
+      column: $table.generation, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get owner => $composableBuilder(
+      column: $table.owner, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get courseId => $composableBuilder(
+      column: $table.courseId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get courseName => $composableBuilder(
+      column: $table.courseName, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get kind => $composableBuilder(
+      column: $table.kind, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get title => $composableBuilder(
+      column: $table.title, builder: (column) => ColumnFilters(column));
+}
+
+class $$NotificationOutboxTableOrderingComposer
+    extends Composer<_$AppDatabase, $NotificationOutboxTable> {
+  $$NotificationOutboxTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get generation => $composableBuilder(
+      column: $table.generation, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get owner => $composableBuilder(
+      column: $table.owner, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get courseId => $composableBuilder(
+      column: $table.courseId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get courseName => $composableBuilder(
+      column: $table.courseName, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get kind => $composableBuilder(
+      column: $table.kind, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get title => $composableBuilder(
+      column: $table.title, builder: (column) => ColumnOrderings(column));
+}
+
+class $$NotificationOutboxTableAnnotationComposer
+    extends Composer<_$AppDatabase, $NotificationOutboxTable> {
+  $$NotificationOutboxTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get generation => $composableBuilder(
+      column: $table.generation, builder: (column) => column);
+
+  GeneratedColumn<String> get owner =>
+      $composableBuilder(column: $table.owner, builder: (column) => column);
+
+  GeneratedColumn<int> get courseId =>
+      $composableBuilder(column: $table.courseId, builder: (column) => column);
+
+  GeneratedColumn<String> get courseName => $composableBuilder(
+      column: $table.courseName, builder: (column) => column);
+
+  GeneratedColumn<String> get kind =>
+      $composableBuilder(column: $table.kind, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+}
+
+class $$NotificationOutboxTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $NotificationOutboxTable,
+    NotificationOutboxData,
+    $$NotificationOutboxTableFilterComposer,
+    $$NotificationOutboxTableOrderingComposer,
+    $$NotificationOutboxTableAnnotationComposer,
+    $$NotificationOutboxTableCreateCompanionBuilder,
+    $$NotificationOutboxTableUpdateCompanionBuilder,
+    (
+      NotificationOutboxData,
+      BaseReferences<_$AppDatabase, $NotificationOutboxTable,
+          NotificationOutboxData>
+    ),
+    NotificationOutboxData,
+    PrefetchHooks Function()> {
+  $$NotificationOutboxTableTableManager(
+      _$AppDatabase db, $NotificationOutboxTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$NotificationOutboxTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$NotificationOutboxTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$NotificationOutboxTableAnnotationComposer(
+                  $db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            Value<String> generation = const Value.absent(),
+            Value<String> owner = const Value.absent(),
+            Value<int> courseId = const Value.absent(),
+            Value<String> courseName = const Value.absent(),
+            Value<String> kind = const Value.absent(),
+            Value<String> title = const Value.absent(),
+          }) =>
+              NotificationOutboxCompanion(
+            id: id,
+            generation: generation,
+            owner: owner,
+            courseId: courseId,
+            courseName: courseName,
+            kind: kind,
+            title: title,
+          ),
+          createCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            required String generation,
+            required String owner,
+            required int courseId,
+            required String courseName,
+            required String kind,
+            required String title,
+          }) =>
+              NotificationOutboxCompanion.insert(
+            id: id,
+            generation: generation,
+            owner: owner,
+            courseId: courseId,
+            courseName: courseName,
+            kind: kind,
+            title: title,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$NotificationOutboxTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $NotificationOutboxTable,
+    NotificationOutboxData,
+    $$NotificationOutboxTableFilterComposer,
+    $$NotificationOutboxTableOrderingComposer,
+    $$NotificationOutboxTableAnnotationComposer,
+    $$NotificationOutboxTableCreateCompanionBuilder,
+    $$NotificationOutboxTableUpdateCompanionBuilder,
+    (
+      NotificationOutboxData,
+      BaseReferences<_$AppDatabase, $NotificationOutboxTable,
+          NotificationOutboxData>
+    ),
+    NotificationOutboxData,
+    PrefetchHooks Function()>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -3409,6 +5364,14 @@ class $AppDatabaseManager {
       $$CacheMetaEntriesTableTableManager(_db, _db.cacheMetaEntries);
   $$CanvasCacheEntriesTableTableManager get canvasCacheEntries =>
       $$CanvasCacheEntriesTableTableManager(_db, _db.canvasCacheEntries);
+  $$NotificationSettingsTableTableManager get notificationSettings =>
+      $$NotificationSettingsTableTableManager(_db, _db.notificationSettings);
+  $$NotificationBaselinesTableTableManager get notificationBaselines =>
+      $$NotificationBaselinesTableTableManager(_db, _db.notificationBaselines);
+  $$NotificationSeenItemsTableTableManager get notificationSeenItems =>
+      $$NotificationSeenItemsTableTableManager(_db, _db.notificationSeenItems);
+  $$NotificationOutboxTableTableManager get notificationOutbox =>
+      $$NotificationOutboxTableTableManager(_db, _db.notificationOutbox);
 }
 
 mixin _$TermsDaoMixin on DatabaseAccessor<AppDatabase> {

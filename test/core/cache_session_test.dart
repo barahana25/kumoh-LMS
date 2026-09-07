@@ -30,6 +30,9 @@ void main() {
         ]},
       }));
       final sent = Completer<void>();
+      adapter.onGet('/courses/1/discussion_topics', (s) => s.reply(200, [
+        {'id': 1, 'title': '이전 계정 공지'},
+      ]));
       final release = Completer<void>();
       dio.interceptors.add(InterceptorsWrapper(onRequest: (o, h) async {
         sent.complete();
@@ -39,6 +42,7 @@ void main() {
       final container = ProviderContainer(overrides: [
         appDatabaseProvider.overrideWithValue(db),
         dioProvider.overrideWithValue(dio),
+        canvasDioProvider.overrideWithValue(dio),
       ]);
       addTearDown(() async {
         container.dispose();

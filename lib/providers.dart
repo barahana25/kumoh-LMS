@@ -77,6 +77,7 @@ final assignmentsRepositoryProvider = Provider<AssignmentsRepository>((ref) =>
     AssignmentsRepository(
       session: ref.watch(cacheSessionProvider),
       api: CalendarApi(ref.watch(dioProvider)),
+      canvas: ref.watch(canvasApiProvider),
       db: ref.watch(appDatabaseProvider),
     ));
 
@@ -84,6 +85,7 @@ final announcementsRepositoryProvider = Provider<AnnouncementsRepository>((ref) 
     AnnouncementsRepository(
       session: ref.watch(cacheSessionProvider),
       api: AnnouncementsApi(ref.watch(dioProvider)),
+      canvas: ref.watch(canvasApiProvider),
       db: ref.watch(appDatabaseProvider),
     ));
 
@@ -145,10 +147,10 @@ final canvasDioProvider = Provider<Dio>((ref) {
 final canvasApiProvider =
     Provider<CanvasApi>((ref) => CanvasApi(ref.watch(canvasDioProvider)));
 
-/// 강좌가 실제로 노출하는 탭.
+/// 콘텐츠 유무와 관계없이 모든 강좌에 같은 순서로 노출한다.
 final courseTabsProvider =
     FutureProvider.family<List<CourseTab>, int>((ref, courseId) async {
-  return ref.watch(canvasApiProvider).fetchTabs(courseId);
+  return fixedCourseTabs;
 });
 
 final canvasCacheProvider =

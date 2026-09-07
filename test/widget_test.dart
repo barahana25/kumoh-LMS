@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http_mock_adapter/http_mock_adapter.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:kumoh_lms/app.dart';
+import 'package:kumoh_lms/core/ui/startup_screen.dart';
 import 'package:kumoh_lms/core/network/token_store.dart';
 import 'package:kumoh_lms/core/storage/db/app_database.dart';
 import 'package:kumoh_lms/features/auth/presentation/auth_controller.dart';
@@ -47,6 +48,7 @@ void main() {
       tokenStoreProvider.overrideWithValue(store),
       authDioProvider.overrideWithValue(dio),
       dioProvider.overrideWithValue(dio),
+      canvasDioProvider.overrideWithValue(dio),
     ]);
   });
   tearDown(() async {
@@ -162,7 +164,7 @@ void main() {
     ]);
     await tester.pumpWidget(UncontrolledProviderScope(container: container, child: const KumohLmsApp()));
     await tester.pump();
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.byType(StartupScreen), findsOneWidget);
     expect(find.byType(NavigationBar), findsNothing);
     ready.complete(const AuthUnauthenticated());
     await settle(tester);

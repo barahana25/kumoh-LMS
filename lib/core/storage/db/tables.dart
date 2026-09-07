@@ -1,5 +1,45 @@
 import 'package:drift/drift.dart';
 
+/// 백그라운드 isolate와 UI가 함께 읽는 알림 설정과 실행 잠금.
+class NotificationSettings extends Table {
+  IntColumn get id => integer()();
+  TextColumn get owner => text()();
+  TextColumn get generation => text()();
+  BoolColumn get enabled => boolean()();
+  IntColumn get lastAttempt => integer().nullable()();
+  IntColumn get lastSuccess => integer().nullable()();
+  TextColumn get status => text().withDefault(const Constant('아직 확인하지 않았습니다.'))();
+  TextColumn get lease => text().nullable()();
+  IntColumn get cursor => integer().withDefault(const Constant(0))();
+  IntColumn get leaseUntil => integer().nullable()();
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+class NotificationBaselines extends Table {
+  TextColumn get scope => text()();
+  @override
+  Set<Column<Object>> get primaryKey => {scope};
+}
+
+class NotificationSeenItems extends Table {
+  TextColumn get scope => text()();
+  TextColumn get itemId => text()();
+  @override
+  Set<Column<Object>> get primaryKey => {scope, itemId};
+}
+
+/// OS 알림을 보낸 뒤에만 지운다. 재시도해도 같은 id로 알림을 대체한다.
+class NotificationOutbox extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get generation => text()();
+  TextColumn get owner => text()();
+  IntColumn get courseId => integer()();
+  TextColumn get courseName => text()();
+  TextColumn get kind => text()();
+  TextColumn get title => text()();
+}
+
 /// 학기. id는 서버(LINUS)의 termId를 그대로 쓴다.
 @DataClassName('TermRow')
 class Terms extends Table {

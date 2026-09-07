@@ -13,7 +13,8 @@ import 'tables.dart';
 part 'app_database.g.dart';
 
 @DriftDatabase(
-  tables: [Terms, Courses, CalendarEvents, Announcements, CacheMetaEntries, CanvasCacheEntries],
+  tables: [Terms, Courses, CalendarEvents, Announcements, CacheMetaEntries, CanvasCacheEntries,
+    NotificationSettings, NotificationBaselines, NotificationSeenItems, NotificationOutbox],
   daos: [TermsDao, CoursesDao, CalendarEventsDao, AnnouncementsDao, CacheMetaDao],
 )
 class AppDatabase extends _$AppDatabase {
@@ -34,7 +35,7 @@ class AppDatabase extends _$AppDatabase {
       const DriftDatabaseOptions(storeDateTimeAsText: true);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   /// 스키마를 올릴 때마다 여기에 단계를 추가한다.
   ///
@@ -46,8 +47,14 @@ class AppDatabase extends _$AppDatabase {
         onCreate: (m) => m.createAll(),
         onUpgrade: (m, from, to) async {
           // v2: 강좌 상세 탭 캐시 추가
-          if (from < 2) {
+          if (from < 2 && to >= 2) {
             await m.createTable(canvasCacheEntries);
+          }
+          if (from < 3 && to >= 3) {
+            await m.createTable(notificationSettings);
+            await m.createTable(notificationBaselines);
+            await m.createTable(notificationSeenItems);
+            await m.createTable(notificationOutbox);
           }
         },
       );
@@ -77,7 +84,9 @@ Future<void> discardUnreadableCache(File file, String escapedKey) async {
     } finally {
       db.dispose();
     }
-  } on Object {
+  } on SqliteException catch (e) {
+    // 다른 isolate의 백그라운드 조회 중 잠긴 DB를 손상으로 오인하지 않는다.
+    if (e.resultCode != 26 && e.resultCode != 11) rethrow;
     await file.delete();
   }
 }
@@ -105,6 +114,7 @@ LazyDatabase _openEncrypted(Future<String> Function() keyProvider) {
           throw StateError('SQLCipher is not available');
         }
         db.execute("PRAGMA key = '$escaped';");
+        db.execute('PRAGMA busy_timeout = 5000;');
       },
     );
   });

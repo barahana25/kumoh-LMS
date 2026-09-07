@@ -21,6 +21,8 @@ class CourseTabView extends StatelessWidget {
     switch (tab.id) {
       case 'home':
         return HomeTab(courseId: courseId);
+      case 'announcements':
+        return CourseAnnouncementsTab(courseId: courseId);
       case 'assignments':
         return AssignmentsTab(courseId: courseId);
       case 'syllabus':

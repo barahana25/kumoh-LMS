@@ -70,7 +70,7 @@ class _AssignmentsBodyState extends ConsumerState<_AssignmentsBody> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _refresh();
+      if (mounted) _refresh(force: true);
     });
   }
 
@@ -191,6 +191,19 @@ class _CalendarTab extends StatelessWidget {
                 ],
               ),
             ),
+          if (events.any((e) => e.startAt == null))
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('기한 없는 과제',
+                        style: Theme.of(context).textTheme.titleMedium),
+                    const SizedBox(height: 8),
+                    for (final event in events.where((e) => e.startAt == null))
+                      EventTile(event: event),
+                  ]),
+            ),
         ],
       ),
     );
@@ -207,9 +220,15 @@ class _ListTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final now = DateTime.now();
     final upcoming = events
-        .where((e) => e.startAt != null && e.startAt!.toLocal().isAfter(now))
+        .where((e) => e.startAt == null || e.startAt!.toLocal().isAfter(now))
         .toList()
-      ..sort((a, b) => a.startAt!.compareTo(b.startAt!));
+      ..sort((a, b) {
+        if (a.startAt == null) {
+          return b.startAt == null ? a.title.compareTo(b.title) : 1;
+        }
+        if (b.startAt == null) return -1;
+        return a.startAt!.compareTo(b.startAt!);
+      });
 
     return RefreshIndicator(
       onRefresh: onRefresh,

@@ -34,7 +34,7 @@ class HomeShell extends ConsumerWidget {
           NavigationDestination(
             icon: Icon(Icons.menu_book_outlined),
             selectedIcon: Icon(Icons.menu_book),
-            label: '강좌',
+            label: '강의',
           ),
           NavigationDestination(
             icon: Icon(Icons.assignment_outlined),

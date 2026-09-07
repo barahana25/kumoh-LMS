@@ -11,6 +11,11 @@ class CourseCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final rawCode = course.courseCode.trim();
+    final displayCode = RegExp(r'(?:^|-)([A-Za-z0-9]+-\d+)$')
+            .firstMatch(rawCode)
+            ?.group(1) ??
+        rawCode;
     final subtitleParts = [
       if (course.teacherNames.isNotEmpty) course.teacherNames,
       if (course.institution.isNotEmpty) course.institution,
@@ -47,10 +52,7 @@ class CourseCard extends StatelessWidget {
               runSpacing: 6,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                _Chip(text: course.courseCode),
-                if (course.courseFormat.isNotEmpty) ...[
-                  _Chip(text: course.courseFormat),
-                ],
+                if (displayCode.isNotEmpty) _Chip(text: displayCode),
                 Text(
                   '${course.totalStudents}명',
                   style: Theme.of(context)

@@ -5,16 +5,18 @@ import '../../../core/ui/empty_state.dart';
 import '../../../providers.dart';
 import 'tabs/course_tab_view.dart';
 
-/// 강좌 하나의 상세. 탭 구성은 강좌마다 다르므로 서버가 준 목록을 그대로 그린다.
+/// 강좌 하나의 상세. 콘텐츠 유무와 관계없이 공통 탭을 같은 순서로 표시한다.
 class CourseDetailScreen extends ConsumerWidget {
   const CourseDetailScreen({
     required this.courseId,
     required this.courseName,
+    this.initialTab,
     super.key,
   });
 
   final int courseId;
   final String courseName;
+  final String? initialTab;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -45,7 +47,9 @@ class CourseDetailScreen extends ConsumerWidget {
           );
         }
         return DefaultTabController(
+          key: ValueKey('$courseId/$initialTab'),
           length: tabs.length,
+          initialIndex: tabs.indexWhere((t) => t.id == initialTab).clamp(0, tabs.length - 1),
           child: Scaffold(
             appBar: AppBar(
               title: Text(courseName),

@@ -201,7 +201,7 @@ void main() {
       final db = createTestDatabase();
       addTearDown(db.close);
       // 버전을 올렸는데 단계를 안 넣으면 이 테스트가 신호를 준다.
-      expect(db.schemaVersion, 2,
+      expect(db.schemaVersion, 3,
           reason: 'schemaVersion을 올렸다면 onUpgrade에 해당 단계를 추가할 것');
     });
   });

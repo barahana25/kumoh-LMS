@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
 import 'package:intl/intl.dart';
 import '../../../core/ui/open_link.dart';
+import '../../canvas/presentation/canvas_web_target.dart';
 
 import '../../../core/storage/db/app_database.dart';
 import '../../../core/ui/async_section.dart';
@@ -58,15 +59,18 @@ class _AnnouncementListState extends ConsumerState<_AnnouncementList> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _refresh();
+      if (mounted) _refresh(force: true);
     });
   }
 
   Future<void> _refresh({bool force = false}) => runRefresh(
         ref,
-        () => ref
-            .read(announcementsRepositoryProvider)
-            .refresh(widget.termId, force: force),
+        () async {
+          final courses = ref.read(coursesRepositoryProvider);
+          final announcements = ref.read(announcementsRepositoryProvider);
+          await courses.refresh(widget.termId);
+          await announcements.refresh(widget.termId, force: force);
+        },
       );
 
   @override
@@ -128,7 +132,7 @@ class _AnnouncementCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         onTap: item.htmlUrl.isEmpty
             ? null
-            : () => openLink(context, item.htmlUrl),
+            : () => openCanvasPage(context, title: item.title, url: item.htmlUrl),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(

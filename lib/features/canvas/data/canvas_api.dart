@@ -25,6 +25,30 @@ class CourseTab {
   bool get isExternal => externalUrl != null;
 }
 
+const fixedCourseTabs = <CourseTab>[
+  CourseTab(id: 'home', label: '홈', position: 0),
+  CourseTab(id: 'announcements', label: '공지', position: 1),
+  CourseTab(id: 'modules', label: '강의실', position: 2),
+  CourseTab(id: 'assignments', label: '과제', position: 3),
+  CourseTab(id: 'files', label: '강의자료실', position: 4),
+  CourseTab(id: 'discussions', label: '토론', position: 5),
+  CourseTab(id: 'grades', label: '성적', position: 6),
+  CourseTab(id: 'people', label: '사용자 및 그룹', position: 7),
+  CourseTab(id: 'syllabus', label: '강의 계획', position: 8),
+];
+
+class CanvasAnnouncement {
+  const CanvasAnnouncement(
+      {required this.id,
+      required this.title,
+      required this.message,
+      required this.htmlUrl,
+      required this.authorName,
+      this.postedAt});
+  final int id;
+  final String title, message, htmlUrl, authorName;
+  final DateTime? postedAt;
+}
 
 /// Canvas 과제 하나.
 class CanvasAssignment {
@@ -66,7 +90,6 @@ DateTime? _canvasDate(Object? raw) {
   if (raw is! String || raw.isEmpty) return null;
   return DateTime.tryParse(raw)?.toUtc();
 }
-
 
 /// 강의실(모듈) 한 주차.
 class CanvasModule {
@@ -280,6 +303,51 @@ class CanvasApi {
   CanvasApi(this._dio);
   final Dio _dio;
 
+  /// 첫 페이지뿐 아니라 Link의 다음 페이지까지 모두 읽는다.
+  Future<List<Map<String, dynamic>>> getListRaw(String path,
+      {Map<String, dynamic>? query}) async {
+    final first =
+        Uri.parse('${_dio.options.baseUrl.replaceFirst(RegExp(r'/+$'), '')}/')
+            .resolve(path.replaceFirst(RegExp(r'^/'), ''));
+    Uri? next;
+    final visited = <String>{};
+    final result = <Map<String, dynamic>>[];
+    for (var page = 0; page < 100; page++) {
+      try {
+        final response = next == null
+            ? await _dio.get<dynamic>(path,
+                queryParameters: {'per_page': 100, ...?query})
+            : await _dio.getUri<dynamic>(next);
+        visited.add(response.realUri.toString());
+        result.addAll(_asList(response.data));
+        final link = response.headers.value('link') ?? '';
+        final match =
+            RegExp(r'<([^>]+)>\s*;\s*rel="?next"?', caseSensitive: false)
+                .firstMatch(link);
+        if (match == null) return result;
+        next = response.realUri.resolve(match.group(1)!);
+        if (next.scheme != first.scheme ||
+            next.host != first.host ||
+            next.port != first.port ||
+            next.path != first.path ||
+            next.userInfo.isNotEmpty ||
+            visited.contains(next.toString())) {
+          throw const ParseFailure('다음 페이지 주소가 올바르지 않습니다.');
+        }
+      } on DioException catch (e) {
+        throwAsFailure(e);
+      }
+    }
+    throw const ParseFailure('목록이 너무 길어 확인을 완료하지 못했습니다.');
+  }
+
+  Future<List<Map<String, dynamic>>> getAnnouncementsRaw(int courseId) =>
+      getListRaw('/courses/$courseId/discussion_topics',
+          query: const {'only_announcements': true});
+
+  Future<List<CanvasAnnouncement>> fetchAnnouncements(int courseId) async =>
+      parseCanvasAnnouncements(await getAnnouncementsRaw(courseId));
+
   Future<Object?> getRaw(String path, {Map<String, dynamic>? query}) async {
     try {
       final res = await _dio.get<Object?>(path, queryParameters: query);
@@ -293,7 +361,7 @@ class CanvasApi {
       parseTabs(await getRaw('/courses/$courseId/tabs'));
 
   Future<List<CanvasAssignment>> fetchAssignments(int courseId) async =>
-      parseAssignments(await getRaw(
+      parseAssignments(await getListRaw(
         '/courses/$courseId/assignments',
         query: const {'per_page': 50, 'order_by': 'due_at'},
       ));
@@ -360,6 +428,20 @@ class CanvasApi {
         query: const {'per_page': 50},
       ));
 }
+
+List<CanvasAnnouncement> parseCanvasAnnouncements(Object? json) => _asList(json)
+    .where((a) => a['published'] != false && a['locked_for_user'] != true)
+    .where((a) =>
+        _canvasDate(a['delayed_post_at'])?.isAfter(DateTime.now()) != true)
+    .map((a) => CanvasAnnouncement(
+          id: (a['id'] as num).toInt(),
+          title: a['title'] as String? ?? '',
+          message: a['message'] as String? ?? '',
+          htmlUrl: a['html_url'] as String? ?? '',
+          authorName: (a['author'] as Map?)?['display_name'] as String? ?? '',
+          postedAt: _canvasDate(a['posted_at']),
+        ))
+    .toList();
 
 // ---------- 순수 파싱 ----------
 //

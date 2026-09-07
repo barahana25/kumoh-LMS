@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../providers.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../../reference/presentation/term_providers.dart';
+import '../../notifications/presentation/notification_settings_section.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -78,6 +79,9 @@ class SettingsScreen extends ConsumerWidget {
               '자동 로그인을 켠 경우에만 비밀번호를 기기에 저장합니다.',
             ),
           ),
+          const Divider(),
+          const NotificationSettingsSection(),
+          const Divider(),
           ListTile(
             leading: const Icon(Icons.logout, color: Colors.red),
             title: const Text('로그아웃', style: TextStyle(color: Colors.red)),

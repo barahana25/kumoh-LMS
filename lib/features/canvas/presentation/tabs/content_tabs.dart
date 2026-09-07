@@ -15,6 +15,18 @@ import 'module_items_screen.dart';
 import 'stale_notice.dart';
 
 // ---------- providers ----------
+final courseAnnouncementsProvider =
+    StreamProvider.family<CanvasSnapshot<List<CanvasAnnouncement>>, int>(
+        (ref, courseId) {
+  final api = ref.watch(canvasApiProvider);
+  return watchCanvas<List<CanvasAnnouncement>>(
+    cache: ref.watch(canvasCacheProvider),
+    key: 'course-announcements:$courseId',
+    ttl: Env.canvasAlwaysRevalidate,
+    fetch: () => api.getAnnouncementsRaw(courseId),
+    parse: parseCanvasAnnouncements,
+  );
+});
 //
 // TTL 0 = 온라인이면 항상 다시 받는다. 언제 바뀔지 모르는 자료·토론·모듈까지
 // TTL로 요청을 건너뛰면 학생이 새 내용을 놓친다. 캐시는 첫 화면과 오프라인용.
@@ -87,9 +99,9 @@ final courseGradeProvider =
   await cache.delete('grade:$courseId');
 
   final json = await ref.watch(canvasApiProvider).getRaw(
-        '/users/self/enrollments',
-        query: const {'per_page': 100, 'state[]': 'active'},
-      );
+    '/users/self/enrollments',
+    query: const {'per_page': 100, 'state[]': 'active'},
+  );
   yield CanvasSnapshot<CanvasGrade?>(
     data: parseMyGrade(json, courseId),
     stale: false,
@@ -107,8 +119,8 @@ final coursePeopleProvider =
     key: 'people:$courseId',
     ttl: Env.canvasStableTtl,
     fetch: () async => {
-      'people': await api
-          .getRaw('/courses/$courseId/enrollments', query: const {'per_page': 100}),
+      'people': await api.getRaw('/courses/$courseId/enrollments',
+          query: const {'per_page': 100}),
       // 그룹이 없는 강좌가 흔하다. 그룹 실패가 명단을 막지 않게 한다.
       'groups': await () async {
         try {
@@ -165,6 +177,59 @@ class _TabBody<T> extends ConsumerWidget {
           ),
         );
   }
+}
+
+class CourseAnnouncementsTab extends ConsumerWidget {
+  const CourseAnnouncementsTab({required this.courseId, super.key});
+  final int courseId;
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => RefreshIndicator(
+      onRefresh: () async {
+        ref.invalidate(courseAnnouncementsProvider(courseId));
+        await ref.read(courseAnnouncementsProvider(courseId).future);
+      },
+      child: _TabBody<List<CanvasAnnouncement>>(
+        provider: courseAnnouncementsProvider(courseId),
+        errorTitle: '공지를 불러오지 못했습니다',
+        builder: (context, items) => items.isEmpty
+            ? const ListViewEmptyAnnouncements()
+            : ListView.builder(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(16),
+                itemCount: items.length,
+                itemBuilder: (context, index) {
+                  final item = items[index];
+                  return Card(
+                      child: ListTile(
+                    leading: const Icon(Icons.campaign_outlined),
+                    title: Text(item.title),
+                    subtitle: Text([
+                      if (item.authorName.isNotEmpty) item.authorName,
+                      if (item.postedAt != null)
+                        DateFormat('M월 d일', 'ko_KR')
+                            .format(item.postedAt!.toLocal()),
+                    ].join(' · ')),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => openCanvasPage(context,
+                        title: item.title,
+                        url: item.htmlUrl.isEmpty
+                            ? '/courses/$courseId/discussion_topics/${item.id}'
+                            : item.htmlUrl),
+                  ));
+                }),
+      ));
+}
+
+class ListViewEmptyAnnouncements extends StatelessWidget {
+  const ListViewEmptyAnnouncements({super.key});
+  @override
+  Widget build(BuildContext context) => ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: const [
+          SizedBox(height: 80),
+          EmptyState(icon: Icons.campaign_outlined, title: '등록된 공지가 없습니다'),
+        ],
+      );
 }
 
 // ---------- 강의 계획 ----------
@@ -239,9 +304,8 @@ class ModulesTab extends StatelessWidget {
                             ),
                           ),
                         ),
-                trailing: m.locked
-                    ? null
-                    : const Icon(Icons.chevron_right, size: 20),
+                trailing:
+                    m.locked ? null : const Icon(Icons.chevron_right, size: 20),
                 leading: Icon(
                   m.locked
                       ? Icons.lock_outline
@@ -302,7 +366,9 @@ class FilesTab extends ConsumerWidget {
             return Card(
               child: ListTile(
                 leading: Icon(
-                  f.locked ? Icons.lock_outline : Icons.insert_drive_file_outlined,
+                  f.locked
+                      ? Icons.lock_outline
+                      : Icons.insert_drive_file_outlined,
                   color: f.locked ? scheme.outline : scheme.primary,
                 ),
                 title: Text(f.displayName),
@@ -449,8 +515,8 @@ class DiscussionsTab extends StatelessWidget {
                 ),
                 onTap: d.htmlUrl.isEmpty
                     ? null
-                    : () => openCanvasPage(context,
-                        title: d.title, url: d.htmlUrl),
+                    : () =>
+                        openCanvasPage(context, title: d.title, url: d.htmlUrl),
               ),
             );
           },

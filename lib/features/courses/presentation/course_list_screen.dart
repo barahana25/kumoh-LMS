@@ -16,7 +16,13 @@ class CourseListScreen extends ConsumerWidget {
     final termAsync = ref.watch(activeTermIdProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('강좌')),
+      appBar: AppBar(
+        centerTitle: true,
+        title: Image.asset(
+          'assets/branding/kumoh-lms-logo-v4.png',
+          height: 32,
+        ),
+      ),
       body: Column(
         children: [
           const RefreshBanner(),

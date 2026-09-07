@@ -26,7 +26,7 @@ final courseAssignmentsProvider =
     key: 'assignments:$courseId',
     ttl: Env.canvasAlwaysRevalidate,
     fetch: () async => {
-      'assignments': await api.getRaw(
+      'assignments': await api.getListRaw(
         '/courses/$courseId/assignments',
         query: const {'per_page': 50, 'order_by': 'due_at'},
       ),

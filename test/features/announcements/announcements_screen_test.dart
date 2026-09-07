@@ -31,6 +31,7 @@ void main() {
         overrides: [
           appDatabaseProvider.overrideWithValue(db),
           dioProvider.overrideWithValue(dio),
+          canvasDioProvider.overrideWithValue(dio),
           tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
           activeTermIdProvider.overrideWith((ref) async => 8),
         ],
