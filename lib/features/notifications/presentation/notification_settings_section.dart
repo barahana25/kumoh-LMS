@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show PlatformException;
+import 'package:sqlite3/sqlite3.dart' show SqliteException;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../core/storage/db/app_database.dart';
@@ -16,6 +18,21 @@ final notificationSettingsProvider = StreamProvider<NotificationSetting?>((ref) 
   return (db.select(db.notificationSettings)..where((t) => t.id.equals(1)))
       .watchSingleOrNull();
 });
+
+/// 알림 설정 실패를 실패한 단계와 제한된 식별자로만 설명한다.
+/// 자격증명·네이티브 원문 메시지·서버 응답은 절대 포함하지 않는다.
+String notificationSetupMessage(String stage, Exception error) {
+  if (error is PlatformException) {
+    final code = RegExp(r'^[a-zA-Z0-9_-]{1,64}$').hasMatch(error.code)
+        ? error.code
+        : 'platform_error';
+    return '$stage 실패 ($code). 다시 시도해 주세요.';
+  }
+  if (error is SqliteException) {
+    return '$stage 실패 (저장소 ${error.resultCode}). 앱을 다시 열어 주세요.';
+  }
+  return '$stage 중 오류가 발생했습니다. 다시 시도해 주세요.';
+}
 
 class NotificationSettingsSection extends ConsumerStatefulWidget {
   const NotificationSettingsSection({super.key});
@@ -57,10 +74,13 @@ class _NotificationSettingsSectionState
     final db = ref.read(appDatabaseProvider);
     final tokens = ref.read(tokenStoreProvider);
     final auth = ref.read(authControllerProvider).valueOrNull;
+    var stage = '알림 설정 시작';
     try {
       if (!enable) {
+        stage = '알림 끄기';
         await NotificationRuntime.stop(db);
       } else {
+        stage = '자동 로그인 정보 확인';
         final credentials = await tokens.readCredentials();
         if (auth is! AuthAuthenticated ||
             credentials == null ||
@@ -69,7 +89,9 @@ class _NotificationSettingsSectionState
           _message = '자동 로그인을 켜고 다시 로그인한 후 알림을 켜 주세요.';
           return;
         }
+        stage = '알림 기능 준비';
         await NotificationRuntime.initialize();
+        stage = '알림 권한 요청';
         if (!await NotificationRuntime.sink.requestPermission()) {
           _message = '기기 설정에서 금오 LMS의 알림을 허용해 주세요.';
           return;
@@ -77,17 +99,20 @@ class _NotificationSettingsSectionState
         if (!mounted || ref.read(authControllerProvider).valueOrNull != auth) {
           return;
         }
+        stage = '알림 설정 저장';
         await NotificationStore(db).enable(auth.profile.loginId);
         try {
+          stage = '자동 확인 예약';
           await NotificationRuntime.schedule();
         } on Exception {
           await NotificationStore(db).disable();
           rethrow;
         }
+        stage = '첫 확인';
         _message = await NotificationRuntime.poll(db, tokens, force: true);
       }
-    } on Exception {
-      _message = '알림 설정을 완료하지 못했습니다. 다시 시도해 주세요.';
+    } on Exception catch (e) {
+      _message = notificationSetupMessage(stage, e);
     } finally {
       if (mounted) {
         ref.invalidate(notificationSettingsProvider);
