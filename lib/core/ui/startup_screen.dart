@@ -9,7 +9,7 @@ class StartupScreen extends StatelessWidget {
     backgroundColor: Colors.white,
     body: Center(
       child: Image.asset(
-        'assets/branding/kumoh-lms-logo-v4.png',
+        'assets/branding/kumoh-lms-startup-ochungi.png',
         width: 240,
         height: 240,
         fit: BoxFit.contain,

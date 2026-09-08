@@ -18,9 +18,19 @@ class CourseListScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         centerTitle: true,
-        title: Image.asset(
-          'assets/branding/kumoh-lms-logo-v4.png',
-          height: 32,
+        title: SizedBox(
+          width: 280,
+          height: 48,
+          child: ClipRect(
+            child: Transform.scale(
+              scale: 1.45,
+              child: Image.asset(
+                'assets/branding/kumoh-header-transparent.png',
+                fit: BoxFit.cover,
+                semanticLabel: '국립금오공과대학교',
+              ),
+            ),
+          ),
         ),
       ),
       body: Column(
