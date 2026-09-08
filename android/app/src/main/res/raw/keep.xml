@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  알림 아이콘은 Dart에서 이름 문자열로만 참조하므로(AndroidInitializationSettings)
+  릴리스 빌드의 리소스 축소가 미사용으로 보고 제거한다. 제거되면 알림 초기화가
+  PlatformException(invalid_icon)으로 실패하고 알림을 켤 수 없다.
+-->
+<resources
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@drawable/ic_stat_lms" />
