@@ -1,4 +1,7 @@
 import 'package:cookie_jar/cookie_jar.dart';
+import 'dart:io';
+import 'dart:async';
+import '../../canvas/data/canvas_download.dart';
 import 'package:dio/dio.dart';
 import '../../../core/config/env.dart';
 import '../../../core/error/failure.dart';
@@ -71,6 +74,21 @@ class LmsNotificationSource implements NotificationSource {
 
   late CookieJar cookieJar;
 
+  Future<File> downloadFile(String id, Directory temporaryDirectory,
+      {Duration? timeout}) async {
+    if (!RegExp(r'^\d+$').hasMatch(id)) throw const ParseFailure();
+    final cancel = CancelToken();
+    final timer = timeout == null ? null : Timer(timeout, () => cancel.cancel());
+    try {
+      return await CanvasDownloader(_canvas).download(
+      url: '${Env.canvasHost}/files/$id/download?download_frd=1',
+      displayName: '$id.bin', directory: temporaryDirectory, cancelToken: cancel,
+    );
+    } finally {
+      timer?.cancel();
+    }
+  }
+
   @override
   Future<List<WatchedCourse>> courses() async {
     final terms = await ReferenceApi(_linus).fetchTerms(Env.defaultAccountId);
@@ -96,10 +114,12 @@ class LmsNotificationSource implements NotificationSource {
       NoticeKind.announcement => 'discussion_topics',
       NoticeKind.file => 'files',
       NoticeKind.assignment => 'assignments',
+      NoticeKind.discussion => 'discussion_topics',
     };
     final json = await fetchNotificationPages(
         _canvas, '/courses/$courseId/$endpoint', query: {
-      if (kind == NoticeKind.announcement) 'only_announcements': true
+      if (kind == NoticeKind.announcement) 'only_announcements': true,
+      if (kind == NoticeKind.discussion) 'only_announcements': false,
     });
     return parseWatchedItems(json, kind);
   }
@@ -158,13 +178,14 @@ List<WatchedItem> parseWatchedItems(
     List<Map<String, dynamic>> rows, NoticeKind kind) {
   final result = <WatchedItem>[];
   for (final row in rows) {
+    if (kind == NoticeKind.discussion && row['is_announcement'] == true) continue;
     if (row['published'] == false ||
         row['locked_for_user'] == true ||
         row['hidden_for_user'] == true ||
         row['hidden'] == true) {
       continue;
     }
-    if (kind == NoticeKind.announcement) {
+    if (kind == NoticeKind.announcement || kind == NoticeKind.discussion) {
       final delayed = DateTime.tryParse('${row['delayed_post_at']}');
       if (delayed != null && delayed.isAfter(DateTime.now())) continue;
     }
@@ -176,6 +197,7 @@ List<WatchedItem> parseWatchedItems(
       NoticeKind.announcement => row['title'],
       NoticeKind.file => row['display_name'] ?? row['filename'],
       NoticeKind.assignment => row['name'],
+      NoticeKind.discussion => row['title'],
     };
     result.add(WatchedItem('$id',
         title is String && title.isNotEmpty ? title : '${kind.label} #$id'));

@@ -9,6 +9,15 @@ import 'package:kumoh_lms/features/notifications/notification_runtime.dart';
 import '../../fixtures/fixtures.dart';
 
 void main() {
+  test('토론 수집에서 공지 중복과 숨김 글을 제외한다', () {
+    final items = parseWatchedItems([
+      {'id': 1, 'title': '새 토론', 'is_announcement': false},
+      {'id': 2, 'title': '공지', 'is_announcement': true},
+      {'id': 3, 'title': '숨김', 'hidden': true},
+    ], NoticeKind.discussion);
+    expect(items.map((i) => i.id), ['1']);
+    expect(items.single.title, '새 토론');
+  });
   late Dio dio;
   late DioAdapter adapter;
   setUp(() {

@@ -19,7 +19,9 @@ class NotificationStore {
     await db.transaction(() async {
       await db.delete(db.notificationBaselines).go();
       await db.delete(db.notificationSeenItems).go();
-      await db.delete(db.notificationOutbox).go();
+      await (db.delete(db.notificationOutbox)
+            ..where((t) => t.owner.equals(owner).not()))
+          .go();
       await db.into(db.notificationSettings).insertOnConflictUpdate(
             NotificationSettingsCompanion.insert(
                 id: const Value(1),
@@ -47,7 +49,6 @@ class NotificationStore {
             leaseUntil: const Value(null),
             status: const Value('알림 확인이 꺼져 있습니다.')),
       );
-      await db.delete(db.notificationOutbox).go();
     });
   }
 
@@ -110,6 +111,8 @@ class NotificationStore {
                   courseName: course.name,
                   kind: kind.name,
                   title: item.title,
+                  itemId: Value(item.id),
+                  detectedAt: Value(DateTime.now().toUtc()),
                 ));
             created++;
           }
@@ -121,7 +124,8 @@ class NotificationStore {
 
   Future<List<PendingNotice>> pending(NotificationSetting run) async {
     final rows = await (db.select(db.notificationOutbox)
-          ..where((t) => t.generation.equals(run.generation))
+          ..where((t) =>
+              t.generation.equals(run.generation) & t.delivered.equals(false))
           ..orderBy([(t) => OrderingTerm.asc(t.id)]))
         .get();
     return rows
@@ -135,8 +139,10 @@ class NotificationStore {
         .toList();
   }
 
-  Future<void> acknowledge(int id) =>
-      (db.delete(db.notificationOutbox)..where((t) => t.id.equals(id))).go();
+  Future<void> acknowledge(int id) async {
+    await (db.update(db.notificationOutbox)..where((t) => t.id.equals(id)))
+        .write(const NotificationOutboxCompanion(delivered: Value(true)));
+  }
 
   Future<void> checkpoint(NotificationSetting run, int cursor) async {
     await (db.update(db.notificationSettings)

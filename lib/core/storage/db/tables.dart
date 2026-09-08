@@ -1,5 +1,30 @@
 import 'package:drift/drift.dart';
 
+class DownloadSettings extends Table {
+  IntColumn get id => integer()();
+  TextColumn get owner => text()();
+  TextColumn get treeUri => text()();
+  TextColumn get folderName => text()();
+  BoolColumn get enabled => boolean().withDefault(const Constant(false))();
+  TextColumn get generation => text()();
+  TextColumn get lease => text().nullable()();
+  IntColumn get leaseUntil => integer().nullable()();
+  IntColumn get lastAttempt => integer().nullable()();
+  TextColumn get status => text().withDefault(const Constant('저장 폴더를 선택해 주세요.'))();
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+class DownloadedFiles extends Table {
+  TextColumn get owner => text()();
+  TextColumn get treeUri => text()();
+  IntColumn get courseId => integer()();
+  TextColumn get fileId => text()();
+  TextColumn get documentUri => text()();
+  @override
+  Set<Column<Object>> get primaryKey => {owner, treeUri, courseId, fileId};
+}
+
 /// 백그라운드 isolate와 UI가 함께 읽는 알림 설정과 실행 잠금.
 class NotificationSettings extends Table {
   IntColumn get id => integer()();
@@ -38,6 +63,9 @@ class NotificationOutbox extends Table {
   TextColumn get courseName => text()();
   TextColumn get kind => text()();
   TextColumn get title => text()();
+  TextColumn get itemId => text().withDefault(const Constant(''))();
+  DateTimeColumn get detectedAt => dateTime().withDefault(currentDateAndTime)();
+  BoolColumn get delivered => boolean().withDefault(const Constant(false))();
 }
 
 /// 학기. id는 서버(LINUS)의 termId를 그대로 쓴다.

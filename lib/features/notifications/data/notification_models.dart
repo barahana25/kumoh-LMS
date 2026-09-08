@@ -1,7 +1,8 @@
 enum NoticeKind {
   announcement('공지', 'announcements'),
   file('파일', 'files'),
-  assignment('과제', 'assignments');
+  assignment('과제', 'assignments'),
+  discussion('토론', 'discussions');
 
   const NoticeKind(this.label, this.tab);
   final String label;

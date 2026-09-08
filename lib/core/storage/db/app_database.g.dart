@@ -3114,9 +3114,44 @@ class $NotificationOutboxTable extends NotificationOutbox
   late final GeneratedColumn<String> title = GeneratedColumn<String>(
       'title', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _itemIdMeta = const VerificationMeta('itemId');
   @override
-  List<GeneratedColumn> get $columns =>
-      [id, generation, owner, courseId, courseName, kind, title];
+  late final GeneratedColumn<String> itemId = GeneratedColumn<String>(
+      'item_id', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(''));
+  static const VerificationMeta _detectedAtMeta =
+      const VerificationMeta('detectedAt');
+  @override
+  late final GeneratedColumn<DateTime> detectedAt = GeneratedColumn<DateTime>(
+      'detected_at', aliasedName, false,
+      type: DriftSqlType.dateTime,
+      requiredDuringInsert: false,
+      defaultValue: currentDateAndTime);
+  static const VerificationMeta _deliveredMeta =
+      const VerificationMeta('delivered');
+  @override
+  late final GeneratedColumn<bool> delivered = GeneratedColumn<bool>(
+      'delivered', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("delivered" IN (0, 1))'),
+      defaultValue: const Constant(false));
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        generation,
+        owner,
+        courseId,
+        courseName,
+        kind,
+        title,
+        itemId,
+        detectedAt,
+        delivered
+      ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -3171,6 +3206,20 @@ class $NotificationOutboxTable extends NotificationOutbox
     } else if (isInserting) {
       context.missing(_titleMeta);
     }
+    if (data.containsKey('item_id')) {
+      context.handle(_itemIdMeta,
+          itemId.isAcceptableOrUnknown(data['item_id']!, _itemIdMeta));
+    }
+    if (data.containsKey('detected_at')) {
+      context.handle(
+          _detectedAtMeta,
+          detectedAt.isAcceptableOrUnknown(
+              data['detected_at']!, _detectedAtMeta));
+    }
+    if (data.containsKey('delivered')) {
+      context.handle(_deliveredMeta,
+          delivered.isAcceptableOrUnknown(data['delivered']!, _deliveredMeta));
+    }
     return context;
   }
 
@@ -3194,6 +3243,12 @@ class $NotificationOutboxTable extends NotificationOutbox
           .read(DriftSqlType.string, data['${effectivePrefix}kind'])!,
       title: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}title'])!,
+      itemId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}item_id'])!,
+      detectedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}detected_at'])!,
+      delivered: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}delivered'])!,
     );
   }
 
@@ -3212,6 +3267,9 @@ class NotificationOutboxData extends DataClass
   final String courseName;
   final String kind;
   final String title;
+  final String itemId;
+  final DateTime detectedAt;
+  final bool delivered;
   const NotificationOutboxData(
       {required this.id,
       required this.generation,
@@ -3219,7 +3277,10 @@ class NotificationOutboxData extends DataClass
       required this.courseId,
       required this.courseName,
       required this.kind,
-      required this.title});
+      required this.title,
+      required this.itemId,
+      required this.detectedAt,
+      required this.delivered});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -3230,6 +3291,9 @@ class NotificationOutboxData extends DataClass
     map['course_name'] = Variable<String>(courseName);
     map['kind'] = Variable<String>(kind);
     map['title'] = Variable<String>(title);
+    map['item_id'] = Variable<String>(itemId);
+    map['detected_at'] = Variable<DateTime>(detectedAt);
+    map['delivered'] = Variable<bool>(delivered);
     return map;
   }
 
@@ -3242,6 +3306,9 @@ class NotificationOutboxData extends DataClass
       courseName: Value(courseName),
       kind: Value(kind),
       title: Value(title),
+      itemId: Value(itemId),
+      detectedAt: Value(detectedAt),
+      delivered: Value(delivered),
     );
   }
 
@@ -3256,6 +3323,9 @@ class NotificationOutboxData extends DataClass
       courseName: serializer.fromJson<String>(json['courseName']),
       kind: serializer.fromJson<String>(json['kind']),
       title: serializer.fromJson<String>(json['title']),
+      itemId: serializer.fromJson<String>(json['itemId']),
+      detectedAt: serializer.fromJson<DateTime>(json['detectedAt']),
+      delivered: serializer.fromJson<bool>(json['delivered']),
     );
   }
   @override
@@ -3269,6 +3339,9 @@ class NotificationOutboxData extends DataClass
       'courseName': serializer.toJson<String>(courseName),
       'kind': serializer.toJson<String>(kind),
       'title': serializer.toJson<String>(title),
+      'itemId': serializer.toJson<String>(itemId),
+      'detectedAt': serializer.toJson<DateTime>(detectedAt),
+      'delivered': serializer.toJson<bool>(delivered),
     };
   }
 
@@ -3279,7 +3352,10 @@ class NotificationOutboxData extends DataClass
           int? courseId,
           String? courseName,
           String? kind,
-          String? title}) =>
+          String? title,
+          String? itemId,
+          DateTime? detectedAt,
+          bool? delivered}) =>
       NotificationOutboxData(
         id: id ?? this.id,
         generation: generation ?? this.generation,
@@ -3288,6 +3364,9 @@ class NotificationOutboxData extends DataClass
         courseName: courseName ?? this.courseName,
         kind: kind ?? this.kind,
         title: title ?? this.title,
+        itemId: itemId ?? this.itemId,
+        detectedAt: detectedAt ?? this.detectedAt,
+        delivered: delivered ?? this.delivered,
       );
   NotificationOutboxData copyWithCompanion(NotificationOutboxCompanion data) {
     return NotificationOutboxData(
@@ -3300,6 +3379,10 @@ class NotificationOutboxData extends DataClass
           data.courseName.present ? data.courseName.value : this.courseName,
       kind: data.kind.present ? data.kind.value : this.kind,
       title: data.title.present ? data.title.value : this.title,
+      itemId: data.itemId.present ? data.itemId.value : this.itemId,
+      detectedAt:
+          data.detectedAt.present ? data.detectedAt.value : this.detectedAt,
+      delivered: data.delivered.present ? data.delivered.value : this.delivered,
     );
   }
 
@@ -3312,14 +3395,17 @@ class NotificationOutboxData extends DataClass
           ..write('courseId: $courseId, ')
           ..write('courseName: $courseName, ')
           ..write('kind: $kind, ')
-          ..write('title: $title')
+          ..write('title: $title, ')
+          ..write('itemId: $itemId, ')
+          ..write('detectedAt: $detectedAt, ')
+          ..write('delivered: $delivered')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, generation, owner, courseId, courseName, kind, title);
+  int get hashCode => Object.hash(id, generation, owner, courseId, courseName,
+      kind, title, itemId, detectedAt, delivered);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -3330,7 +3416,10 @@ class NotificationOutboxData extends DataClass
           other.courseId == this.courseId &&
           other.courseName == this.courseName &&
           other.kind == this.kind &&
-          other.title == this.title);
+          other.title == this.title &&
+          other.itemId == this.itemId &&
+          other.detectedAt == this.detectedAt &&
+          other.delivered == this.delivered);
 }
 
 class NotificationOutboxCompanion
@@ -3342,6 +3431,9 @@ class NotificationOutboxCompanion
   final Value<String> courseName;
   final Value<String> kind;
   final Value<String> title;
+  final Value<String> itemId;
+  final Value<DateTime> detectedAt;
+  final Value<bool> delivered;
   const NotificationOutboxCompanion({
     this.id = const Value.absent(),
     this.generation = const Value.absent(),
@@ -3350,6 +3442,9 @@ class NotificationOutboxCompanion
     this.courseName = const Value.absent(),
     this.kind = const Value.absent(),
     this.title = const Value.absent(),
+    this.itemId = const Value.absent(),
+    this.detectedAt = const Value.absent(),
+    this.delivered = const Value.absent(),
   });
   NotificationOutboxCompanion.insert({
     this.id = const Value.absent(),
@@ -3359,6 +3454,9 @@ class NotificationOutboxCompanion
     required String courseName,
     required String kind,
     required String title,
+    this.itemId = const Value.absent(),
+    this.detectedAt = const Value.absent(),
+    this.delivered = const Value.absent(),
   })  : generation = Value(generation),
         owner = Value(owner),
         courseId = Value(courseId),
@@ -3373,6 +3471,9 @@ class NotificationOutboxCompanion
     Expression<String>? courseName,
     Expression<String>? kind,
     Expression<String>? title,
+    Expression<String>? itemId,
+    Expression<DateTime>? detectedAt,
+    Expression<bool>? delivered,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -3382,6 +3483,9 @@ class NotificationOutboxCompanion
       if (courseName != null) 'course_name': courseName,
       if (kind != null) 'kind': kind,
       if (title != null) 'title': title,
+      if (itemId != null) 'item_id': itemId,
+      if (detectedAt != null) 'detected_at': detectedAt,
+      if (delivered != null) 'delivered': delivered,
     });
   }
 
@@ -3392,7 +3496,10 @@ class NotificationOutboxCompanion
       Value<int>? courseId,
       Value<String>? courseName,
       Value<String>? kind,
-      Value<String>? title}) {
+      Value<String>? title,
+      Value<String>? itemId,
+      Value<DateTime>? detectedAt,
+      Value<bool>? delivered}) {
     return NotificationOutboxCompanion(
       id: id ?? this.id,
       generation: generation ?? this.generation,
@@ -3401,6 +3508,9 @@ class NotificationOutboxCompanion
       courseName: courseName ?? this.courseName,
       kind: kind ?? this.kind,
       title: title ?? this.title,
+      itemId: itemId ?? this.itemId,
+      detectedAt: detectedAt ?? this.detectedAt,
+      delivered: delivered ?? this.delivered,
     );
   }
 
@@ -3428,6 +3538,15 @@ class NotificationOutboxCompanion
     if (title.present) {
       map['title'] = Variable<String>(title.value);
     }
+    if (itemId.present) {
+      map['item_id'] = Variable<String>(itemId.value);
+    }
+    if (detectedAt.present) {
+      map['detected_at'] = Variable<DateTime>(detectedAt.value);
+    }
+    if (delivered.present) {
+      map['delivered'] = Variable<bool>(delivered.value);
+    }
     return map;
   }
 
@@ -3440,7 +3559,825 @@ class NotificationOutboxCompanion
           ..write('courseId: $courseId, ')
           ..write('courseName: $courseName, ')
           ..write('kind: $kind, ')
-          ..write('title: $title')
+          ..write('title: $title, ')
+          ..write('itemId: $itemId, ')
+          ..write('detectedAt: $detectedAt, ')
+          ..write('delivered: $delivered')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $DownloadSettingsTable extends DownloadSettings
+    with TableInfo<$DownloadSettingsTable, DownloadSetting> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DownloadSettingsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+      'id', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _ownerMeta = const VerificationMeta('owner');
+  @override
+  late final GeneratedColumn<String> owner = GeneratedColumn<String>(
+      'owner', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _treeUriMeta =
+      const VerificationMeta('treeUri');
+  @override
+  late final GeneratedColumn<String> treeUri = GeneratedColumn<String>(
+      'tree_uri', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _folderNameMeta =
+      const VerificationMeta('folderName');
+  @override
+  late final GeneratedColumn<String> folderName = GeneratedColumn<String>(
+      'folder_name', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _enabledMeta =
+      const VerificationMeta('enabled');
+  @override
+  late final GeneratedColumn<bool> enabled = GeneratedColumn<bool>(
+      'enabled', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("enabled" IN (0, 1))'),
+      defaultValue: const Constant(false));
+  static const VerificationMeta _generationMeta =
+      const VerificationMeta('generation');
+  @override
+  late final GeneratedColumn<String> generation = GeneratedColumn<String>(
+      'generation', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _leaseMeta = const VerificationMeta('lease');
+  @override
+  late final GeneratedColumn<String> lease = GeneratedColumn<String>(
+      'lease', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _leaseUntilMeta =
+      const VerificationMeta('leaseUntil');
+  @override
+  late final GeneratedColumn<int> leaseUntil = GeneratedColumn<int>(
+      'lease_until', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _lastAttemptMeta =
+      const VerificationMeta('lastAttempt');
+  @override
+  late final GeneratedColumn<int> lastAttempt = GeneratedColumn<int>(
+      'last_attempt', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+      'status', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('저장 폴더를 선택해 주세요.'));
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        owner,
+        treeUri,
+        folderName,
+        enabled,
+        generation,
+        lease,
+        leaseUntil,
+        lastAttempt,
+        status
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'download_settings';
+  @override
+  VerificationContext validateIntegrity(Insertable<DownloadSetting> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('owner')) {
+      context.handle(
+          _ownerMeta, owner.isAcceptableOrUnknown(data['owner']!, _ownerMeta));
+    } else if (isInserting) {
+      context.missing(_ownerMeta);
+    }
+    if (data.containsKey('tree_uri')) {
+      context.handle(_treeUriMeta,
+          treeUri.isAcceptableOrUnknown(data['tree_uri']!, _treeUriMeta));
+    } else if (isInserting) {
+      context.missing(_treeUriMeta);
+    }
+    if (data.containsKey('folder_name')) {
+      context.handle(
+          _folderNameMeta,
+          folderName.isAcceptableOrUnknown(
+              data['folder_name']!, _folderNameMeta));
+    } else if (isInserting) {
+      context.missing(_folderNameMeta);
+    }
+    if (data.containsKey('enabled')) {
+      context.handle(_enabledMeta,
+          enabled.isAcceptableOrUnknown(data['enabled']!, _enabledMeta));
+    }
+    if (data.containsKey('generation')) {
+      context.handle(
+          _generationMeta,
+          generation.isAcceptableOrUnknown(
+              data['generation']!, _generationMeta));
+    } else if (isInserting) {
+      context.missing(_generationMeta);
+    }
+    if (data.containsKey('lease')) {
+      context.handle(
+          _leaseMeta, lease.isAcceptableOrUnknown(data['lease']!, _leaseMeta));
+    }
+    if (data.containsKey('lease_until')) {
+      context.handle(
+          _leaseUntilMeta,
+          leaseUntil.isAcceptableOrUnknown(
+              data['lease_until']!, _leaseUntilMeta));
+    }
+    if (data.containsKey('last_attempt')) {
+      context.handle(
+          _lastAttemptMeta,
+          lastAttempt.isAcceptableOrUnknown(
+              data['last_attempt']!, _lastAttemptMeta));
+    }
+    if (data.containsKey('status')) {
+      context.handle(_statusMeta,
+          status.isAcceptableOrUnknown(data['status']!, _statusMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  DownloadSetting map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DownloadSetting(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
+      owner: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}owner'])!,
+      treeUri: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}tree_uri'])!,
+      folderName: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}folder_name'])!,
+      enabled: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}enabled'])!,
+      generation: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}generation'])!,
+      lease: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}lease']),
+      leaseUntil: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}lease_until']),
+      lastAttempt: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}last_attempt']),
+      status: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}status'])!,
+    );
+  }
+
+  @override
+  $DownloadSettingsTable createAlias(String alias) {
+    return $DownloadSettingsTable(attachedDatabase, alias);
+  }
+}
+
+class DownloadSetting extends DataClass implements Insertable<DownloadSetting> {
+  final int id;
+  final String owner;
+  final String treeUri;
+  final String folderName;
+  final bool enabled;
+  final String generation;
+  final String? lease;
+  final int? leaseUntil;
+  final int? lastAttempt;
+  final String status;
+  const DownloadSetting(
+      {required this.id,
+      required this.owner,
+      required this.treeUri,
+      required this.folderName,
+      required this.enabled,
+      required this.generation,
+      this.lease,
+      this.leaseUntil,
+      this.lastAttempt,
+      required this.status});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['owner'] = Variable<String>(owner);
+    map['tree_uri'] = Variable<String>(treeUri);
+    map['folder_name'] = Variable<String>(folderName);
+    map['enabled'] = Variable<bool>(enabled);
+    map['generation'] = Variable<String>(generation);
+    if (!nullToAbsent || lease != null) {
+      map['lease'] = Variable<String>(lease);
+    }
+    if (!nullToAbsent || leaseUntil != null) {
+      map['lease_until'] = Variable<int>(leaseUntil);
+    }
+    if (!nullToAbsent || lastAttempt != null) {
+      map['last_attempt'] = Variable<int>(lastAttempt);
+    }
+    map['status'] = Variable<String>(status);
+    return map;
+  }
+
+  DownloadSettingsCompanion toCompanion(bool nullToAbsent) {
+    return DownloadSettingsCompanion(
+      id: Value(id),
+      owner: Value(owner),
+      treeUri: Value(treeUri),
+      folderName: Value(folderName),
+      enabled: Value(enabled),
+      generation: Value(generation),
+      lease:
+          lease == null && nullToAbsent ? const Value.absent() : Value(lease),
+      leaseUntil: leaseUntil == null && nullToAbsent
+          ? const Value.absent()
+          : Value(leaseUntil),
+      lastAttempt: lastAttempt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastAttempt),
+      status: Value(status),
+    );
+  }
+
+  factory DownloadSetting.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DownloadSetting(
+      id: serializer.fromJson<int>(json['id']),
+      owner: serializer.fromJson<String>(json['owner']),
+      treeUri: serializer.fromJson<String>(json['treeUri']),
+      folderName: serializer.fromJson<String>(json['folderName']),
+      enabled: serializer.fromJson<bool>(json['enabled']),
+      generation: serializer.fromJson<String>(json['generation']),
+      lease: serializer.fromJson<String?>(json['lease']),
+      leaseUntil: serializer.fromJson<int?>(json['leaseUntil']),
+      lastAttempt: serializer.fromJson<int?>(json['lastAttempt']),
+      status: serializer.fromJson<String>(json['status']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'owner': serializer.toJson<String>(owner),
+      'treeUri': serializer.toJson<String>(treeUri),
+      'folderName': serializer.toJson<String>(folderName),
+      'enabled': serializer.toJson<bool>(enabled),
+      'generation': serializer.toJson<String>(generation),
+      'lease': serializer.toJson<String?>(lease),
+      'leaseUntil': serializer.toJson<int?>(leaseUntil),
+      'lastAttempt': serializer.toJson<int?>(lastAttempt),
+      'status': serializer.toJson<String>(status),
+    };
+  }
+
+  DownloadSetting copyWith(
+          {int? id,
+          String? owner,
+          String? treeUri,
+          String? folderName,
+          bool? enabled,
+          String? generation,
+          Value<String?> lease = const Value.absent(),
+          Value<int?> leaseUntil = const Value.absent(),
+          Value<int?> lastAttempt = const Value.absent(),
+          String? status}) =>
+      DownloadSetting(
+        id: id ?? this.id,
+        owner: owner ?? this.owner,
+        treeUri: treeUri ?? this.treeUri,
+        folderName: folderName ?? this.folderName,
+        enabled: enabled ?? this.enabled,
+        generation: generation ?? this.generation,
+        lease: lease.present ? lease.value : this.lease,
+        leaseUntil: leaseUntil.present ? leaseUntil.value : this.leaseUntil,
+        lastAttempt: lastAttempt.present ? lastAttempt.value : this.lastAttempt,
+        status: status ?? this.status,
+      );
+  DownloadSetting copyWithCompanion(DownloadSettingsCompanion data) {
+    return DownloadSetting(
+      id: data.id.present ? data.id.value : this.id,
+      owner: data.owner.present ? data.owner.value : this.owner,
+      treeUri: data.treeUri.present ? data.treeUri.value : this.treeUri,
+      folderName:
+          data.folderName.present ? data.folderName.value : this.folderName,
+      enabled: data.enabled.present ? data.enabled.value : this.enabled,
+      generation:
+          data.generation.present ? data.generation.value : this.generation,
+      lease: data.lease.present ? data.lease.value : this.lease,
+      leaseUntil:
+          data.leaseUntil.present ? data.leaseUntil.value : this.leaseUntil,
+      lastAttempt:
+          data.lastAttempt.present ? data.lastAttempt.value : this.lastAttempt,
+      status: data.status.present ? data.status.value : this.status,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DownloadSetting(')
+          ..write('id: $id, ')
+          ..write('owner: $owner, ')
+          ..write('treeUri: $treeUri, ')
+          ..write('folderName: $folderName, ')
+          ..write('enabled: $enabled, ')
+          ..write('generation: $generation, ')
+          ..write('lease: $lease, ')
+          ..write('leaseUntil: $leaseUntil, ')
+          ..write('lastAttempt: $lastAttempt, ')
+          ..write('status: $status')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, owner, treeUri, folderName, enabled,
+      generation, lease, leaseUntil, lastAttempt, status);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DownloadSetting &&
+          other.id == this.id &&
+          other.owner == this.owner &&
+          other.treeUri == this.treeUri &&
+          other.folderName == this.folderName &&
+          other.enabled == this.enabled &&
+          other.generation == this.generation &&
+          other.lease == this.lease &&
+          other.leaseUntil == this.leaseUntil &&
+          other.lastAttempt == this.lastAttempt &&
+          other.status == this.status);
+}
+
+class DownloadSettingsCompanion extends UpdateCompanion<DownloadSetting> {
+  final Value<int> id;
+  final Value<String> owner;
+  final Value<String> treeUri;
+  final Value<String> folderName;
+  final Value<bool> enabled;
+  final Value<String> generation;
+  final Value<String?> lease;
+  final Value<int?> leaseUntil;
+  final Value<int?> lastAttempt;
+  final Value<String> status;
+  const DownloadSettingsCompanion({
+    this.id = const Value.absent(),
+    this.owner = const Value.absent(),
+    this.treeUri = const Value.absent(),
+    this.folderName = const Value.absent(),
+    this.enabled = const Value.absent(),
+    this.generation = const Value.absent(),
+    this.lease = const Value.absent(),
+    this.leaseUntil = const Value.absent(),
+    this.lastAttempt = const Value.absent(),
+    this.status = const Value.absent(),
+  });
+  DownloadSettingsCompanion.insert({
+    this.id = const Value.absent(),
+    required String owner,
+    required String treeUri,
+    required String folderName,
+    this.enabled = const Value.absent(),
+    required String generation,
+    this.lease = const Value.absent(),
+    this.leaseUntil = const Value.absent(),
+    this.lastAttempt = const Value.absent(),
+    this.status = const Value.absent(),
+  })  : owner = Value(owner),
+        treeUri = Value(treeUri),
+        folderName = Value(folderName),
+        generation = Value(generation);
+  static Insertable<DownloadSetting> custom({
+    Expression<int>? id,
+    Expression<String>? owner,
+    Expression<String>? treeUri,
+    Expression<String>? folderName,
+    Expression<bool>? enabled,
+    Expression<String>? generation,
+    Expression<String>? lease,
+    Expression<int>? leaseUntil,
+    Expression<int>? lastAttempt,
+    Expression<String>? status,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (owner != null) 'owner': owner,
+      if (treeUri != null) 'tree_uri': treeUri,
+      if (folderName != null) 'folder_name': folderName,
+      if (enabled != null) 'enabled': enabled,
+      if (generation != null) 'generation': generation,
+      if (lease != null) 'lease': lease,
+      if (leaseUntil != null) 'lease_until': leaseUntil,
+      if (lastAttempt != null) 'last_attempt': lastAttempt,
+      if (status != null) 'status': status,
+    });
+  }
+
+  DownloadSettingsCompanion copyWith(
+      {Value<int>? id,
+      Value<String>? owner,
+      Value<String>? treeUri,
+      Value<String>? folderName,
+      Value<bool>? enabled,
+      Value<String>? generation,
+      Value<String?>? lease,
+      Value<int?>? leaseUntil,
+      Value<int?>? lastAttempt,
+      Value<String>? status}) {
+    return DownloadSettingsCompanion(
+      id: id ?? this.id,
+      owner: owner ?? this.owner,
+      treeUri: treeUri ?? this.treeUri,
+      folderName: folderName ?? this.folderName,
+      enabled: enabled ?? this.enabled,
+      generation: generation ?? this.generation,
+      lease: lease ?? this.lease,
+      leaseUntil: leaseUntil ?? this.leaseUntil,
+      lastAttempt: lastAttempt ?? this.lastAttempt,
+      status: status ?? this.status,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (owner.present) {
+      map['owner'] = Variable<String>(owner.value);
+    }
+    if (treeUri.present) {
+      map['tree_uri'] = Variable<String>(treeUri.value);
+    }
+    if (folderName.present) {
+      map['folder_name'] = Variable<String>(folderName.value);
+    }
+    if (enabled.present) {
+      map['enabled'] = Variable<bool>(enabled.value);
+    }
+    if (generation.present) {
+      map['generation'] = Variable<String>(generation.value);
+    }
+    if (lease.present) {
+      map['lease'] = Variable<String>(lease.value);
+    }
+    if (leaseUntil.present) {
+      map['lease_until'] = Variable<int>(leaseUntil.value);
+    }
+    if (lastAttempt.present) {
+      map['last_attempt'] = Variable<int>(lastAttempt.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DownloadSettingsCompanion(')
+          ..write('id: $id, ')
+          ..write('owner: $owner, ')
+          ..write('treeUri: $treeUri, ')
+          ..write('folderName: $folderName, ')
+          ..write('enabled: $enabled, ')
+          ..write('generation: $generation, ')
+          ..write('lease: $lease, ')
+          ..write('leaseUntil: $leaseUntil, ')
+          ..write('lastAttempt: $lastAttempt, ')
+          ..write('status: $status')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $DownloadedFilesTable extends DownloadedFiles
+    with TableInfo<$DownloadedFilesTable, DownloadedFile> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DownloadedFilesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _ownerMeta = const VerificationMeta('owner');
+  @override
+  late final GeneratedColumn<String> owner = GeneratedColumn<String>(
+      'owner', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _treeUriMeta =
+      const VerificationMeta('treeUri');
+  @override
+  late final GeneratedColumn<String> treeUri = GeneratedColumn<String>(
+      'tree_uri', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _courseIdMeta =
+      const VerificationMeta('courseId');
+  @override
+  late final GeneratedColumn<int> courseId = GeneratedColumn<int>(
+      'course_id', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _fileIdMeta = const VerificationMeta('fileId');
+  @override
+  late final GeneratedColumn<String> fileId = GeneratedColumn<String>(
+      'file_id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _documentUriMeta =
+      const VerificationMeta('documentUri');
+  @override
+  late final GeneratedColumn<String> documentUri = GeneratedColumn<String>(
+      'document_uri', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [owner, treeUri, courseId, fileId, documentUri];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'downloaded_files';
+  @override
+  VerificationContext validateIntegrity(Insertable<DownloadedFile> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('owner')) {
+      context.handle(
+          _ownerMeta, owner.isAcceptableOrUnknown(data['owner']!, _ownerMeta));
+    } else if (isInserting) {
+      context.missing(_ownerMeta);
+    }
+    if (data.containsKey('tree_uri')) {
+      context.handle(_treeUriMeta,
+          treeUri.isAcceptableOrUnknown(data['tree_uri']!, _treeUriMeta));
+    } else if (isInserting) {
+      context.missing(_treeUriMeta);
+    }
+    if (data.containsKey('course_id')) {
+      context.handle(_courseIdMeta,
+          courseId.isAcceptableOrUnknown(data['course_id']!, _courseIdMeta));
+    } else if (isInserting) {
+      context.missing(_courseIdMeta);
+    }
+    if (data.containsKey('file_id')) {
+      context.handle(_fileIdMeta,
+          fileId.isAcceptableOrUnknown(data['file_id']!, _fileIdMeta));
+    } else if (isInserting) {
+      context.missing(_fileIdMeta);
+    }
+    if (data.containsKey('document_uri')) {
+      context.handle(
+          _documentUriMeta,
+          documentUri.isAcceptableOrUnknown(
+              data['document_uri']!, _documentUriMeta));
+    } else if (isInserting) {
+      context.missing(_documentUriMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {owner, treeUri, courseId, fileId};
+  @override
+  DownloadedFile map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DownloadedFile(
+      owner: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}owner'])!,
+      treeUri: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}tree_uri'])!,
+      courseId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}course_id'])!,
+      fileId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}file_id'])!,
+      documentUri: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}document_uri'])!,
+    );
+  }
+
+  @override
+  $DownloadedFilesTable createAlias(String alias) {
+    return $DownloadedFilesTable(attachedDatabase, alias);
+  }
+}
+
+class DownloadedFile extends DataClass implements Insertable<DownloadedFile> {
+  final String owner;
+  final String treeUri;
+  final int courseId;
+  final String fileId;
+  final String documentUri;
+  const DownloadedFile(
+      {required this.owner,
+      required this.treeUri,
+      required this.courseId,
+      required this.fileId,
+      required this.documentUri});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['owner'] = Variable<String>(owner);
+    map['tree_uri'] = Variable<String>(treeUri);
+    map['course_id'] = Variable<int>(courseId);
+    map['file_id'] = Variable<String>(fileId);
+    map['document_uri'] = Variable<String>(documentUri);
+    return map;
+  }
+
+  DownloadedFilesCompanion toCompanion(bool nullToAbsent) {
+    return DownloadedFilesCompanion(
+      owner: Value(owner),
+      treeUri: Value(treeUri),
+      courseId: Value(courseId),
+      fileId: Value(fileId),
+      documentUri: Value(documentUri),
+    );
+  }
+
+  factory DownloadedFile.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DownloadedFile(
+      owner: serializer.fromJson<String>(json['owner']),
+      treeUri: serializer.fromJson<String>(json['treeUri']),
+      courseId: serializer.fromJson<int>(json['courseId']),
+      fileId: serializer.fromJson<String>(json['fileId']),
+      documentUri: serializer.fromJson<String>(json['documentUri']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'owner': serializer.toJson<String>(owner),
+      'treeUri': serializer.toJson<String>(treeUri),
+      'courseId': serializer.toJson<int>(courseId),
+      'fileId': serializer.toJson<String>(fileId),
+      'documentUri': serializer.toJson<String>(documentUri),
+    };
+  }
+
+  DownloadedFile copyWith(
+          {String? owner,
+          String? treeUri,
+          int? courseId,
+          String? fileId,
+          String? documentUri}) =>
+      DownloadedFile(
+        owner: owner ?? this.owner,
+        treeUri: treeUri ?? this.treeUri,
+        courseId: courseId ?? this.courseId,
+        fileId: fileId ?? this.fileId,
+        documentUri: documentUri ?? this.documentUri,
+      );
+  DownloadedFile copyWithCompanion(DownloadedFilesCompanion data) {
+    return DownloadedFile(
+      owner: data.owner.present ? data.owner.value : this.owner,
+      treeUri: data.treeUri.present ? data.treeUri.value : this.treeUri,
+      courseId: data.courseId.present ? data.courseId.value : this.courseId,
+      fileId: data.fileId.present ? data.fileId.value : this.fileId,
+      documentUri:
+          data.documentUri.present ? data.documentUri.value : this.documentUri,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DownloadedFile(')
+          ..write('owner: $owner, ')
+          ..write('treeUri: $treeUri, ')
+          ..write('courseId: $courseId, ')
+          ..write('fileId: $fileId, ')
+          ..write('documentUri: $documentUri')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(owner, treeUri, courseId, fileId, documentUri);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DownloadedFile &&
+          other.owner == this.owner &&
+          other.treeUri == this.treeUri &&
+          other.courseId == this.courseId &&
+          other.fileId == this.fileId &&
+          other.documentUri == this.documentUri);
+}
+
+class DownloadedFilesCompanion extends UpdateCompanion<DownloadedFile> {
+  final Value<String> owner;
+  final Value<String> treeUri;
+  final Value<int> courseId;
+  final Value<String> fileId;
+  final Value<String> documentUri;
+  final Value<int> rowid;
+  const DownloadedFilesCompanion({
+    this.owner = const Value.absent(),
+    this.treeUri = const Value.absent(),
+    this.courseId = const Value.absent(),
+    this.fileId = const Value.absent(),
+    this.documentUri = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  DownloadedFilesCompanion.insert({
+    required String owner,
+    required String treeUri,
+    required int courseId,
+    required String fileId,
+    required String documentUri,
+    this.rowid = const Value.absent(),
+  })  : owner = Value(owner),
+        treeUri = Value(treeUri),
+        courseId = Value(courseId),
+        fileId = Value(fileId),
+        documentUri = Value(documentUri);
+  static Insertable<DownloadedFile> custom({
+    Expression<String>? owner,
+    Expression<String>? treeUri,
+    Expression<int>? courseId,
+    Expression<String>? fileId,
+    Expression<String>? documentUri,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (owner != null) 'owner': owner,
+      if (treeUri != null) 'tree_uri': treeUri,
+      if (courseId != null) 'course_id': courseId,
+      if (fileId != null) 'file_id': fileId,
+      if (documentUri != null) 'document_uri': documentUri,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  DownloadedFilesCompanion copyWith(
+      {Value<String>? owner,
+      Value<String>? treeUri,
+      Value<int>? courseId,
+      Value<String>? fileId,
+      Value<String>? documentUri,
+      Value<int>? rowid}) {
+    return DownloadedFilesCompanion(
+      owner: owner ?? this.owner,
+      treeUri: treeUri ?? this.treeUri,
+      courseId: courseId ?? this.courseId,
+      fileId: fileId ?? this.fileId,
+      documentUri: documentUri ?? this.documentUri,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (owner.present) {
+      map['owner'] = Variable<String>(owner.value);
+    }
+    if (treeUri.present) {
+      map['tree_uri'] = Variable<String>(treeUri.value);
+    }
+    if (courseId.present) {
+      map['course_id'] = Variable<int>(courseId.value);
+    }
+    if (fileId.present) {
+      map['file_id'] = Variable<String>(fileId.value);
+    }
+    if (documentUri.present) {
+      map['document_uri'] = Variable<String>(documentUri.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DownloadedFilesCompanion(')
+          ..write('owner: $owner, ')
+          ..write('treeUri: $treeUri, ')
+          ..write('courseId: $courseId, ')
+          ..write('fileId: $fileId, ')
+          ..write('documentUri: $documentUri, ')
+          ..write('rowid: $rowid')
           ..write(')'))
         .toString();
   }
@@ -3465,6 +4402,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $NotificationSeenItemsTable(this);
   late final $NotificationOutboxTable notificationOutbox =
       $NotificationOutboxTable(this);
+  late final $DownloadSettingsTable downloadSettings =
+      $DownloadSettingsTable(this);
+  late final $DownloadedFilesTable downloadedFiles =
+      $DownloadedFilesTable(this);
   late final TermsDao termsDao = TermsDao(this as AppDatabase);
   late final CoursesDao coursesDao = CoursesDao(this as AppDatabase);
   late final CalendarEventsDao calendarEventsDao =
@@ -3486,7 +4427,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         notificationSettings,
         notificationBaselines,
         notificationSeenItems,
-        notificationOutbox
+        notificationOutbox,
+        downloadSettings,
+        downloadedFiles
       ];
 }
 
@@ -5156,6 +6099,9 @@ typedef $$NotificationOutboxTableCreateCompanionBuilder
   required String courseName,
   required String kind,
   required String title,
+  Value<String> itemId,
+  Value<DateTime> detectedAt,
+  Value<bool> delivered,
 });
 typedef $$NotificationOutboxTableUpdateCompanionBuilder
     = NotificationOutboxCompanion Function({
@@ -5166,6 +6112,9 @@ typedef $$NotificationOutboxTableUpdateCompanionBuilder
   Value<String> courseName,
   Value<String> kind,
   Value<String> title,
+  Value<String> itemId,
+  Value<DateTime> detectedAt,
+  Value<bool> delivered,
 });
 
 class $$NotificationOutboxTableFilterComposer
@@ -5197,6 +6146,15 @@ class $$NotificationOutboxTableFilterComposer
 
   ColumnFilters<String> get title => $composableBuilder(
       column: $table.title, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get itemId => $composableBuilder(
+      column: $table.itemId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get detectedAt => $composableBuilder(
+      column: $table.detectedAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get delivered => $composableBuilder(
+      column: $table.delivered, builder: (column) => ColumnFilters(column));
 }
 
 class $$NotificationOutboxTableOrderingComposer
@@ -5228,6 +6186,15 @@ class $$NotificationOutboxTableOrderingComposer
 
   ColumnOrderings<String> get title => $composableBuilder(
       column: $table.title, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get itemId => $composableBuilder(
+      column: $table.itemId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get detectedAt => $composableBuilder(
+      column: $table.detectedAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get delivered => $composableBuilder(
+      column: $table.delivered, builder: (column) => ColumnOrderings(column));
 }
 
 class $$NotificationOutboxTableAnnotationComposer
@@ -5259,6 +6226,15 @@ class $$NotificationOutboxTableAnnotationComposer
 
   GeneratedColumn<String> get title =>
       $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get itemId =>
+      $composableBuilder(column: $table.itemId, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get detectedAt => $composableBuilder(
+      column: $table.detectedAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get delivered =>
+      $composableBuilder(column: $table.delivered, builder: (column) => column);
 }
 
 class $$NotificationOutboxTableTableManager extends RootTableManager<
@@ -5297,6 +6273,9 @@ class $$NotificationOutboxTableTableManager extends RootTableManager<
             Value<String> courseName = const Value.absent(),
             Value<String> kind = const Value.absent(),
             Value<String> title = const Value.absent(),
+            Value<String> itemId = const Value.absent(),
+            Value<DateTime> detectedAt = const Value.absent(),
+            Value<bool> delivered = const Value.absent(),
           }) =>
               NotificationOutboxCompanion(
             id: id,
@@ -5306,6 +6285,9 @@ class $$NotificationOutboxTableTableManager extends RootTableManager<
             courseName: courseName,
             kind: kind,
             title: title,
+            itemId: itemId,
+            detectedAt: detectedAt,
+            delivered: delivered,
           ),
           createCompanionCallback: ({
             Value<int> id = const Value.absent(),
@@ -5315,6 +6297,9 @@ class $$NotificationOutboxTableTableManager extends RootTableManager<
             required String courseName,
             required String kind,
             required String title,
+            Value<String> itemId = const Value.absent(),
+            Value<DateTime> detectedAt = const Value.absent(),
+            Value<bool> delivered = const Value.absent(),
           }) =>
               NotificationOutboxCompanion.insert(
             id: id,
@@ -5324,6 +6309,9 @@ class $$NotificationOutboxTableTableManager extends RootTableManager<
             courseName: courseName,
             kind: kind,
             title: title,
+            itemId: itemId,
+            detectedAt: detectedAt,
+            delivered: delivered,
           ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
@@ -5347,6 +6335,423 @@ typedef $$NotificationOutboxTableProcessedTableManager = ProcessedTableManager<
           NotificationOutboxData>
     ),
     NotificationOutboxData,
+    PrefetchHooks Function()>;
+typedef $$DownloadSettingsTableCreateCompanionBuilder
+    = DownloadSettingsCompanion Function({
+  Value<int> id,
+  required String owner,
+  required String treeUri,
+  required String folderName,
+  Value<bool> enabled,
+  required String generation,
+  Value<String?> lease,
+  Value<int?> leaseUntil,
+  Value<int?> lastAttempt,
+  Value<String> status,
+});
+typedef $$DownloadSettingsTableUpdateCompanionBuilder
+    = DownloadSettingsCompanion Function({
+  Value<int> id,
+  Value<String> owner,
+  Value<String> treeUri,
+  Value<String> folderName,
+  Value<bool> enabled,
+  Value<String> generation,
+  Value<String?> lease,
+  Value<int?> leaseUntil,
+  Value<int?> lastAttempt,
+  Value<String> status,
+});
+
+class $$DownloadSettingsTableFilterComposer
+    extends Composer<_$AppDatabase, $DownloadSettingsTable> {
+  $$DownloadSettingsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get owner => $composableBuilder(
+      column: $table.owner, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get treeUri => $composableBuilder(
+      column: $table.treeUri, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get folderName => $composableBuilder(
+      column: $table.folderName, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get enabled => $composableBuilder(
+      column: $table.enabled, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get generation => $composableBuilder(
+      column: $table.generation, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get lease => $composableBuilder(
+      column: $table.lease, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get leaseUntil => $composableBuilder(
+      column: $table.leaseUntil, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get lastAttempt => $composableBuilder(
+      column: $table.lastAttempt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get status => $composableBuilder(
+      column: $table.status, builder: (column) => ColumnFilters(column));
+}
+
+class $$DownloadSettingsTableOrderingComposer
+    extends Composer<_$AppDatabase, $DownloadSettingsTable> {
+  $$DownloadSettingsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get owner => $composableBuilder(
+      column: $table.owner, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get treeUri => $composableBuilder(
+      column: $table.treeUri, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get folderName => $composableBuilder(
+      column: $table.folderName, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get enabled => $composableBuilder(
+      column: $table.enabled, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get generation => $composableBuilder(
+      column: $table.generation, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get lease => $composableBuilder(
+      column: $table.lease, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get leaseUntil => $composableBuilder(
+      column: $table.leaseUntil, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get lastAttempt => $composableBuilder(
+      column: $table.lastAttempt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get status => $composableBuilder(
+      column: $table.status, builder: (column) => ColumnOrderings(column));
+}
+
+class $$DownloadSettingsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $DownloadSettingsTable> {
+  $$DownloadSettingsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get owner =>
+      $composableBuilder(column: $table.owner, builder: (column) => column);
+
+  GeneratedColumn<String> get treeUri =>
+      $composableBuilder(column: $table.treeUri, builder: (column) => column);
+
+  GeneratedColumn<String> get folderName => $composableBuilder(
+      column: $table.folderName, builder: (column) => column);
+
+  GeneratedColumn<bool> get enabled =>
+      $composableBuilder(column: $table.enabled, builder: (column) => column);
+
+  GeneratedColumn<String> get generation => $composableBuilder(
+      column: $table.generation, builder: (column) => column);
+
+  GeneratedColumn<String> get lease =>
+      $composableBuilder(column: $table.lease, builder: (column) => column);
+
+  GeneratedColumn<int> get leaseUntil => $composableBuilder(
+      column: $table.leaseUntil, builder: (column) => column);
+
+  GeneratedColumn<int> get lastAttempt => $composableBuilder(
+      column: $table.lastAttempt, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+}
+
+class $$DownloadSettingsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $DownloadSettingsTable,
+    DownloadSetting,
+    $$DownloadSettingsTableFilterComposer,
+    $$DownloadSettingsTableOrderingComposer,
+    $$DownloadSettingsTableAnnotationComposer,
+    $$DownloadSettingsTableCreateCompanionBuilder,
+    $$DownloadSettingsTableUpdateCompanionBuilder,
+    (
+      DownloadSetting,
+      BaseReferences<_$AppDatabase, $DownloadSettingsTable, DownloadSetting>
+    ),
+    DownloadSetting,
+    PrefetchHooks Function()> {
+  $$DownloadSettingsTableTableManager(
+      _$AppDatabase db, $DownloadSettingsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DownloadSettingsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$DownloadSettingsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$DownloadSettingsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            Value<String> owner = const Value.absent(),
+            Value<String> treeUri = const Value.absent(),
+            Value<String> folderName = const Value.absent(),
+            Value<bool> enabled = const Value.absent(),
+            Value<String> generation = const Value.absent(),
+            Value<String?> lease = const Value.absent(),
+            Value<int?> leaseUntil = const Value.absent(),
+            Value<int?> lastAttempt = const Value.absent(),
+            Value<String> status = const Value.absent(),
+          }) =>
+              DownloadSettingsCompanion(
+            id: id,
+            owner: owner,
+            treeUri: treeUri,
+            folderName: folderName,
+            enabled: enabled,
+            generation: generation,
+            lease: lease,
+            leaseUntil: leaseUntil,
+            lastAttempt: lastAttempt,
+            status: status,
+          ),
+          createCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            required String owner,
+            required String treeUri,
+            required String folderName,
+            Value<bool> enabled = const Value.absent(),
+            required String generation,
+            Value<String?> lease = const Value.absent(),
+            Value<int?> leaseUntil = const Value.absent(),
+            Value<int?> lastAttempt = const Value.absent(),
+            Value<String> status = const Value.absent(),
+          }) =>
+              DownloadSettingsCompanion.insert(
+            id: id,
+            owner: owner,
+            treeUri: treeUri,
+            folderName: folderName,
+            enabled: enabled,
+            generation: generation,
+            lease: lease,
+            leaseUntil: leaseUntil,
+            lastAttempt: lastAttempt,
+            status: status,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$DownloadSettingsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $DownloadSettingsTable,
+    DownloadSetting,
+    $$DownloadSettingsTableFilterComposer,
+    $$DownloadSettingsTableOrderingComposer,
+    $$DownloadSettingsTableAnnotationComposer,
+    $$DownloadSettingsTableCreateCompanionBuilder,
+    $$DownloadSettingsTableUpdateCompanionBuilder,
+    (
+      DownloadSetting,
+      BaseReferences<_$AppDatabase, $DownloadSettingsTable, DownloadSetting>
+    ),
+    DownloadSetting,
+    PrefetchHooks Function()>;
+typedef $$DownloadedFilesTableCreateCompanionBuilder = DownloadedFilesCompanion
+    Function({
+  required String owner,
+  required String treeUri,
+  required int courseId,
+  required String fileId,
+  required String documentUri,
+  Value<int> rowid,
+});
+typedef $$DownloadedFilesTableUpdateCompanionBuilder = DownloadedFilesCompanion
+    Function({
+  Value<String> owner,
+  Value<String> treeUri,
+  Value<int> courseId,
+  Value<String> fileId,
+  Value<String> documentUri,
+  Value<int> rowid,
+});
+
+class $$DownloadedFilesTableFilterComposer
+    extends Composer<_$AppDatabase, $DownloadedFilesTable> {
+  $$DownloadedFilesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get owner => $composableBuilder(
+      column: $table.owner, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get treeUri => $composableBuilder(
+      column: $table.treeUri, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get courseId => $composableBuilder(
+      column: $table.courseId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get fileId => $composableBuilder(
+      column: $table.fileId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get documentUri => $composableBuilder(
+      column: $table.documentUri, builder: (column) => ColumnFilters(column));
+}
+
+class $$DownloadedFilesTableOrderingComposer
+    extends Composer<_$AppDatabase, $DownloadedFilesTable> {
+  $$DownloadedFilesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get owner => $composableBuilder(
+      column: $table.owner, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get treeUri => $composableBuilder(
+      column: $table.treeUri, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get courseId => $composableBuilder(
+      column: $table.courseId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get fileId => $composableBuilder(
+      column: $table.fileId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get documentUri => $composableBuilder(
+      column: $table.documentUri, builder: (column) => ColumnOrderings(column));
+}
+
+class $$DownloadedFilesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $DownloadedFilesTable> {
+  $$DownloadedFilesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get owner =>
+      $composableBuilder(column: $table.owner, builder: (column) => column);
+
+  GeneratedColumn<String> get treeUri =>
+      $composableBuilder(column: $table.treeUri, builder: (column) => column);
+
+  GeneratedColumn<int> get courseId =>
+      $composableBuilder(column: $table.courseId, builder: (column) => column);
+
+  GeneratedColumn<String> get fileId =>
+      $composableBuilder(column: $table.fileId, builder: (column) => column);
+
+  GeneratedColumn<String> get documentUri => $composableBuilder(
+      column: $table.documentUri, builder: (column) => column);
+}
+
+class $$DownloadedFilesTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $DownloadedFilesTable,
+    DownloadedFile,
+    $$DownloadedFilesTableFilterComposer,
+    $$DownloadedFilesTableOrderingComposer,
+    $$DownloadedFilesTableAnnotationComposer,
+    $$DownloadedFilesTableCreateCompanionBuilder,
+    $$DownloadedFilesTableUpdateCompanionBuilder,
+    (
+      DownloadedFile,
+      BaseReferences<_$AppDatabase, $DownloadedFilesTable, DownloadedFile>
+    ),
+    DownloadedFile,
+    PrefetchHooks Function()> {
+  $$DownloadedFilesTableTableManager(
+      _$AppDatabase db, $DownloadedFilesTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DownloadedFilesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$DownloadedFilesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$DownloadedFilesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> owner = const Value.absent(),
+            Value<String> treeUri = const Value.absent(),
+            Value<int> courseId = const Value.absent(),
+            Value<String> fileId = const Value.absent(),
+            Value<String> documentUri = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              DownloadedFilesCompanion(
+            owner: owner,
+            treeUri: treeUri,
+            courseId: courseId,
+            fileId: fileId,
+            documentUri: documentUri,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String owner,
+            required String treeUri,
+            required int courseId,
+            required String fileId,
+            required String documentUri,
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              DownloadedFilesCompanion.insert(
+            owner: owner,
+            treeUri: treeUri,
+            courseId: courseId,
+            fileId: fileId,
+            documentUri: documentUri,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$DownloadedFilesTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $DownloadedFilesTable,
+    DownloadedFile,
+    $$DownloadedFilesTableFilterComposer,
+    $$DownloadedFilesTableOrderingComposer,
+    $$DownloadedFilesTableAnnotationComposer,
+    $$DownloadedFilesTableCreateCompanionBuilder,
+    $$DownloadedFilesTableUpdateCompanionBuilder,
+    (
+      DownloadedFile,
+      BaseReferences<_$AppDatabase, $DownloadedFilesTable, DownloadedFile>
+    ),
+    DownloadedFile,
     PrefetchHooks Function()>;
 
 class $AppDatabaseManager {
@@ -5372,6 +6777,10 @@ class $AppDatabaseManager {
       $$NotificationSeenItemsTableTableManager(_db, _db.notificationSeenItems);
   $$NotificationOutboxTableTableManager get notificationOutbox =>
       $$NotificationOutboxTableTableManager(_db, _db.notificationOutbox);
+  $$DownloadSettingsTableTableManager get downloadSettings =>
+      $$DownloadSettingsTableTableManager(_db, _db.downloadSettings);
+  $$DownloadedFilesTableTableManager get downloadedFiles =>
+      $$DownloadedFilesTableTableManager(_db, _db.downloadedFiles);
 }
 
 mixin _$TermsDaoMixin on DatabaseAccessor<AppDatabase> {

@@ -12,6 +12,9 @@ import 'data/notification_models.dart';
 import 'data/notification_poller.dart';
 import 'data/notification_store.dart';
 import 'data/notification_schedule.dart';
+import '../downloads/auto_download.dart';
+import '../downloads/download_store.dart';
+import '../downloads/folder_storage.dart';
 
 const notificationTask = 'ac.kumoh.kumoh_lms.hourly_notifications';
 const notificationScheduleTag = 'lms_clock_schedule_v2';
@@ -26,13 +29,12 @@ void notificationDispatcher() {
     final secure = SecureTokenStore();
     final db = AppDatabase.encrypted(secure.ensureDbKey);
     try {
-      if ((await NotificationStore(db).settings())?.enabled != true) {
+      if (!await NotificationRuntime.hasBackgroundWork(db)) {
         return true;
       }
       // 네트워크 조회 중 종료되어도 다음 회차 예약은 남긴다.
       await NotificationRuntime.schedule();
-      await NotificationRuntime.sink.initialize();
-      await NotificationRuntime.poll(db, secure);
+      await NotificationRuntime.checkAll(db, secure);
       return true;
     } on Exception {
       // 다음 예약 자체에 실패했다면 OS 재시도로 예약 연결을 복구한다.
@@ -143,11 +145,11 @@ class LocalNoticeSink implements NoticeSink {
     }
     await plugin.show(
         id: notice.id,
-        title: '새 ${notice.kind.label} · ${notice.courseName}',
+        title: notice.courseName.replaceAll(RegExp(r'-\d+$'), ''),
         body: notice.title,
         notificationDetails: const NotificationDetails(
           android: AndroidNotificationDetails('lms_updates', 'LMS 새 소식',
-              channelDescription: '새 공지사항, 강의자료 파일, 과제',
+              channelDescription: '새 공지사항, 강의자료 파일, 과제, 토론',
               importance: Importance.defaultImportance,
               priority: Priority.defaultPriority,
               onlyAlertOnce: true,
@@ -228,7 +230,7 @@ class NotificationRuntime {
     destination.value = null;
     if (!supported) return;
     try {
-      await cancelScheduled();
+      if (!await hasBackgroundWork(db)) await cancelScheduled();
     } finally {
       await sink.plugin.cancelAll();
     }
@@ -243,9 +245,39 @@ class NotificationRuntime {
     }
   }
 
+  static Future<bool> hasBackgroundWork(AppDatabase db) async =>
+      (await NotificationStore(db).settings())?.enabled == true ||
+      (Platform.isAndroid &&
+          (await DownloadStore(db).settings())?.enabled == true);
+
+  static Future<String> download(AppDatabase db, TokenStore secure,
+      {bool force = false}) {
+    return AutoDownloader(
+        store: DownloadStore(db),
+        storage: AndroidFolderStorage(),
+        sourceFactory: () => CanvasDownloadSource(secure)).run(force: force);
+  }
+
+  static Future<void> checkAll(AppDatabase db, TokenStore secure) async {
+    try {
+      if ((await NotificationStore(db).settings())?.enabled == true) {
+        await poll(db, secure);
+      }
+    } finally {
+      if (Platform.isAndroid &&
+          (await DownloadStore(db).settings())?.enabled == true) {
+        await download(db, secure);
+      }
+    }
+  }
+
   static Future<String> poll(AppDatabase db, TokenStore secure,
       {bool force = false}) async {
     if (!supported) return '알림은 Android와 iOS에서 사용할 수 있습니다.';
+    // A failed WorkManager initialization must not prevent manual checks.
+    await sink.initialize(
+        onTap: (payload) =>
+            destination.value = NotificationDestination.parse(payload));
     return NotificationPoller(
       store: NotificationStore(db),
       sink: sink,

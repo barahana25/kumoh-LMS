@@ -10,6 +10,7 @@ import 'package:kumoh_lms/core/storage/db/app_database.dart';
 import 'package:kumoh_lms/features/announcements/presentation/announcements_screen.dart';
 import 'package:kumoh_lms/features/reference/presentation/term_providers.dart';
 import 'package:kumoh_lms/providers.dart';
+import 'package:kumoh_lms/features/notifications/data/notification_store.dart';
 
 import '../../helpers/test_db.dart';
 
@@ -37,6 +38,41 @@ void main() {
         ],
         child: const MaterialApp(home: AnnouncementsScreen()),
       );
+
+  testWidgets('통합 알림을 파일·토론·과제로 분류하고 전송한 내역도 표시한다', (tester) async {
+    await NotificationStore(db).enable('student');
+    for (final kind in ['file', 'discussion', 'assignment']) {
+      await db
+          .into(db.notificationOutbox)
+          .insert(NotificationOutboxCompanion.insert(
+            generation: 'previous',
+            owner: 'student',
+            courseId: 4831,
+            courseName: '테스트 강의',
+            kind: kind,
+            title: '$kind 새 소식',
+            itemId: const Value('42'),
+            delivered: const Value(true),
+          ));
+    }
+    await tester.pumpWidget(wrap());
+    await tester.pumpAndSettle();
+    expect(find.text('file 새 소식'), findsOneWidget);
+    expect(find.text('discussion 새 소식'), findsOneWidget);
+    await tester.tap(find.widgetWithText(ChoiceChip, '파일'));
+    await tester.pumpAndSettle();
+    expect(find.text('file 새 소식'), findsOneWidget);
+    expect(find.text('discussion 새 소식'), findsNothing);
+    await tester.tap(find.widgetWithText(ChoiceChip, '토론'));
+    await tester.pumpAndSettle();
+    expect(find.text('discussion 새 소식'), findsOneWidget);
+    expect(find.text('file 새 소식'), findsNothing);
+    await tester.tap(find.widgetWithText(ChoiceChip, '전체'));
+    await tester.pumpAndSettle();
+    expect(find.text('assignment 새 소식'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpAndSettle();
+  });
 
   testWidgets('공지 제목과 강좌명을 보여준다', (tester) async {
     await db.announcementsDao.replaceForTerm(8, [

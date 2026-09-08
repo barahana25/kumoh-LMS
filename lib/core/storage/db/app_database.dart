@@ -13,9 +13,27 @@ import 'tables.dart';
 part 'app_database.g.dart';
 
 @DriftDatabase(
-  tables: [Terms, Courses, CalendarEvents, Announcements, CacheMetaEntries, CanvasCacheEntries,
-    NotificationSettings, NotificationBaselines, NotificationSeenItems, NotificationOutbox],
-  daos: [TermsDao, CoursesDao, CalendarEventsDao, AnnouncementsDao, CacheMetaDao],
+  tables: [
+    Terms,
+    Courses,
+    CalendarEvents,
+    Announcements,
+    CacheMetaEntries,
+    CanvasCacheEntries,
+    NotificationSettings,
+    NotificationBaselines,
+    NotificationSeenItems,
+    NotificationOutbox,
+    DownloadSettings,
+    DownloadedFiles
+  ],
+  daos: [
+    TermsDao,
+    CoursesDao,
+    CalendarEventsDao,
+    AnnouncementsDao,
+    CacheMetaDao
+  ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
@@ -25,7 +43,8 @@ class AppDatabase extends _$AppDatabase {
       AppDatabase(_openEncrypted(keyProvider));
 
   /// 테스트용. 보통 NativeDatabase.memory()를 넘긴다.
-  factory AppDatabase.forTesting(QueryExecutor executor) => AppDatabase(executor);
+  factory AppDatabase.forTesting(QueryExecutor executor) =>
+      AppDatabase(executor);
 
   /// drift 기본값은 DateTime을 정수 타임스탬프로 저장해 읽을 때 isUtc를 잃는다.
   /// DateTime.==는 isUtc까지 비교하므로 UTC로 쓴 값이 왕복 후 달라진다.
@@ -35,7 +54,7 @@ class AppDatabase extends _$AppDatabase {
       const DriftDatabaseOptions(storeDateTimeAsText: true);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 5;
 
   /// 스키마를 올릴 때마다 여기에 단계를 추가한다.
   ///
@@ -46,6 +65,10 @@ class AppDatabase extends _$AppDatabase {
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) => m.createAll(),
         onUpgrade: (m, from, to) async {
+          if (from < 5 && to >= 5) {
+            await m.createTable(downloadSettings);
+            await m.createTable(downloadedFiles);
+          }
           // v2: 강좌 상세 탭 캐시 추가
           if (from < 2 && to >= 2) {
             await m.createTable(canvasCacheEntries);
@@ -55,6 +78,13 @@ class AppDatabase extends _$AppDatabase {
             await m.createTable(notificationBaselines);
             await m.createTable(notificationSeenItems);
             await m.createTable(notificationOutbox);
+          }
+          if (from == 3 && to >= 4) {
+            await m.addColumn(notificationOutbox, notificationOutbox.itemId);
+            // SQLite cannot ADD COLUMN with a non-constant timestamp default.
+            await customStatement(
+                'ALTER TABLE notification_outbox ADD COLUMN detected_at TEXT NOT NULL DEFAULT \'1970-01-01T00:00:00.000Z\'');
+            await m.addColumn(notificationOutbox, notificationOutbox.delivered);
           }
         },
       );
@@ -68,7 +98,6 @@ class AppDatabase extends _$AppDatabase {
     });
   }
 }
-
 
 /// 암호화 키와 DB 파일이 어긋나면(기기 키스토어 초기화, 앱 재설치 잔여 파일 등)
 /// 모든 쿼리가 영구히 실패한다. 로그아웃의 wipe()조차 실패해서 사용자가 스스로
@@ -142,11 +171,10 @@ class TermsDao extends DatabaseAccessor<AppDatabase> with _$TermsDaoMixin {
 class CoursesDao extends DatabaseAccessor<AppDatabase> with _$CoursesDaoMixin {
   CoursesDao(super.db);
 
-  Stream<List<CourseRow>> watchByTerm(int termId) =>
-      (select(courses)
-            ..where((c) => c.termId.equals(termId))
-            ..orderBy([(c) => OrderingTerm.asc(c.name)]))
-          .watch();
+  Stream<List<CourseRow>> watchByTerm(int termId) => (select(courses)
+        ..where((c) => c.termId.equals(termId))
+        ..orderBy([(c) => OrderingTerm.asc(c.name)]))
+      .watch();
 
   Future<void> upsertAll(List<CoursesCompanion> rows) async {
     await batch((b) => b.insertAllOnConflictUpdate(courses, rows));
@@ -180,7 +208,8 @@ class CalendarEventsDao extends DatabaseAccessor<AppDatabase>
   }) =>
       (select(calendarEvents)
             ..where((e) =>
-                e.startAt.isBiggerOrEqualValue(from) & e.startAt.isSmallerThanValue(to))
+                e.startAt.isBiggerOrEqualValue(from) &
+                e.startAt.isSmallerThanValue(to))
             ..orderBy([(e) => OrderingTerm.asc(e.startAt)]))
           .watch();
 
@@ -188,9 +217,11 @@ class CalendarEventsDao extends DatabaseAccessor<AppDatabase>
     await batch((b) => b.insertAllOnConflictUpdate(calendarEvents, rows));
   }
 
-  Future<void> replaceForTerm(int termId, List<CalendarEventsCompanion> rows) async {
+  Future<void> replaceForTerm(
+      int termId, List<CalendarEventsCompanion> rows) async {
     await transaction(() async {
-      await (delete(calendarEvents)..where((e) => e.termId.equals(termId))).go();
+      await (delete(calendarEvents)..where((e) => e.termId.equals(termId)))
+          .go();
       await batch((b) => b.insertAllOnConflictUpdate(calendarEvents, rows));
     });
   }
@@ -207,7 +238,8 @@ class AnnouncementsDao extends DatabaseAccessor<AppDatabase>
             ..orderBy([(a) => OrderingTerm.desc(a.postedAt)]))
           .watch();
 
-  Future<void> replaceForTerm(int termId, List<AnnouncementsCompanion> rows) async {
+  Future<void> replaceForTerm(
+      int termId, List<AnnouncementsCompanion> rows) async {
     await transaction(() async {
       await (delete(announcements)..where((a) => a.termId.equals(termId))).go();
       await batch((b) => b.insertAllOnConflictUpdate(announcements, rows));
@@ -216,11 +248,13 @@ class AnnouncementsDao extends DatabaseAccessor<AppDatabase>
 }
 
 @DriftAccessor(tables: [CacheMetaEntries])
-class CacheMetaDao extends DatabaseAccessor<AppDatabase> with _$CacheMetaDaoMixin {
+class CacheMetaDao extends DatabaseAccessor<AppDatabase>
+    with _$CacheMetaDaoMixin {
   CacheMetaDao(super.db);
 
   Future<DateTime?> fetchedAt(String key) async {
-    final row = await (select(cacheMetaEntries)..where((e) => e.key.equals(key)))
+    final row = await (select(cacheMetaEntries)
+          ..where((e) => e.key.equals(key)))
         .getSingleOrNull();
     return row?.fetchedAt;
   }

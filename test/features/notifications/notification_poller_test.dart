@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/services.dart';
 import 'package:drift/drift.dart' show Migrator, Value;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kumoh_lms/core/error/failure.dart';
@@ -40,6 +41,7 @@ class FakeSource implements NotificationSource {
 class FakeSink implements NoticeSink {
   bool allowed = true;
   bool fail = false;
+  PlatformException? platformFailure;
   final shown = <PendingNotice>[];
   final cancelled = <int>[];
   @override
@@ -47,6 +49,7 @@ class FakeSink implements NoticeSink {
   @override
   Future<void> show(PendingNotice n) async {
     shown.add(n);
+    if (platformFailure != null) throw platformFailure!;
     if (fail) throw Exception('OS unavailable');
   }
 
@@ -55,6 +58,18 @@ class FakeSink implements NoticeSink {
 }
 
 void main() {
+  test('v3 대기 알림을 보존하고 내역 필드를 추가한다', () async {
+    final db = createTestDatabase();
+    addTearDown(db.close);
+    await db.customStatement('DROP TABLE notification_outbox');
+    await db.customStatement('CREATE TABLE notification_outbox (id INTEGER PRIMARY KEY AUTOINCREMENT, generation TEXT NOT NULL, owner TEXT NOT NULL, course_id INTEGER NOT NULL, course_name TEXT NOT NULL, kind TEXT NOT NULL, title TEXT NOT NULL)');
+    await db.customStatement("INSERT INTO notification_outbox VALUES (1, 'g', 'student', 1, '강의', 'file', '자료')");
+    await db.migration.onUpgrade(Migrator(db), 3, 4);
+    final row = (await db.select(db.notificationOutbox).get()).single;
+    expect(row.title, '자료');
+    expect(row.delivered, false);
+    expect(row.itemId, '');
+  });
   late AppDatabase db;
   late NotificationStore store;
   late FakeSource source;
@@ -80,6 +95,21 @@ void main() {
     await poller.run();
   }
 
+  test('기기 알림 실패 단계를 표시하고 비밀 오류 본문은 저장하지 않는다', () async {
+    await poller.run();
+    source.values['1/announcement'] = [const WatchedItem('new', '새 공지')];
+    sink.platformFailure = PlatformException(
+        code: 'invalid_icon', message: 'secret native details');
+    now = now.add(const Duration(hours: 1));
+    final status = await poller.run(force: true);
+    expect(status, contains('기기 알림 표시 실패 (invalid_icon)'));
+    expect(status, isNot(contains('secret')));
+    expect((await store.settings())!.status, status);
+    sink.platformFailure = null;
+    final retry = await poller.run(force: true);
+    expect(retry, contains('새 알림 1개'));
+  });
+
   test('첫 조회는 기준만 저장하고 세 종류의 신규 항목만 한 번씩 알린다', () async {
     for (final kind in NoticeKind.values) {
       source.values['1/${kind.name}'] = [const WatchedItem('100', '기존')];
@@ -94,7 +124,7 @@ void main() {
     }
     await tick();
     expect(sink.shown.map((n) => n.kind), containsAll(NoticeKind.values));
-    expect(sink.shown.length, 3);
+    expect(sink.shown.length, 4);
     // 재시작해도 메모리 집합이 아닌 DB 기록으로 중복을 막는다.
     poller = NotificationPoller(
         store: NotificationStore(db),
@@ -102,7 +132,7 @@ void main() {
         sink: sink,
         clock: () => now);
     await tick();
-    expect(sink.shown.length, 3);
+    expect(sink.shown.length, 4);
   });
 
   test('빈 목록도 기준이 된다. 삭제 후 재등장이나 제목 수정은 신규가 아니다', () async {
@@ -155,7 +185,7 @@ void main() {
     sink.fail = false;
     await tick();
     expect(sink.shown.last.id, attemptedId);
-    expect(await db.select(db.notificationOutbox).get(), isEmpty);
+    expect((await db.select(db.notificationOutbox).get()).single.delivered, isTrue);
   });
 
   test('권한 거부는 크롤링과 기준 갱신을 하지 않는다', () async {
@@ -163,6 +193,22 @@ void main() {
     await poller.run();
     expect(source.logins, 0);
     expect(await db.select(db.notificationBaselines).get(), isEmpty);
+  });
+
+  test('전송 완료 내역은 알림을 껐다 켜도 남으며 로그아웃 때 지워진다', () async {
+    await poller.run();
+    source.values['1/discussion'] = [const WatchedItem('42', '새 토론')];
+    await tick();
+    var row = (await db.select(db.notificationOutbox).get()).single;
+    expect(row.kind, 'discussion');
+    expect(row.itemId, '42');
+    expect(row.delivered, true);
+    await store.disable();
+    await store.enable('student');
+    row = (await db.select(db.notificationOutbox).get()).single;
+    expect(row.title, '새 토론');
+    await db.wipe();
+    expect(await db.select(db.notificationOutbox).get(), isEmpty);
   });
 
   test('로그아웃 중 돌아온 응답은 알림이나 확인 기록을 남기지 않는다', () async {
@@ -251,6 +297,6 @@ void main() {
     await store.enable('student');
     expect((await store.settings())!.enabled, isTrue);
     await poller.run();
-    expect((await db.select(db.notificationBaselines).get()).length, 3);
+    expect((await db.select(db.notificationBaselines).get()).length, 4);
   });
 }

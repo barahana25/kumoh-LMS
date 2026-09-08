@@ -6,8 +6,8 @@ import 'core/config/theme.dart';
 import 'core/router/app_router.dart';
 import 'providers.dart';
 import 'features/auth/presentation/auth_controller.dart';
-import 'features/notifications/data/notification_store.dart';
 import 'features/notifications/notification_runtime.dart';
+import 'features/notifications/foreground_notification_check.dart';
 import 'features/notifications/data/notification_schedule.dart';
 import 'features/reference/presentation/term_providers.dart';
 import 'features/canvas/presentation/tabs/content_tabs.dart';
@@ -66,10 +66,11 @@ class _KumohLmsAppState extends ConsumerState<KumohLmsApp>
     final db = ref.read(appDatabaseProvider);
     final tokens = ref.read(tokenStoreProvider);
     try {
-      await NotificationRuntime.initialize();
-      if ((await NotificationStore(db).settings())?.enabled == true) {
-        await NotificationRuntime.schedule();
-        await NotificationRuntime.poll(db, tokens);
+      if (await NotificationRuntime.hasBackgroundWork(db)) {
+        await runForegroundNotificationCheck(
+          schedule: NotificationRuntime.schedule,
+          check: () => NotificationRuntime.checkAll(db, tokens),
+        );
       } else {
         await NotificationRuntime.cancelScheduled();
       }

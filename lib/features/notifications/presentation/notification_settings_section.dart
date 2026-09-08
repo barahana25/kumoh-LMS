@@ -11,8 +11,11 @@ import '../background_settings.dart';
 final backgroundBatteryProvider = FutureProvider<bool?>(
     (ref) => BackgroundSettings.batteryUnrestricted());
 
-final notificationSettingsProvider = FutureProvider<NotificationSetting?>(
-    (ref) => NotificationStore(ref.watch(appDatabaseProvider)).settings());
+final notificationSettingsProvider = StreamProvider<NotificationSetting?>((ref) {
+  final db = ref.watch(appDatabaseProvider);
+  return (db.select(db.notificationSettings)..where((t) => t.id.equals(1)))
+      .watchSingleOrNull();
+});
 
 class NotificationSettingsSection extends ConsumerStatefulWidget {
   const NotificationSettingsSection({super.key});
@@ -121,7 +124,7 @@ class _NotificationSettingsSectionState
         key: const Key('hourly_notifications'),
         secondary: const Icon(Icons.notifications_outlined),
         title: const Text('LMS 새 소식 알림'),
-        subtitle: const Text('현재 학기의 새 공지·파일·과제를 매시 1분에 확인'),
+        subtitle: const Text('현재 학기의 새 공지·파일·과제·토론를 매시 1분에 확인'),
         value: config?.enabled ?? false,
         onChanged: _busy ||
                 settings.isLoading ||
@@ -173,7 +176,8 @@ class _NotificationSettingsSectionState
           subtitle: config?.lastAttempt == null
               ? null
               : Text(
-                  '최근 확인 시도: ${DateFormat('M/d HH:mm').format(DateTime.fromMillisecondsSinceEpoch(config!.lastAttempt!))}'),
+                  '최근 확인 시도: ${DateFormat('M/d HH:mm:ss').format(DateTime.fromMillisecondsSinceEpoch(config!.lastAttempt!))}\n'
+                  '최근 완료: ${config.lastSuccess == null ? '아직 없음' : DateFormat('M/d HH:mm:ss').format(DateTime.fromMillisecondsSinceEpoch(config.lastSuccess!))}'),
           trailing: config?.enabled != true
               ? null
               : TextButton(
