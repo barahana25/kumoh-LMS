@@ -1,5 +1,15 @@
 # 작업 인수인계 — 2026-09-06 업데이트
 
+## 릴리스 빌드에서 알림을 켤 수 없던 문제 (2026-09-09)
+
+- 증상: 알림 토글을 누르면 "알림 설정을 완료하지 못했습니다"가 뜨고 스위치가 도로 꺼졌다.
+- 원인: 릴리스 빌드의 리소스 축소가 ic_stat_lms를 제거했다. 이 드로어블은 Dart의 AndroidInitializationSettings에서 이름 문자열로만 참조해 축소기가 미사용으로 판단한다. 제거되면 알림 초기화가 PlatformException(invalid_icon)으로 실패하고, 이 실패는 설정 저장 이전이라 스위치가 꺼진 채로 되돌아간다.
+- debug 빌드에는 리소스가 남아 있어 개발 중 재현되지 않았다. 2026-09-07 조사에서 원인을 좁히지 못한 이유다.
+- 수정: android/app/src/main/res/raw/keep.xml로 ic_stat_lms를 보존한다. 이름 문자열로 참조하는 다른 리소스는 없다. launch_logo·launch_background·ic_launcher는 XML 정적 참조라 대상이 아니다.
+- 검증: 수정 전 릴리스 APK 리소스 테이블에 ic_stat_lms 0건이고 에뮬레이터 릴리스 빌드에서 initialize가 invalid_icon으로 실패했다. 수정 후 1건이며 initialize가 통과한다. debug 빌드는 수정 전에도 통과해 릴리스 전용임을 확인했다. 진단 스크립트는 .superpowers/schedule_smoke.dart이며 로그인 없이 초기화·권한·예약 단계만 실행한다.
+- 함께 보완: 알림 설정 실패 시 실패한 단계를 표시한다. poller와 같은 규칙으로 PlatformException은 제한된 코드, SqliteException은 숫자 코드만 남기고 자격증명·네이티브 원문·서버 응답은 노출하지 않는다. notificationSetupMessage 회귀 테스트 5개를 추가했다.
+- 전체 287개 테스트 통과, 정적 분석 통과. 실제 사용자 기기 확인은 하지 않았다.
+
 ## 강의자료 자동 다운로드 (2026-09-08)
 
 - Android 설정에서 저장 폴더 선택·생성 및 자동 다운로드/지금 다운로드를 추가했다. 예: Download/2학년 2학기/강의명 (강의 ID)/파일명__파일ID.pdf. 처음 켜면 현재 자료도 받는다.
