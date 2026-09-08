@@ -1,0 +1,15 @@
+name: lms_folder_storage
+description: Persistent user-selected Android document tree storage.
+version: 0.0.1
+publish_to: none
+environment:
+  sdk: ^3.5.0
+dependencies:
+  flutter:
+    sdk: flutter
+flutter:
+  plugin:
+    platforms:
+      android:
+        package: ac.kumoh.lms_folder_storage
+        pluginClass: LmsFolderStoragePlugin

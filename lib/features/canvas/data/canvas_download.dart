@@ -58,16 +58,21 @@ class CanvasDownloader {
   Future<File> download({
     required String url,
     required String displayName,
+    Directory? directory,
+    CancelToken? cancelToken,
     void Function(int received, int total)? onProgress,
   }) async {
     try {
-      final dir = await getApplicationDocumentsDirectory();
-      final target = File(p.join(dir.path, 'files', safeFileName(displayName)));
+      final dir = directory ?? await getApplicationDocumentsDirectory();
+      final target = File(directory == null
+          ? p.join(dir.path, 'files', safeFileName(displayName))
+          : p.join(dir.path, safeFileName(displayName)));
       await target.parent.create(recursive: true);
 
       await _dio.downloadUri(
         Uri.parse(url),
         target.path,
+        cancelToken: cancelToken,
         onReceiveProgress: onProgress,
         options: Options(followRedirects: true, maxRedirects: 5),
       );

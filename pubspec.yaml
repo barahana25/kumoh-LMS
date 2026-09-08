@@ -7,6 +7,8 @@ environment:
   sdk: ^3.5.0
 
 dependencies:
+  lms_folder_storage:
+    path: packages/lms_folder_storage
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.8
@@ -42,5 +44,7 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - assets/branding/lms_app_icon.jpg
+    - assets/branding/lms_app_icon_ochungi.png
     - assets/branding/kumoh-lms-logo-v4.png
+    - assets/branding/kumoh-header-transparent.png
+    - assets/branding/kumoh-lms-startup-ochungi.png

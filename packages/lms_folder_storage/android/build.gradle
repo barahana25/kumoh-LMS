@@ -1,0 +1,13 @@
+group 'ac.kumoh.lms_folder_storage'
+version '1.0'
+apply plugin: 'com.android.library'
+
+android {
+    namespace 'ac.kumoh.lms_folder_storage'
+    compileSdk 36
+    defaultConfig { minSdk 24 }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}

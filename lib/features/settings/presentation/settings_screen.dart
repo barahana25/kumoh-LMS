@@ -5,6 +5,7 @@ import '../../../providers.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../../reference/presentation/term_providers.dart';
 import '../../notifications/presentation/notification_settings_section.dart';
+import '../../downloads/download_settings_section.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -81,6 +82,8 @@ class SettingsScreen extends ConsumerWidget {
           ),
           const Divider(),
           const NotificationSettingsSection(),
+          const Divider(),
+          const DownloadSettingsSection(),
           const Divider(),
           ListTile(
             leading: const Icon(Icons.logout, color: Colors.red),

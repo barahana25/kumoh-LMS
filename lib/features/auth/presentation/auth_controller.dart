@@ -6,6 +6,7 @@ import '../../../core/error/failure.dart';
 import '../../reference/presentation/term_providers.dart';
 import '../data/auth_dto.dart';
 import '../../notifications/notification_runtime.dart';
+import '../../downloads/download_store.dart';
 
 /// 세션 상태. 라우터가 이 값을 보고 로그인 화면 여부를 결정한다.
 sealed class AuthState {
@@ -135,6 +136,7 @@ class AuthController extends AsyncNotifier<AuthState> {
     final result = await AsyncValue.guard(() async {
       // 새 계정 토큰을 저장하기 전에 이전 계정 데이터를 비운다.
       // 프로필 조회가 실패한 뒤 오프라인 재시작해도 이전 캐시가 노출되지 않는다.
+      await DownloadStore(ref.read(appDatabaseProvider)).setEnabled(false);
       await NotificationRuntime.stop(ref.read(appDatabaseProvider));
       await ref.read(appDatabaseProvider).wipe();
       final authenticated = await _performLogin(
@@ -190,6 +192,7 @@ class AuthController extends AsyncNotifier<AuthState> {
     // 그러지 않으면 사용자가 쓸 수 없는 세션에 갇힌 채 로그인 화면으로도 못 간다.
     try {
       try {
+        await DownloadStore(db).setEnabled(false);
         await NotificationRuntime.stop(db);
         await ref
             .read(authApiProvider)

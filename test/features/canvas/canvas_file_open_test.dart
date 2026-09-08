@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:dio/dio.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -21,6 +22,8 @@ class _FakeDownloader implements CanvasDownloader {
   Future<File> download({
     required String url,
     required String displayName,
+    Directory? directory,
+    CancelToken? cancelToken,
     void Function(int received, int total)? onProgress,
   }) async {
     if (delay > Duration.zero) await Future<void>.delayed(delay);
