@@ -108,8 +108,7 @@ class _NotificationSettingsSectionState
           await NotificationStore(db).disable();
           rethrow;
         }
-        stage = '첫 확인';
-        _message = await NotificationRuntime.poll(db, tokens, force: true);
+        // 토글은 켜기만 한다. 첫 조회는 예약된 회차나 '지금 확인'에서 수행한다.
       }
     } on Exception catch (e) {
       _message = notificationSetupMessage(stage, e);
