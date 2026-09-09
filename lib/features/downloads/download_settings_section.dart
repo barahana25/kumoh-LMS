@@ -141,12 +141,8 @@ class _DownloadSettingsSectionState
       const Padding(
           padding: EdgeInsets.symmetric(horizontal: 16),
           child: Text(
-            '폴더 선택창에서 다운로드로 이동한 뒤 새 폴더(예: 2학년 2학기)를 만들고 선택하세요. '
-            'Android에서는 다운로드 최상위 폴더 대신 그 안의 폴더를 선택해야 합니다.\n'
-            '선택한 폴더 / 강의명 (강의 ID) / 파일명__파일ID 형식으로 저장합니다. '
-            '켜면 다음 확인 회차부터 저장하며 이미 저장한 파일은 건너뜁니다. 바로 받으려면 지금 다운로드를 누르세요. '
-            '매시 1분 확인과 새벽 휴식 시간을 따르며 알림을 꺼도 동작합니다. '
-            '모바일 데이터가 사용될 수 있습니다. 로그아웃해도 저장한 파일은 남습니다.',
+            '지정한 폴더 내에 새 강의자료를 강의별 폴더로 자동 다운로드합니다. '
+            '(예: 다운로드 / 2학년 2학기 / 강의명)',
             style: TextStyle(fontSize: 12),
           )),
       if (setting != null || message != null || async.hasError)

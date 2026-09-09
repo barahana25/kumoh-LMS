@@ -160,9 +160,8 @@ class _NotificationSettingsSectionState
       const Padding(
           padding: EdgeInsets.symmetric(horizontal: 16),
           child: Text(
-            '한국 시간 00:01, 08:01~23:01에 자동 확인합니다. 01:00~07:59에는 쉬며 08:01에 재개합니다. '
-            '지금 확인은 휴식 시간에도 사용할 수 있습니다. 처음 확인한 항목은 알리지 않습니다. 자동 로그인이 필요합니다. '
-            '절전 모드나 iOS 정책에 따라 확인이 늦어질 수 있습니다. 앱을 강제 종료한 경우 다시 열어 주세요.',
+            '매시 1분(08:01~23:01, 00:01)에 새 소식을 자동 확인합니다. '
+            '자동 로그인이 필요하며, 절전 모드 시 알림이 지연될 수 있습니다.',
             style: TextStyle(fontSize: 12),
           )),
       if (!NotificationRuntime.supported)
