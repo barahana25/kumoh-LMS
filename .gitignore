@@ -43,3 +43,6 @@ flutter_*.log
 
 # 데스크톱/에뮬레이터 실행 중 작업 폴더에 떨어지는 암호화 앱 DB
 kumoh_lms.sqlite
+
+# SSO 우회 재현·진단 스크립트 (공개 저장소 커밋 금지)
+python/
