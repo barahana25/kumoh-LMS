@@ -49,3 +49,5 @@ python/
 
 # 스파이크 의존성
 tool/spike/node_modules/
+
+relay/node_modules/

@@ -1,0 +1,16 @@
+# Synology Container Manager > 프로젝트에 이 파일을 넣는다.
+# image는 README의 "이미지 고정" 절차대로 digest로 바꾼다.
+services:
+  relay:
+    image: ghcr.io/barahana25/kumoh-lms-relay:main
+    restart: unless-stopped
+    environment:
+      RELAY_ALLOWED_ORIGINS: https://barahana25.github.io
+      PORT: "8080"
+    ports:
+      - "127.0.0.1:8080:8080"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
