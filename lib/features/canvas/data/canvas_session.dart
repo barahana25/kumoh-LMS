@@ -100,7 +100,21 @@ class CanvasSession {
     throw const AuthFailure('Canvas 연결이 계속 우회되고 있습니다.');
   }
 
-  Future<void> _bridge({String relayState = '/courses'}) async {
+  /// IdP의 SAML 자동 제출 폼까지만 받는다.
+  ///
+  /// 네이티브는 이어서 우리가 ACS에 POST한다([_bridge]). 웹은 이 폼을
+  /// 브라우저 창에서 제출해야 Canvas 세션 쿠키가 브라우저에 생긴다.
+  Future<SamlForm> fetchSamlForm({String relayState = '/courses'}) async {
+    // 로그아웃 상태면 학교 서버에 가기 전에 멈춘다.
+    final before = await _identityToken();
+    if (before == null || before.isEmpty) {
+      throw const AuthFailure('로그인 정보가 없어 Canvas에 연결할 수 없습니다.');
+    }
+
+    final ssoUrl = await _fetchSsoUrl(relayState);
+
+    // 토큰은 SSO 주소를 받은 뒤 다시 읽는다. 만료된 accessToken은 이 LINUS
+    // 호출 중에 재발급되므로, 앞서 읽은 토큰을 심으면 IdP가 S010으로 거부한다.
     final token = await _identityToken();
     if (token == null || token.isEmpty) {
       throw const AuthFailure('로그인 정보가 없어 Canvas에 연결할 수 없습니다.');
@@ -109,6 +123,7 @@ class CanvasSession {
     // IdP는 이 쿠키로 사용자를 식별한다. 값은 서명된 accessToken(JWT)이어야
     // 하며, IdP가 서명을 검증한다. 예전처럼 학번 평문을 심으면 검증에 실패해
     // (S010) 폼 대신 500이 돌아오고, 비어 있으면 A001로 거부한다.
+    // IdP 홉에서 필요하므로 리다이렉트를 따라가기 전에 심는다.
     await _jar.saveFromResponse(Uri.parse(Env.canvasBridgeCookieHost), [
       Cookie('_linus_saml_login', token)
         ..domain = '.kumoh.ac.kr'
@@ -117,8 +132,6 @@ class CanvasSession {
         ..domain = '.kumoh.ac.kr'
         ..path = '/',
     ]);
-
-    final ssoUrl = await _fetchSsoUrl(relayState);
 
     // 리다이렉트를 직접 따라간다. dio는 리다이렉트마다 인터셉터를 다시
     // 실행하지 않아서, followRedirects에 맡기면 쿠키 매니저가 첫 홉(canvas)에만
@@ -130,6 +143,11 @@ class CanvasSession {
     if (form == null) {
       throw const AuthFailure('Canvas 연결에 실패했습니다. 다시 로그인해 주세요.');
     }
+    return form;
+  }
+
+  Future<void> _bridge({String relayState = '/courses'}) async {
+    final form = await fetchSamlForm(relayState: relayState);
 
     // 브라우저의 JS 자동 제출을 대신한다.
     await _dio.postUri<void>(

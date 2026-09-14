@@ -82,14 +82,17 @@ void main() {
 
   setUp(() => jar = CookieJar());
 
-  CanvasSession build(_SamlScript script) {
+  CanvasSession build(
+    _SamlScript script, {
+    Future<String?> Function()? identityToken,
+  }) {
     // 운영과 동일한 배선(쿠키 매니저 포함)을 쓴다.
     final dio = buildCanvasDio(jar, adapter: script);
     return CanvasSession(
       dio: dio,
       jar: jar,
       fetchSsoUrl: (relayState) async => _SamlScript.ssoUrl,
-      identityToken: () async => 'eyJhbGci.ACCESS.TOKEN',
+      identityToken: identityToken ?? () async => 'eyJhbGci.ACCESS.TOKEN',
     );
   }
 
@@ -197,5 +200,39 @@ void main() {
 
     expect(script.idpSawCookie, isTrue,
         reason: '쿠키가 빠지면 IdP가 A001로 거부해 강좌 상세를 열 수 없다');
+  });
+
+  test('fetchSamlForm은 ACS에 POST하지 않고 IdP 폼을 돌려준다', () async {
+    // 웹은 마지막 POST를 브라우저가 해야 세션 쿠키가 브라우저에 남는다.
+    final script = _SamlScript(idpBody: autoSubmitForm('BLOB=='));
+    final session = build(script);
+
+    final form = await session.fetchSamlForm(relayState: '/courses/5342');
+
+    expect(form.samlResponse, 'BLOB==');
+    expect(form.action, 'https://canvas.kumoh.ac.kr/login/saml');
+    expect(script.calls.where((c) => c.startsWith('POST')), isEmpty);
+    expect(session.isActive, isFalse);
+  });
+
+  test('SSO 주소를 받은 뒤 다시 읽은 토큰을 신원 쿠키에 심는다', () async {
+    // 만료된 accessToken은 SSO 주소 요청 중에 재발급된다. 그 전에 읽은 토큰을
+    // 심으면 IdP가 S010으로 거부한다.
+    var reads = 0;
+    final script = _SamlScript(idpBody: autoSubmitForm('BLOB=='));
+    final session = build(
+      script,
+      identityToken: () async => reads++ == 0 ? 'OLD.TOKEN' : 'NEW.TOKEN',
+    );
+
+    await session.ensure();
+
+    final cookies = await jar.loadForRequest(
+      Uri.parse('https://lms.kumoh.ac.kr/api/v1/saml/redirect.do'),
+    );
+    expect(
+      cookies.firstWhere((c) => c.name == '_linus_saml_login').value,
+      'NEW.TOKEN',
+    );
   });
 }
