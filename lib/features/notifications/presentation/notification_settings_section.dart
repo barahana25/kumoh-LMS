@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show PlatformException;
-import 'package:sqlite3/sqlite3.dart' show SqliteException;
+import 'package:sqlite3/common.dart' show SqliteException;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../core/storage/db/app_database.dart';
