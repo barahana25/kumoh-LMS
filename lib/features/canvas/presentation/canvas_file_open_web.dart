@@ -49,6 +49,14 @@ Future<void> openCanvasFile(
     final objectUrl = web.URL.createObjectURL(blob);
 
     if (inlineType != null && win != null) {
+      // 받는 사이 사용자가 창을 닫았으면 닫힌 창으로 보내지 않고 알린다.
+      if (win.closed) {
+        web.URL.revokeObjectURL(objectUrl);
+        messenger.hideCurrentSnackBar();
+        messenger.showSnackBar(
+            const SnackBar(content: Text('창이 닫혀 파일을 열지 못했습니다.')));
+        return;
+      }
       win.location.href = objectUrl;
     } else {
       win?.close();
