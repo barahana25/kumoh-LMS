@@ -46,3 +46,6 @@ kumoh_lms.sqlite
 
 # SSO 우회 재현·진단 스크립트 (공개 저장소 커밋 금지)
 python/
+
+# 스파이크 의존성
+tool/spike/node_modules/
