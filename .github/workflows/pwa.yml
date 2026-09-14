@@ -26,8 +26,9 @@ on:
 permissions:
   contents: read
 
+# 배포는 한 줄로 세우고, PR 빌드는 브랜치별로 따로 돌려 배포를 기다리지 않게 한다.
 concurrency:
-  group: pages
+  group: pages-${{ github.event_name == 'pull_request' && github.ref || 'deploy' }}
   cancel-in-progress: false
 
 jobs:
@@ -75,7 +76,7 @@ jobs:
           flutter build web --release
           --no-web-resources-cdn
           --base-href /kumoh-LMS/
-          --dart-define=RELAY_URL=$BUILD_RELAY_URL
+          --dart-define=RELAY_URL="$BUILD_RELAY_URL"
 
       - uses: actions/upload-pages-artifact@v3
         if: github.event_name != 'pull_request'
