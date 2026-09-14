@@ -4,7 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/config/theme.dart';
 import '../../../core/error/failure.dart';
+import '../../../core/platform/browser_display.dart';
 import '../../../providers.dart';
+import 'install_hint.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key, this.allowRememberMe = !kIsWeb, this.showInstallHint});
@@ -62,6 +64,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    if (widget.showInstallHint ?? (kIsWeb && runsInBrowserTab)) ...[
+                      const InstallHint(),
+                      const SizedBox(height: 12),
+                    ],
                     const Icon(Icons.school, size: 56, color: kKitBrand),
                     const SizedBox(height: 12),
                     Text(

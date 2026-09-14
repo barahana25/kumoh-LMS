@@ -1,11 +1,11 @@
 {
-    "name": "kumoh_lms",
-    "short_name": "kumoh_lms",
+    "name": "금오공대 LMS",
+    "short_name": "금오 LMS",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#FFFFFF",
+    "theme_color": "#FFFFFF",
+    "description": "금오공과대학교 Canvas LMS 클라이언트",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
