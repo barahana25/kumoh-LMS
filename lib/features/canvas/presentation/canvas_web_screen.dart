@@ -46,7 +46,23 @@ class _CanvasWebScreenState extends ConsumerState<CanvasWebScreen> {
         );
       }
 
-      final token = await ref.read(canvasIdentityTokenProvider)();
+      final identityToken = ref.read(canvasIdentityTokenProvider);
+      final before = await identityToken();
+      if (before == null || before.isEmpty) {
+        throw const AuthFailure('로그인 정보가 없어 열 수 없습니다.');
+      }
+
+      // accessToken은 1시간이면 만료되고, 만료된 토큰은 이 LINUS 호출에서
+      // 재발급된다. 그러므로 쿠키에 심을 토큰은 이 호출 뒤에 다시 읽는다.
+      // 앞서 읽은 토큰을 심으면 IdP가 S010("SSO 연동 요청 검증에
+      // 실패했습니다")으로 거부한다.
+      final ssoUrl =
+          await ref.read(samlBridgeApiProvider).fetchSsoUrl(relayState);
+      if (ssoUrl.isEmpty) {
+        throw const AuthFailure('Canvas 연결 주소를 받지 못했습니다.');
+      }
+
+      final token = await identityToken();
       if (token == null || token.isEmpty) {
         throw const AuthFailure('로그인 정보가 없어 열 수 없습니다.');
       }
@@ -67,12 +83,6 @@ class _CanvasWebScreenState extends ConsumerState<CanvasWebScreen> {
             path: '/'),
       ]) {
         await cookies.setCookie(c);
-      }
-
-      final ssoUrl =
-          await ref.read(samlBridgeApiProvider).fetchSsoUrl(relayState);
-      if (ssoUrl.isEmpty) {
-        throw const AuthFailure('Canvas 연결 주소를 받지 못했습니다.');
       }
 
       final controller = WebViewController()

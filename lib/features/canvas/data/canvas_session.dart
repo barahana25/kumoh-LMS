@@ -101,6 +101,17 @@ class CanvasSession {
   }
 
   Future<void> _bridge({String relayState = '/courses'}) async {
+    // 로그인 전이면 서버를 치지 않고 곧장 포기한다.
+    final before = await _identityToken();
+    if (before == null || before.isEmpty) {
+      throw const AuthFailure('로그인 정보가 없어 Canvas에 연결할 수 없습니다.');
+    }
+
+    // accessToken은 1시간이면 만료되고, 만료된 토큰은 이 LINUS 호출에서
+    // 재발급된다. 그러므로 쿠키에 심을 토큰은 이 호출 뒤에 다시 읽는다.
+    // 앞서 읽은 토큰을 심으면 IdP가 S010으로 거부한다.
+    final ssoUrl = await _fetchSsoUrl(relayState);
+
     final token = await _identityToken();
     if (token == null || token.isEmpty) {
       throw const AuthFailure('로그인 정보가 없어 Canvas에 연결할 수 없습니다.');
@@ -117,8 +128,6 @@ class CanvasSession {
         ..domain = '.kumoh.ac.kr'
         ..path = '/',
     ]);
-
-    final ssoUrl = await _fetchSsoUrl(relayState);
 
     // 리다이렉트를 직접 따라간다. dio는 리다이렉트마다 인터셉터를 다시
     // 실행하지 않아서, followRedirects에 맡기면 쿠키 매니저가 첫 홉(canvas)에만
