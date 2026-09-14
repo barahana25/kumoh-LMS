@@ -169,6 +169,15 @@ class _CalendarTab extends StatelessWidget {
               formatButtonVisible: false,
               titleCentered: true,
             ),
+            calendarStyle: CalendarStyle(
+              todayDecoration: const BoxDecoration(
+                color: Colors.transparent,
+                shape: BoxShape.circle,
+              ),
+              todayTextStyle: TextStyle(
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+            ),
           ),
           const Divider(height: 1),
           if (dayEvents.isEmpty)

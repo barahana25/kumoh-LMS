@@ -7,10 +7,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:kumoh_lms/core/storage/db/app_database.dart';
-import 'package:kumoh_lms/features/assignments/data/calendar_api.dart' show formatDateParam;
+import 'package:kumoh_lms/features/assignments/data/calendar_api.dart'
+    show formatDateParam;
 import 'package:kumoh_lms/features/assignments/presentation/assignments_screen.dart';
 import 'package:kumoh_lms/features/reference/presentation/term_providers.dart';
 import 'package:kumoh_lms/providers.dart';
+import 'package:table_calendar/table_calendar.dart';
 
 import '../../helpers/test_db.dart';
 
@@ -40,7 +42,6 @@ void main() {
         child: const MaterialApp(home: AssignmentsScreen()),
       );
 
-
   /// 네트워크 → Drift 쓰기는 실제 이벤트 루프를 거치므로 pumpAndSettle만으로는
   /// 끝나지 않는다. 두 루프를 번갈아 흘려보낸다(widget_test.dart와 동일한 이유).
   Future<void> settle(WidgetTester tester) async {
@@ -60,9 +61,24 @@ void main() {
           contextName: const Value('리눅스시스템프로그래밍-01'),
           startAt: Value(dueAt),
           endAt: Value(dueAt),
-          htmlUrl: const Value('https://canvas.kumoh.ac.kr/courses/4831/assignments/7931'),
+          htmlUrl: const Value(
+              'https://canvas.kumoh.ac.kr/courses/4831/assignments/7931'),
         ),
       ]);
+
+  testWidgets('다른 날짜를 선택해도 오늘 날짜에 원 표시를 남기지 않는다', (tester) async {
+    await tester.pumpWidget(wrap());
+    await tester.pumpAndSettle();
+
+    final calendar = tester.widget<TableCalendar<CalendarEventRow>>(
+      find.byType(TableCalendar<CalendarEventRow>),
+    );
+    final decoration = calendar.calendarStyle.todayDecoration as BoxDecoration;
+    expect(decoration.color, Colors.transparent);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpAndSettle();
+  });
 
   testWidgets('목록 탭에서 과제 제목과 강좌명을 보여준다', (tester) async {
     await seedEvent(DateTime.now().toUtc().add(const Duration(days: 7)));
@@ -111,22 +127,25 @@ void main() {
     ]);
     // 강좌 응답이 비면 replaceForTerm이 심어둔 강좌를 지워, 캘린더 조회가
     // 조기 반환된다. 서버가 그 강좌를 계속 준다고 두어야 경로가 실행된다.
-    adapter.onGet('/courses', (s) => s.reply(200, {
-          'code': '200',
-          'message': 'Success',
-          'data': {
-            'courses': [
-              {
-                'id': 4831,
-                'name': '리눅스시스템프로그래밍-01',
-                'courseCode': 'GA2015-01',
-                'enrollmentTermId': 8,
-                'teachers': <Map<String, dynamic>>[],
-                'workflowState': 'available',
+    adapter.onGet(
+        '/courses',
+        (s) => s.reply(200, {
+              'code': '200',
+              'message': 'Success',
+              'data': {
+                'courses': [
+                  {
+                    'id': 4831,
+                    'name': '리눅스시스템프로그래밍-01',
+                    'courseCode': 'GA2015-01',
+                    'enrollmentTermId': 8,
+                    'teachers': <Map<String, dynamic>>[],
+                    'workflowState': 'available',
+                  },
+                ],
               },
-            ],
-          },
-        }), queryParameters: {
+            }),
+        queryParameters: {
           'isMyCourse': 'true',
           'accountId': 1,
           'termId': 8,
@@ -134,26 +153,29 @@ void main() {
     // 리포지토리는 from/to 없이 호출되면 now-60d ~ now+180d 를 쓴다.
     // 쿼리 파라미터를 맞추지 않으면 목이 매칭되지 않아 요청이 실패한다.
     final now = DateTime.now().toUtc();
-    adapter.onGet('/calendar-events', (s) => s.reply(200, {
-          'code': '200',
-          'message': 'Success',
-          'data': {
-            'calendarEvents': [
-              {
-                'id': 'assignment_9001',
-                'title': '서버에서 받은 과제',
-                'start_at': due.toIso8601String(),
-                'end_at': due.toIso8601String(),
-                'workflow_state': 'published',
-                'description': '',
-                'context_code': 'course_4831',
-                'context_name': '리눅스시스템프로그래밍-01',
-                'html_url': 'https://canvas.kumoh.ac.kr/x',
-                'all_day': false,
+    adapter.onGet(
+        '/calendar-events',
+        (s) => s.reply(200, {
+              'code': '200',
+              'message': 'Success',
+              'data': {
+                'calendarEvents': [
+                  {
+                    'id': 'assignment_9001',
+                    'title': '서버에서 받은 과제',
+                    'start_at': due.toIso8601String(),
+                    'end_at': due.toIso8601String(),
+                    'workflow_state': 'published',
+                    'description': '',
+                    'context_code': 'course_4831',
+                    'context_name': '리눅스시스템프로그래밍-01',
+                    'html_url': 'https://canvas.kumoh.ac.kr/x',
+                    'all_day': false,
+                  },
+                ],
               },
-            ],
-          },
-        }), queryParameters: {
+            }),
+        queryParameters: {
           'start_date': formatDateParam(now.subtract(const Duration(days: 60))),
           'end_date': formatDateParam(now.add(const Duration(days: 180))),
           'context_code': 'course_4831',
