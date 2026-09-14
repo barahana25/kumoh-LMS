@@ -108,6 +108,20 @@ void main() {
     expect(parseSamlForm('<html><body>로그인 실패</body></html>'), isNull);
   });
 
+  test('SAML 폼 목적지는 https Canvas 호스트만 믿는다', () {
+    expect(isTrustedSamlAction('https://canvas.kumoh.ac.kr/login/saml'), isTrue);
+    for (final action in [
+      'http://canvas.kumoh.ac.kr/login/saml',
+      'javascript:alert(1)',
+      'https://evil.example/login/saml',
+      'https://canvas.kumoh.ac.kr.evil.example/',
+      '/login/saml',
+      '',
+    ]) {
+      expect(isTrustedSamlAction(action), isFalse, reason: action);
+    }
+  });
+
   test('브릿지를 끝내면 Canvas 세션 쿠키를 얻는다', () async {
     final script = _SamlScript(idpBody: autoSubmitForm('BLOB=='));
     final session = build(script);

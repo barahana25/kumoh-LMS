@@ -38,6 +38,16 @@ SamlForm? parseSamlForm(String html) {
   );
 }
 
+/// 웹은 IdP가 준 폼을 브라우저 창에서 그대로 제출한다. 목적지가 조작되면
+/// SAMLResponse가 다른 곳으로 가거나 `javascript:`가 실행되므로, https Canvas
+/// 호스트일 때만 믿는다.
+bool isTrustedSamlAction(String action) {
+  final uri = Uri.tryParse(action);
+  return uri != null &&
+      uri.scheme == 'https' &&
+      uri.host == Uri.parse(Env.canvasHost).host;
+}
+
 /// Canvas REST API는 LINUS 토큰을 모른다. LINUS의 SAML 다리를 건너
 /// Canvas 세션 쿠키(`_normandy_session`)를 얻어야 열린다.
 ///
