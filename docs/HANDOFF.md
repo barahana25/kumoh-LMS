@@ -1,5 +1,18 @@
 # 작업 인수인계 — 2026-09-06 업데이트
 
+## iOS PWA 블라인드 중계 1단계 (2026-09-14)
+
+- 목적: 유료 Apple 계정 없이 iPhone에 배포. Flutter 웹(PWA)을 GitHub Pages로 배포하고, 학교 서버 접속은 브라우저 안의 libcurl.js가 NAS의 Wisp 중계 서버를 거쳐 TLS를 직접 맺는다. 중계 서버는 암호문만 전달한다.
+- 설계: docs/superpowers/specs/2026-09-14-pwa-blind-relay-design.md, 계획: docs/superpowers/plans/2026-09-14-pwa-blind-relay-stage1.md, 스파이크 결과: docs/pwa/spike-results.md
+- 중계 서버: relay/ (허용 호스트 lms/canvas.kumoh.ac.kr, 포트 82/443, Origin 검사). NAS 배포는 relay/README.md
+- 웹 차이는 조건부 export로 격리: DB(connection_*), HTTP(platform_http_*), 파일 열기(canvas_file_open_*), 원문 열기(canvas_page_launcher_*), 설치 감지(browser_display_*). 모바일 경로는 변경 없음
+- 웹은 비밀번호를 저장하지 않고(WebTokenStore) DB를 암호화하지 않는다(캐시만)
+- 웹 런타임 파일은 web/vendor에 커밋, tool/web_vendor.sh로 재현하고 SHA256SUMS로 검증. pubspec의 drift/sqlite3를 올리면 이 파일도 같은 버전으로 갱신해야 한다
+- 검증: VM 테스트 307개 통과, 정적 분석 통과, flutter build web 성공, relay 테스트 15개 통과. 브라우저 테스트(test/web)는 로컬 Chrome 러너가 멈춰 CI에서 확인. 실기기 확인은 docs/pwa/verification.md
+- 남은 단계: 2단계 투명성 장치(이미지 서명, 커밋 SHA 표시), 3단계 선택 동의 알림
+- 스파이크: 터널 브리지·브라우저 SAML POST 모두 성공, 파일 다운로드는 리다이렉트 없음 → 원문 열기는 방식 A(docs/pwa/spike-results.md)
+- 추가 수정: 테스트가 실제 PDF 뷰어를 띄우던 문제(fileOpenerProvider), 로그 IP 가림(relay/src/log_redaction.mjs), SAML 브리지는 SSO URL 조회 뒤 토큰을 다시 읽어 쿠키에 넣음(재발급 직후 S010 방지)
+
 ## SSO 취약점 패치로 Canvas 연동이 끊긴 문제 (2026-09-10)
 
 - 증상: 로그인은 되지만 "Canvas 연결에 실패했습니다. 다시 로그인해 주세요."가 뜨고 캐시 데이터만 표시된다.
