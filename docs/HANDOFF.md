@@ -1,5 +1,22 @@
 # 작업 인수인계 — 2026-09-06 업데이트
 
+## SSO 취약점 패치로 Canvas 연동이 끊긴 문제 (2026-09-10)
+
+- 증상: 로그인은 되지만 "Canvas 연결에 실패했습니다. 다시 로그인해 주세요."가 뜨고 캐시 데이터만 표시된다.
+- 원인: 학교가 2026-09-08 제보한 SSO 인증 우회 취약점을 수정했다. IdP의 신원 쿠키 `_linus_saml_login`이 예전에는 **평문 학번**을 그대로 신뢰했으나(취약점), 이제는 **서명된 accessToken(JWT)**을 요구하고 서명을 검증한다. 앱 브릿지는 여전히 평문 loginId를 심어 `saml/login.do`가 검증 실패(S010) 후 500을 돌려주고, 브릿지가 SAML 폼 대신 오류를 받아 AuthFailure로 끊긴다.
+- 규명: `python/`의 진단 스크립트로 조건별 격리(A001=쿠키없음 / S010=평문쿠키 / 500=실제요청)했고, Playwright로 실제 웹 로그인을 재현해 `_linus_saml_login`이 404자 JWT로 바뀐 것을 확인했다. accessToken을 쿠키 값으로 넣자 `_normandy_session` 재발급과 Canvas API 200을 확인했다.
+- 수정: `_linus_saml_login` 쿠키 값을 loginId → accessToken(JWT)으로 교체.
+  - [canvas_session.dart](../lib/features/canvas/data/canvas_session.dart): 콜백 `loginId` → `identityToken`.
+  - [providers.dart](../lib/providers.dart): 인증 상태일 때만 `tokenStoreProvider.readAccessToken()`을 넘긴다(로그인 전에는 보안 저장소를 건드리지 않고 null → 위젯 테스트가 멈추지 않는다).
+  - [lms_notification_source.dart](../lib/features/notifications/data/lms_notification_source.dart): 백그라운드 세션도 `tokens.accessToken` 사용.
+- 검증: analyze 클린, 전체 테스트 290개 통과. 실서버 브릿지 재발급 확인.
+- 미해결: 이 흐름이 학교의 정식 허용 연동인지 전산원 회신 확인 필요. 서버가 신원 쿠키에 accessToken 형식을 요구하는 것은 바뀔 수 있다.
+
+## 캘린더 오늘 날짜 표시 변경 (2026-09-10)
+
+- 과제 캘린더에서 다른 날짜를 선택했을 때 오늘 날짜에 남던 희미한 원 배경을 제거했다. 오늘 날짜의 글자는 일반 날짜와 같은 색으로 표시하고, 사용자가 선택한 날짜 강조는 유지한다.
+- 관련 정적 분석과 과제 화면 테스트 6개가 통과했다. APK는 빌드하지 않았다.
+
 ## 릴리스 빌드에서 알림을 켤 수 없던 문제 (2026-09-09)
 
 - 증상: 알림 토글을 누르면 "알림 설정을 완료하지 못했습니다"가 뜨고 스위치가 도로 꺼졌다.

@@ -59,7 +59,8 @@ class LmsNotificationSource implements NotificationSource {
         dio: _bridge,
         jar: cookieJar,
         fetchSsoUrl: SamlBridgeApi(_linus).fetchSsoUrl,
-        loginId: () async => profile.loginId);
+        // IdP는 서명된 accessToken(JWT)으로 신원을 검증한다. 학번 평문이 아니다.
+        identityToken: () async => tokens.accessToken);
     _canvas.interceptors.insert(
         0,
         canvasSessionInterceptor(

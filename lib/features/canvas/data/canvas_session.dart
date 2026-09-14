@@ -48,16 +48,16 @@ class CanvasSession {
     required Dio dio,
     required CookieJar jar,
     required Future<String> Function(String relayState) fetchSsoUrl,
-    required Future<String?> Function() loginId,
+    required Future<String?> Function() identityToken,
   })  : _dio = dio,
         _jar = jar,
         _fetchSsoUrl = fetchSsoUrl,
-        _loginId = loginId;
+        _identityToken = identityToken;
 
   final Dio _dio;
   final CookieJar _jar;
   final Future<String> Function(String relayState) _fetchSsoUrl;
-  final Future<String?> Function() _loginId;
+  final Future<String?> Function() _identityToken;
 
   bool _active = false;
   Future<void>? _bridging;
@@ -101,14 +101,16 @@ class CanvasSession {
   }
 
   Future<void> _bridge({String relayState = '/courses'}) async {
-    final id = await _loginId();
-    if (id == null || id.isEmpty) {
+    final token = await _identityToken();
+    if (token == null || token.isEmpty) {
       throw const AuthFailure('로그인 정보가 없어 Canvas에 연결할 수 없습니다.');
     }
 
-    // IdP는 이 쿠키로 사용자를 식별한다. 없으면 A001로 거부한다.
+    // IdP는 이 쿠키로 사용자를 식별한다. 값은 서명된 accessToken(JWT)이어야
+    // 하며, IdP가 서명을 검증한다. 예전처럼 학번 평문을 심으면 검증에 실패해
+    // (S010) 폼 대신 500이 돌아오고, 비어 있으면 A001로 거부한다.
     await _jar.saveFromResponse(Uri.parse(Env.canvasBridgeCookieHost), [
-      Cookie('_linus_saml_login', id)
+      Cookie('_linus_saml_login', token)
         ..domain = '.kumoh.ac.kr'
         ..path = '/',
       Cookie('_linus_saml_domain', relayState)

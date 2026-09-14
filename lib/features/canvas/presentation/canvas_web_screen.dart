@@ -5,7 +5,6 @@ import 'package:webview_flutter/webview_flutter.dart';
 import '../../../core/error/failure.dart';
 import '../../../core/ui/empty_state.dart';
 import '../../../providers.dart';
-import '../../auth/presentation/auth_controller.dart';
 import '../data/canvas_download.dart';
 import 'canvas_file_open.dart';
 import 'canvas_web_target.dart';
@@ -47,19 +46,18 @@ class _CanvasWebScreenState extends ConsumerState<CanvasWebScreen> {
         );
       }
 
-      final auth = ref.read(authControllerProvider).valueOrNull;
-      final loginId =
-          auth is AuthAuthenticated ? auth.profile.loginId : null;
-      if (loginId == null || loginId.isEmpty) {
+      final token = await ref.read(canvasIdentityTokenProvider)();
+      if (token == null || token.isEmpty) {
         throw const AuthFailure('로그인 정보가 없어 열 수 없습니다.');
       }
 
-      // IdP는 이 쿠키로 사용자를 식별한다. 없으면 A001로 거부한다.
+      // IdP는 이 쿠키의 서명된 accessToken으로 사용자를 식별한다.
+      // 학번 평문은 S010, 빈 값은 A001로 거부한다.
       final cookies = WebViewCookieManager();
       for (final c in [
         WebViewCookie(
             name: '_linus_saml_login',
-            value: loginId,
+            value: token,
             domain: '.kumoh.ac.kr',
             path: '/'),
         WebViewCookie(

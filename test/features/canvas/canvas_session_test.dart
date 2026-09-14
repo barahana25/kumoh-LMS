@@ -89,7 +89,7 @@ void main() {
       dio: dio,
       jar: jar,
       fetchSsoUrl: (relayState) async => _SamlScript.ssoUrl,
-      loginId: () async => '20250000',
+      identityToken: () async => 'eyJhbGci.ACCESS.TOKEN',
     );
   }
 
@@ -122,8 +122,9 @@ void main() {
     expect(session.isActive, isTrue);
   });
 
-  test('브릿지 전에 SAML 힌트 쿠키를 .kumoh.ac.kr에 심는다', () async {
-    // 이 쿠키가 없으면 IdP가 A001(SSO 연동 ID 없음)로 거부한다.
+  test('브릿지 전에 SAML 신원 쿠키(서명된 accessToken)를 .kumoh.ac.kr에 심는다', () async {
+    // 이 쿠키가 없으면 IdP가 A001(SSO 연동 ID 없음)로 거부하고, 값이 서명된
+    // accessToken이 아니면 S010(검증 실패)으로 막힌다.
     final script = _SamlScript(idpBody: autoSubmitForm('BLOB=='));
     await build(script).ensure();
 
@@ -134,7 +135,7 @@ void main() {
     expect(names, contains('_linus_saml_login'));
     expect(
       cookies.firstWhere((c) => c.name == '_linus_saml_login').value,
-      '20250000',
+      'eyJhbGci.ACCESS.TOKEN',
     );
   });
 
