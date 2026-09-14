@@ -13,6 +13,11 @@ class Env {
   /// 내부 API가 CORS/Referer 검사를 하므로 웹앱과 동일한 Origin을 보낸다.
   static const String webOrigin = 'https://lms.kumoh.ac.kr';
 
+  /// 웹(PWA)에서 libcurl.js가 접속할 Wisp 중계 서버. 끝의 `/`가 필요하다.
+  /// 배포 빌드는 `--dart-define=RELAY_URL=wss://.../`로 넣는다.
+  static const String relayUrl =
+      String.fromEnvironment('RELAY_URL', defaultValue: 'ws://127.0.0.1:8080/');
+
   /// KIT 기관 계정 id.
   static const int defaultAccountId = 1;
 
