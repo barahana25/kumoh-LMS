@@ -11,6 +11,16 @@ on:
       - "pubspec.yaml"
       - "pubspec.lock"
       - ".github/workflows/pwa.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "lib/**"
+      - "web/**"
+      - "assets/**"
+      - "test/**"
+      - "pubspec.yaml"
+      - "pubspec.lock"
+      - ".github/workflows/pwa.yml"
   workflow_dispatch:
 
 permissions:
@@ -30,8 +40,21 @@ jobs:
         working-directory: web/vendor
         run: sha256sum -c SHA256SUMS
 
+      # PR은 배포하지 않으므로 자리표시 주소로 빌드만 확인한다.
+      # 배포 빌드는 wss://로 시작하고 /로 끝나는 주소가 있어야 한다.
       - name: 중계 서버 주소 확인
-        run: test -n "${{ vars.RELAY_URL }}"
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          RELAY_URL: ${{ vars.RELAY_URL }}
+        run: |
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            echo "BUILD_RELAY_URL=wss://relay.invalid/" >> "$GITHUB_ENV"
+            exit 0
+          fi
+          case "$RELAY_URL" in
+            wss://?*/) echo "BUILD_RELAY_URL=$RELAY_URL" >> "$GITHUB_ENV" ;;
+            *) echo "vars.RELAY_URL은 wss://로 시작하고 /로 끝나야 합니다." >&2; exit 1 ;;
+          esac
 
       - uses: subosito/flutter-action@v2
         with:
@@ -42,21 +65,26 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y libsqlite3-dev
 
       - run: flutter pub get
+      - run: flutter analyze
       - run: flutter test
       - run: flutter test --platform chrome test/web
 
+      # CanvasKit을 gstatic이 아니라 앱과 같은 출처에서 받는다.
       - name: 웹 빌드
         run: >
           flutter build web --release
+          --no-web-resources-cdn
           --base-href /kumoh-LMS/
-          --dart-define=RELAY_URL=${{ vars.RELAY_URL }}
+          --dart-define=RELAY_URL=$BUILD_RELAY_URL
 
       - uses: actions/upload-pages-artifact@v3
+        if: github.event_name != 'pull_request'
         with:
           path: build/web
 
   deploy:
     needs: build
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       pages: write
