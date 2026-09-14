@@ -109,4 +109,25 @@ void main() {
           (e) => e.type, 'type', DioExceptionType.receiveTimeout)),
     );
   });
+
+  test('요청별 receiveTimeout이 기본 제한보다 길면 늦은 응답도 받는다', () async {
+    final binding = _FakeBinding((_) => Future<CurlResponse>.delayed(
+        const Duration(milliseconds: 60), () => _ok('file')));
+    final dio = Dio(BaseOptions(
+        connectTimeout: const Duration(milliseconds: 10),
+        receiveTimeout: const Duration(milliseconds: 10)))
+      ..httpClientAdapter = LibcurlHttpClientAdapter(binding);
+
+    // 기본 제한(20ms)으로는 60ms 응답을 받지 못한다.
+    await expectLater(
+      dio.get<String>('https://canvas.kumoh.ac.kr/files/1'),
+      throwsA(isA<DioException>().having(
+          (e) => e.type, 'type', DioExceptionType.receiveTimeout)),
+    );
+
+    final res = await dio.get<String>('https://canvas.kumoh.ac.kr/files/1',
+        options: Options(receiveTimeout: const Duration(seconds: 1)));
+
+    expect(res.data, 'file');
+  });
 }

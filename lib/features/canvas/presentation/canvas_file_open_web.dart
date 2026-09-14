@@ -10,6 +10,7 @@ import '../../../core/ui/empty_state.dart';
 import '../../../providers.dart';
 import '../../auth/data/auth_api.dart' show throwAsFailure;
 import '../data/canvas_download.dart' show safeFileName;
+import '../data/inline_file_type.dart';
 
 /// 세션이 붙은 dio(libcurl 터널)로 받아 Blob URL로 연다.
 Future<void> openCanvasFile(
@@ -28,20 +29,29 @@ Future<void> openCanvasFile(
     try {
       res = await ref.read(canvasDioProvider).getUri<List<int>>(
             Uri.parse(url),
-            options: Options(responseType: ResponseType.bytes),
+            options: Options(
+              responseType: ResponseType.bytes,
+              // 웹 어댑터는 connect+receive를 요청 전체 제한으로 쓴다. 기본값(35초)이면
+              // 큰 강의 자료는 받는 도중에 끊긴다.
+              receiveTimeout: const Duration(minutes: 5),
+            ),
           );
     } on DioException catch (e) {
       throwAsFailure(e);
     }
 
     final bytes = Uint8List.fromList(res.data ?? const []);
-    final type = res.headers.value('content-type') ?? 'application/octet-stream';
-    final blob = web.Blob(<JSAny>[bytes.toJS].toJS, web.BlobPropertyBag(type: type));
+    // Blob URL은 PWA 출처를 물려받는다. 서버 MIME을 그대로 쓰면 HTML·SVG 안의
+    // 스크립트가 PWA 저장소의 토큰을 읽을 수 있어, 허용 형식만 창에서 연다.
+    final inlineType = inlineViewableType(res.headers.value('content-type'));
+    final blob = web.Blob(<JSAny>[bytes.toJS].toJS,
+        web.BlobPropertyBag(type: inlineType ?? 'application/octet-stream'));
     final objectUrl = web.URL.createObjectURL(blob);
 
-    if (win != null) {
+    if (inlineType != null && win != null) {
       win.location.href = objectUrl;
     } else {
+      win?.close();
       (web.HTMLAnchorElement()
             ..href = objectUrl
             ..download = safeFileName(displayName))
