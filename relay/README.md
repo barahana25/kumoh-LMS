@@ -10,7 +10,9 @@ PWA가 학교 서버에 접속할 수 있게 TCP 바이트만 전달한다. 학�
 - 동시 WebSocket 연결 수 제한 ([src/limits.mjs](src/limits.mjs)). 넘으면 `429 Too Many Requests`
   - `RELAY_MAX_CONNECTIONS_PER_CLIENT`: 클라이언트 주소 하나당 최대 연결 수 (기본 4)
   - `RELAY_MAX_CONNECTIONS`: 전체 최대 연결 수 (기본 200)
-  - 클라이언트 주소는 루프백(같은 호스트의 리버스 프록시)에서 온 연결이면 `X-Forwarded-For`의 첫 주소, 아니면 TCP 상대 주소다. 주소는 메모리의 연결 수 집계에만 쓰고 연결이 닫히면 지우며, 로그에 남기지 않는다
+  - `RELAY_TRUST_FORWARDED_FOR`: `1` 또는 `true`면 모든 연결에서 `X-Forwarded-For`의 첫 주소를 클라이언트 주소로 쓴다(헤더가 없거나 비면 TCP 상대 주소). 기본은 꺼짐
+  - 클라이언트 주소는 기본적으로 루프백(같은 호스트의 리버스 프록시)에서 온 연결이면 `X-Forwarded-For`의 첫 주소, 아니면 TCP 상대 주소다. 주소는 메모리의 연결 수 집계에만 쓰고 연결이 닫히면 지우며, 로그에 남기지 않는다
+  - **주의**: `RELAY_TRUST_FORWARDED_FOR`는 포트가 `127.0.0.1`에만 열려 있어 접속자가 같은 호스트의 리버스 프록시뿐일 때만 켠다. 포트를 외부에 직접 열었다면 누구나 헤더를 바꿔 제한을 피할 수 있으므로 절대 켜지 않는다
 - 로그: 연결·스트림 시각, 대상 호스트:포트만 남는다. wisp-js가 남기는 접속자 IP는 [src/log_redaction.mjs](src/log_redaction.mjs)가 콘솔 출력 단계에서 가린다
 
 ## 로컬 개발
@@ -28,6 +30,7 @@ Flutter 쪽: `flutter run -d chrome --web-port 8000 --dart-define=RELAY_URL=ws:/
 1. **DDNS**: 제어판 → 외부 액세스 → DDNS → 추가. 서비스 공급자 Synology, 호스트 이름 예: `kumoh-relay.synology.me`
 2. **인증서**: 제어판 → 보안 → 인증서 → 추가 → Let's Encrypt에서 인증서 받기. 도메인은 1의 호스트 이름
 3. **컨테이너**: Container Manager → 프로젝트 → 생성. 경로에 `compose.yaml`을 두고 실행
+   - `compose.yaml`은 `RELAY_TRUST_FORWARDED_FOR: "1"`을 켠다. Docker 브리지 뒤에서는 리버스 프록시가 게이트웨이 주소(예: `172.17.0.1`)로 보여, 끄면 모든 사용자가 한 주소로 묶여 연결 제한(기본 4)을 함께 쓰기 때문이다. `ports`를 `127.0.0.1:8080:8080`에서 바꿔 포트를 외부에 직접 열 경우 반드시 이 값을 지운다
 4. **이미지 고정**: GitHub 저장소 → Packages → `kumoh-lms-relay`에서 배포할 커밋의 `sha256:...` digest를 확인하고 `compose.yaml`의 `image`를 `ghcr.io/barahana25/kumoh-lms-relay@sha256:<digest>`로 바꾼 뒤 프로젝트를 다시 빌드한다
    - GHCR 패키지는 처음에 비공개다. GitHub → Packages → `kumoh-lms-relay` → Package settings에서 공개로 바꾸거나, NAS에서 `docker login ghcr.io`(read:packages 권한 토큰)로 로그인해야 이미지를 받을 수 있다
 5. **리버스 프록시**: 제어판 → 로그인 포털 → 고급 → 리버스 프록시 → 생성

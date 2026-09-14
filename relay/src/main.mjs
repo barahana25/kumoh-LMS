@@ -1,6 +1,11 @@
 import { createRelayServer } from "./server.mjs";
 import { parseAllowedOrigins } from "./policy.mjs";
-import { MAX_CONNECTIONS, MAX_CONNECTIONS_PER_CLIENT, parseLimit } from "./limits.mjs";
+import {
+  MAX_CONNECTIONS,
+  MAX_CONNECTIONS_PER_CLIENT,
+  parseFlag,
+  parseLimit,
+} from "./limits.mjs";
 
 const allowedOrigins = parseAllowedOrigins(process.env.RELAY_ALLOWED_ORIGINS);
 if (allowedOrigins.length === 0) {
@@ -13,14 +18,21 @@ const maxConnectionsPerClient = parseLimit(
   MAX_CONNECTIONS_PER_CLIENT,
 );
 const maxConnections = parseLimit(process.env.RELAY_MAX_CONNECTIONS, MAX_CONNECTIONS);
+const trustForwardedFor = parseFlag(process.env.RELAY_TRUST_FORWARDED_FOR);
 
-createRelayServer({ allowedOrigins, maxConnectionsPerClient, maxConnections }).listen(
+createRelayServer({
+  allowedOrigins,
+  maxConnectionsPerClient,
+  maxConnections,
+  trustForwardedFor,
+}).listen(
   port,
   "0.0.0.0",
   () => {
     console.log(
       `relay listening on :${port}, origins=${allowedOrigins.join(",")}, ` +
-        `max=${maxConnections}, perClient=${maxConnectionsPerClient}`,
+        `max=${maxConnections}, perClient=${maxConnectionsPerClient}, ` +
+        `trustForwardedFor=${trustForwardedFor}`,
     );
   },
 );

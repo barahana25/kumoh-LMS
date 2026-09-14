@@ -7,6 +7,12 @@ services:
     environment:
       RELAY_ALLOWED_ORIGINS: https://barahana25.github.io
       PORT: "8080"
+      # Docker 브리지 뒤에서는 리버스 프록시가 루프백이 아닌 게이트웨이 주소로 보여,
+      # 이 값이 없으면 모든 사용자가 한 주소로 묶여 연결 제한을 함께 쓴다.
+      # 아래 ports가 127.0.0.1에만 열려 있어 접속자가 같은 호스트의 DSM 리버스
+      # 프록시뿐이므로 안전하다. 포트를 외부에 직접 열면 절대 켜지 않는다
+      # (누구나 X-Forwarded-For를 바꿔 제한을 피할 수 있다).
+      RELAY_TRUST_FORWARDED_FOR: "1"
     ports:
       - "127.0.0.1:8080:8080"
     read_only: true

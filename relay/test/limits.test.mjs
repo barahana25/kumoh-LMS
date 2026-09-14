@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import WebSocket from "ws";
 import { createRelayServer } from "../src/server.mjs";
-import { clientAddress, parseLimit } from "../src/limits.mjs";
+import { clientAddress, parseFlag, parseLimit } from "../src/limits.mjs";
 
 const ORIGIN = "https://barahana25.github.io";
 
@@ -73,6 +73,34 @@ test("루프백 프록시를 거친 요청만 X-Forwarded-For의 첫 주소를 �
   assert.equal(clientAddress(req("::ffff:127.0.0.1", "203.0.113.9")), "203.0.113.9");
   assert.equal(clientAddress(req("127.0.0.1")), "127.0.0.1");
   assert.equal(clientAddress(req("198.51.100.1", "203.0.113.7")), "198.51.100.1");
+});
+
+test("trustForwardedFor면 상대 주소와 상관없이 X-Forwarded-For의 첫 주소를 쓴다", () => {
+  const req = (remoteAddress, xff) => ({
+    socket: { remoteAddress },
+    headers: xff === undefined ? {} : { "x-forwarded-for": xff },
+  });
+  for (const v of ["1", "true"]) assert.equal(parseFlag(v), true, v);
+  for (const v of [undefined, "", "0", "false", "TRUE", "yes"]) assert.equal(parseFlag(v), false, String(v));
+  const trust = { trustForwardedFor: true };
+  // Docker 브리지 게이트웨이처럼 루프백이 아닌 상대
+  assert.equal(clientAddress(req("172.17.0.1", "203.0.113.7, 10.0.0.1"), trust), "203.0.113.7");
+  assert.equal(clientAddress(req("172.17.0.1"), trust), "172.17.0.1");
+  assert.equal(clientAddress(req("172.17.0.1", " "), trust), "172.17.0.1");
+  // 기본값은 루프백 상대만 믿는다.
+  assert.equal(clientAddress(req("172.17.0.1", "203.0.113.7")), "172.17.0.1");
+  assert.equal(clientAddress(req("172.17.0.1", "203.0.113.7"), { trustForwardedFor: false }), "172.17.0.1");
+});
+
+test("trustForwardedFor 서버는 X-Forwarded-For별로 세고 같은 값은 제한에 걸린다", async (t) => {
+  const relay = await start(t, {
+    maxConnectionsPerClient: 1,
+    maxConnections: 100,
+    trustForwardedFor: true,
+  });
+  assert.equal((await connect(relay, "203.0.113.7")).status, 101);
+  assert.equal((await connect(relay, "203.0.113.8")).status, 101);
+  assert.equal((await connect(relay, "203.0.113.7")).status, 429);
 });
 
 test("같은 클라이언트의 동시 연결이 제한을 넘으면 429로 거부하고, 닫히면 다시 받는다", async (t) => {

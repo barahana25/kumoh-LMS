@@ -10,11 +10,17 @@ export function parseLimit(value, fallback) {
 
 const LOOPBACK = new Set(["127.0.0.1", "::1", "::ffff:127.0.0.1"]);
 
-// 같은 호스트의 DSM 리버스 프록시(루프백)를 거친 요청만 X-Forwarded-For를 믿는다.
-// 그 밖의 상대가 보낸 X-Forwarded-For는 마음대로 바꿀 수 있어 무시한다.
-export function clientAddress(req) {
+export function parseFlag(value) {
+  return value === "1" || value === "true";
+}
+
+// 기본은 같은 호스트의 DSM 리버스 프록시(루프백)를 거친 요청만 X-Forwarded-For를
+// 믿는다. 그 밖의 상대가 보낸 X-Forwarded-For는 마음대로 바꿀 수 있어 무시한다.
+// Docker 브리지 뒤에서는 프록시가 게이트웨이 주소로 보여 루프백 판정이 안 되므로,
+// 포트가 127.0.0.1에만 열려 있을 때에 한해 trustForwardedFor로 항상 믿게 한다.
+export function clientAddress(req, { trustForwardedFor = false } = {}) {
   const peer = req.socket.remoteAddress ?? "";
-  if (LOOPBACK.has(peer)) {
+  if (trustForwardedFor || LOOPBACK.has(peer)) {
     const forwarded = req.headers["x-forwarded-for"];
     const first = (Array.isArray(forwarded) ? forwarded[0] : forwarded ?? "")
       .split(",")[0]
