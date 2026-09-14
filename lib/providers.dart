@@ -110,16 +110,25 @@ final canvasBridgeDioProvider = Provider<Dio>(
 final samlBridgeApiProvider =
     Provider<SamlBridgeApi>((ref) => SamlBridgeApi(ref.watch(dioProvider)));
 
+/// IdP 신원 쿠키 `_linus_saml_login`에 심을 값. 브릿지와 내장 웹 화면이 함께 쓴다.
+///
+/// IdP는 서명된 accessToken(JWT)을 검증한다. profile.loginId 같은 평문을
+/// 넘기면 S010(검증 실패)로 막힌다. 로그인 전에는 토큰 저장소를 건드리지 않고
+/// 곧장 null을 돌려 브릿지를 빠르게 포기한다.
+final canvasIdentityTokenProvider =
+    Provider<Future<String?> Function()>((ref) => () async {
+          final auth = ref.read(authControllerProvider).valueOrNull;
+          if (auth is! AuthAuthenticated) return null;
+          return ref.read(tokenStoreProvider).readAccessToken();
+        });
+
 final canvasSessionProvider = Provider<CanvasSession>((ref) {
   final bridge = ref.watch(samlBridgeApiProvider);
   return CanvasSession(
     dio: ref.watch(canvasBridgeDioProvider),
     jar: ref.watch(canvasCookieJarProvider),
     fetchSsoUrl: bridge.fetchSsoUrl,
-    loginId: () async {
-      final auth = ref.read(authControllerProvider).valueOrNull;
-      return auth is AuthAuthenticated ? auth.profile.loginId : null;
-    },
+    identityToken: ref.watch(canvasIdentityTokenProvider),
   );
 });
 

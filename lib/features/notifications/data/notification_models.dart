@@ -1,12 +1,15 @@
 enum NoticeKind {
-  announcement('공지', 'announcements'),
-  file('파일', 'files'),
-  assignment('과제', 'assignments'),
-  discussion('토론', 'discussions');
+  announcement('공지', 'announcements', '공지'),
+  file('파일', 'files', '새 파일'),
+  assignment('과제', 'assignments', '과제'),
+  discussion('토론', 'discussions', '토론');
 
-  const NoticeKind(this.label, this.tab);
+  const NoticeKind(this.label, this.tab, this.badge);
   final String label;
   final String tab;
+
+  /// 기기 알림 제목 앞에 붙는 분류 표시. ex) [새 파일] 강의명
+  final String badge;
 }
 
 class WatchedCourse {
@@ -42,6 +45,10 @@ class PendingNotice {
   final String courseName;
   final NoticeKind kind;
   final String title;
+
+  /// 기기 알림 제목. 분류를 앞에 붙이고 강의명의 분반 번호는 뗀다.
+  String get heading =>
+      '[${kind.badge}] ${courseName.replaceAll(RegExp(r'-\d+$'), '')}';
 }
 
 abstract interface class NoticeSink {

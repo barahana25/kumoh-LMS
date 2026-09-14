@@ -5,7 +5,6 @@ import 'package:webview_flutter/webview_flutter.dart';
 import '../../../core/error/failure.dart';
 import '../../../core/ui/empty_state.dart';
 import '../../../providers.dart';
-import '../../auth/presentation/auth_controller.dart';
 import '../data/canvas_download.dart';
 import 'canvas_file_open.dart';
 import 'canvas_web_target.dart';
@@ -47,19 +46,34 @@ class _CanvasWebScreenState extends ConsumerState<CanvasWebScreen> {
         );
       }
 
-      final auth = ref.read(authControllerProvider).valueOrNull;
-      final loginId =
-          auth is AuthAuthenticated ? auth.profile.loginId : null;
-      if (loginId == null || loginId.isEmpty) {
+      final identityToken = ref.read(canvasIdentityTokenProvider);
+      final before = await identityToken();
+      if (before == null || before.isEmpty) {
         throw const AuthFailure('로그인 정보가 없어 열 수 없습니다.');
       }
 
-      // IdP는 이 쿠키로 사용자를 식별한다. 없으면 A001로 거부한다.
+      // accessToken은 1시간이면 만료되고, 만료된 토큰은 이 LINUS 호출에서
+      // 재발급된다. 그러므로 쿠키에 심을 토큰은 이 호출 뒤에 다시 읽는다.
+      // 앞서 읽은 토큰을 심으면 IdP가 S010("SSO 연동 요청 검증에
+      // 실패했습니다")으로 거부한다.
+      final ssoUrl =
+          await ref.read(samlBridgeApiProvider).fetchSsoUrl(relayState);
+      if (ssoUrl.isEmpty) {
+        throw const AuthFailure('Canvas 연결 주소를 받지 못했습니다.');
+      }
+
+      final token = await identityToken();
+      if (token == null || token.isEmpty) {
+        throw const AuthFailure('로그인 정보가 없어 열 수 없습니다.');
+      }
+
+      // IdP는 이 쿠키의 서명된 accessToken으로 사용자를 식별한다.
+      // 학번 평문은 S010, 빈 값은 A001로 거부한다.
       final cookies = WebViewCookieManager();
       for (final c in [
         WebViewCookie(
             name: '_linus_saml_login',
-            value: loginId,
+            value: token,
             domain: '.kumoh.ac.kr',
             path: '/'),
         WebViewCookie(
@@ -69,12 +83,6 @@ class _CanvasWebScreenState extends ConsumerState<CanvasWebScreen> {
             path: '/'),
       ]) {
         await cookies.setCookie(c);
-      }
-
-      final ssoUrl =
-          await ref.read(samlBridgeApiProvider).fetchSsoUrl(relayState);
-      if (ssoUrl.isEmpty) {
-        throw const AuthFailure('Canvas 연결 주소를 받지 못했습니다.');
       }
 
       final controller = WebViewController()
