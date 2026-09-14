@@ -145,7 +145,7 @@ class LocalNoticeSink implements NoticeSink {
     }
     await plugin.show(
         id: notice.id,
-        title: notice.courseName.replaceAll(RegExp(r'-\d+$'), ''),
+        title: notice.heading,
         body: notice.title,
         notificationDetails: const NotificationDetails(
           android: AndroidNotificationDetails('lms_updates', 'LMS 새 소식',
