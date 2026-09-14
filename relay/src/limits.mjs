@@ -1,6 +1,8 @@
 // Origin 검사는 브라우저가 아닌 클라이언트가 얼마든지 속일 수 있다. 한 곳에서
 // 연결을 쌓아 NAS와 학교 서버에 부담을 주지 못하도록 동시 연결 수를 제한한다.
-export const MAX_CONNECTIONS_PER_CLIENT = 4;
+// 학교 Wi‑Fi나 통신사 NAT 뒤의 여러 사용자가 공인 IP 하나를 함께 쓰므로
+// 클라이언트당 한도는 넉넉히 둔다.
+export const MAX_CONNECTIONS_PER_CLIENT = 32;
 export const MAX_CONNECTIONS = 200;
 
 export function parseLimit(value, fallback) {
@@ -18,14 +20,19 @@ export function parseFlag(value) {
 // 믿는다. 그 밖의 상대가 보낸 X-Forwarded-For는 마음대로 바꿀 수 있어 무시한다.
 // Docker 브리지 뒤에서는 프록시가 게이트웨이 주소로 보여 루프백 판정이 안 되므로,
 // 포트가 127.0.0.1에만 열려 있을 때에 한해 trustForwardedFor로 항상 믿게 한다.
+//
+// 앞쪽 항목은 클라이언트가 보낸 헤더라 마음대로 채울 수 있다. 신뢰하는 프록시는
+// 하나뿐이고 실제 접속 주소를 끝에 붙이므로($proxy_add_x_forwarded_for) 마지막
+// 항목을 쓴다.
 export function clientAddress(req, { trustForwardedFor = false } = {}) {
   const peer = req.socket.remoteAddress ?? "";
   if (trustForwardedFor || LOOPBACK.has(peer)) {
     const forwarded = req.headers["x-forwarded-for"];
-    const first = (Array.isArray(forwarded) ? forwarded[0] : forwarded ?? "")
-      .split(",")[0]
-      .trim();
-    if (first) return first;
+    const entries = (Array.isArray(forwarded) ? forwarded.join(",") : forwarded ?? "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (entries.length > 0) return entries[entries.length - 1];
   }
   return peer;
 }

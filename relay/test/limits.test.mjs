@@ -2,7 +2,13 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import WebSocket from "ws";
 import { createRelayServer } from "../src/server.mjs";
-import { clientAddress, parseFlag, parseLimit } from "../src/limits.mjs";
+import {
+  MAX_CONNECTIONS,
+  MAX_CONNECTIONS_PER_CLIENT,
+  clientAddress,
+  parseFlag,
+  parseLimit,
+} from "../src/limits.mjs";
 
 const ORIGIN = "https://barahana25.github.io";
 
@@ -63,19 +69,32 @@ test("연결 수 제한 값을 환경 변수에서 읽는다", () => {
   assert.equal(parseLimit("abc", 4), 4);
 });
 
-test("루프백 프록시를 거친 요청만 X-Forwarded-For의 첫 주소를 쓴다", () => {
+test("기본 한도는 클라이언트당 32, 전체 200이다", () => {
+  assert.equal(MAX_CONNECTIONS_PER_CLIENT, 32);
+  assert.equal(MAX_CONNECTIONS, 200);
+});
+
+test("루프백 프록시를 거친 요청만 X-Forwarded-For의 마지막 주소를 쓴다", () => {
   const req = (remoteAddress, xff) => ({
     socket: { remoteAddress },
-    headers: xff ? { "x-forwarded-for": xff } : {},
+    headers: xff === undefined ? {} : { "x-forwarded-for": xff },
   });
-  assert.equal(clientAddress(req("127.0.0.1", "203.0.113.7, 10.0.0.1")), "203.0.113.7");
+  // 한 개 값
+  assert.equal(clientAddress(req("127.0.0.1", " 203.0.113.7 ")), "203.0.113.7");
+  // 여러 값: 앞쪽은 클라이언트가 속일 수 있고, 마지막이 신뢰하는 프록시가 붙인 주소다.
+  assert.equal(clientAddress(req("127.0.0.1", "spoofed, 10.0.0.1, 203.0.113.7")), "203.0.113.7");
+  assert.equal(clientAddress(req("127.0.0.1", "203.0.113.7, ,")), "203.0.113.7");
+  // 비어 있으면 상대 주소
+  assert.equal(clientAddress(req("127.0.0.1", "")), "127.0.0.1");
+  assert.equal(clientAddress(req("127.0.0.1", " , ")), "127.0.0.1");
+  assert.equal(clientAddress(req("127.0.0.1", ["a, 203.0.113.5", "203.0.113.6"])), "203.0.113.6");
   assert.equal(clientAddress(req("::1", "203.0.113.8")), "203.0.113.8");
   assert.equal(clientAddress(req("::ffff:127.0.0.1", "203.0.113.9")), "203.0.113.9");
   assert.equal(clientAddress(req("127.0.0.1")), "127.0.0.1");
   assert.equal(clientAddress(req("198.51.100.1", "203.0.113.7")), "198.51.100.1");
 });
 
-test("trustForwardedFor면 상대 주소와 상관없이 X-Forwarded-For의 첫 주소를 쓴다", () => {
+test("trustForwardedFor면 상대 주소와 상관없이 X-Forwarded-For의 마지막 주소를 쓴다", () => {
   const req = (remoteAddress, xff) => ({
     socket: { remoteAddress },
     headers: xff === undefined ? {} : { "x-forwarded-for": xff },
@@ -84,7 +103,7 @@ test("trustForwardedFor면 상대 주소와 상관없이 X-Forwarded-For의 첫 
   for (const v of [undefined, "", "0", "false", "TRUE", "yes"]) assert.equal(parseFlag(v), false, String(v));
   const trust = { trustForwardedFor: true };
   // Docker 브리지 게이트웨이처럼 루프백이 아닌 상대
-  assert.equal(clientAddress(req("172.17.0.1", "203.0.113.7, 10.0.0.1"), trust), "203.0.113.7");
+  assert.equal(clientAddress(req("172.17.0.1", "10.0.0.1, 203.0.113.7"), trust), "203.0.113.7");
   assert.equal(clientAddress(req("172.17.0.1"), trust), "172.17.0.1");
   assert.equal(clientAddress(req("172.17.0.1", " "), trust), "172.17.0.1");
   // 기본값은 루프백 상대만 믿는다.
@@ -101,6 +120,13 @@ test("trustForwardedFor 서버는 X-Forwarded-For별로 세고 같은 값은 제
   assert.equal((await connect(relay, "203.0.113.7")).status, 101);
   assert.equal((await connect(relay, "203.0.113.8")).status, 101);
   assert.equal((await connect(relay, "203.0.113.7")).status, 429);
+});
+
+test("앞쪽 X-Forwarded-For를 바꿔도 프록시가 붙인 마지막 주소로 함께 센다", async (t) => {
+  const relay = await start(t, { maxConnectionsPerClient: 2, maxConnections: 100 });
+  assert.equal((await connect(relay, "spoofed-1, 203.0.113.7")).status, 101);
+  assert.equal((await connect(relay, "spoofed-2, 203.0.113.7")).status, 101);
+  assert.equal((await connect(relay, "spoofed-3, 203.0.113.7")).status, 429);
 });
 
 test("같은 클라이언트의 동시 연결이 제한을 넘으면 429로 거부하고, 닫히면 다시 받는다", async (t) => {
