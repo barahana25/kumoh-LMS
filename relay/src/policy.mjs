@@ -11,7 +11,8 @@ export function applyPolicy(options) {
   options.allow_loopback_ips = false;
   options.allow_udp_streams = false;
   options.stream_limit_total = 16;
-  // 리버스 프록시의 X-Forwarded-For를 해석하지 않는다. 로그에 사용자 IP를 남기지 않는다.
+  // 리버스 프록시의 X-Forwarded-For를 신뢰하지 않는다는 뜻일 뿐이다. 로그에 IP가 전혀
+  // 남지 않는 것은 server.mjs의 installLogRedaction()이 보장한다.
   options.parse_real_ip = false;
 }
 

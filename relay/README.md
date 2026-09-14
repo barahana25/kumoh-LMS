@@ -7,7 +7,7 @@ PWA가 학교 서버에 접속할 수 있게 TCP 바이트만 전달한다. 학�
 - 대상: `lms.kumoh.ac.kr`, `canvas.kumoh.ac.kr`의 82, 443 포트만 ([src/policy.mjs](src/policy.mjs))
 - 사설 IP, 루프백, IP 직접 지정, UDP 금지
 - WebSocket `Origin`이 `RELAY_ALLOWED_ORIGINS`에 없으면 403
-- 로그: 연결·스트림 시각, 대상 호스트:포트. 사용자 IP는 해석하지 않는다(리버스 프록시 주소만 남는다)
+- 로그: 연결·스트림 시각, 대상 호스트:포트만 남는다. wisp-js가 남기는 접속자 IP는 [src/log_redaction.mjs](src/log_redaction.mjs)가 콘솔 출력 단계에서 가린다
 
 ## 로컬 개발
 
