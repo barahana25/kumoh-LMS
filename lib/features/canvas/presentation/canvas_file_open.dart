@@ -50,7 +50,7 @@ Future<void> openCanvasFile(
         );
     closeDialog();
 
-    final result = await OpenFilex.open(file.path);
+    final result = await ref.read(fileOpenerProvider)(file.path);
     if (result.type != ResultType.done) {
       // 기기에 뷰어가 없을 수 있다. 파일은 이미 저장돼 있으니 그렇게 알린다.
       messenger.showSnackBar(

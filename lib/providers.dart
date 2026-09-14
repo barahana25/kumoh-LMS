@@ -1,6 +1,7 @@
 import 'package:cookie_jar/cookie_jar.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:open_filex/open_filex.dart';
 
 import 'core/config/env.dart';
 import 'core/network/dio_client.dart';
@@ -167,4 +168,10 @@ final canvasCacheProvider =
 
 final canvasDownloaderProvider = Provider<CanvasDownloader>(
   (ref) => CanvasDownloader(ref.watch(canvasDioProvider)),
+);
+
+/// 받은 파일을 기기 뷰어로 연다. 테스트는 이 provider를 바꿔 끼운다.
+/// OpenFilex는 Windows 호스트에서 `cmd /c start`로 실제 뷰어를 띄우기 때문이다.
+final fileOpenerProvider = Provider<Future<OpenResult> Function(String path)>(
+  (ref) => OpenFilex.open,
 );
