@@ -1,0 +1,69 @@
+name: pwa
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "lib/**"
+      - "web/**"
+      - "assets/**"
+      - "test/**"
+      - "pubspec.yaml"
+      - "pubspec.lock"
+      - ".github/workflows/pwa.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 웹 런타임 파일 해시 확인
+        working-directory: web/vendor
+        run: sha256sum -c SHA256SUMS
+
+      - name: 중계 서버 주소 확인
+        run: test -n "${{ vars.RELAY_URL }}"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.2
+          channel: stable
+
+      - name: 테스트용 SQLite
+        run: sudo apt-get update && sudo apt-get install -y libsqlite3-dev
+
+      - run: flutter pub get
+      - run: flutter test
+      - run: flutter test --platform chrome test/web
+
+      - name: 웹 빌드
+        run: >
+          flutter build web --release
+          --base-href /kumoh-LMS/
+          --dart-define=RELAY_URL=${{ vars.RELAY_URL }}
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/web
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
