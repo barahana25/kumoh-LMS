@@ -106,6 +106,19 @@ class SecureTokenStore implements TokenStore {
   }
 }
 
+/// 웹 전용. 브라우저 저장소는 기기 보안 저장소만큼 보호되지 않으므로
+/// 비밀번호는 보관하지 않는다. 토큰이 만료되면 다시 로그인한다.
+class WebTokenStore extends SecureTokenStore {
+  WebTokenStore([super.storage]);
+
+  @override
+  Future<void> saveCredentials(
+      {required String userId, required String password}) async {}
+
+  @override
+  Future<Credentials?> readCredentials() async => null;
+}
+
 /// 테스트와 위젯 프리뷰에서 쓰는 메모리 구현. DB 키는 유지한다.
 class InMemoryTokenStore implements TokenStore {
   final Map<String, String> _values = {};

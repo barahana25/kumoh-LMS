@@ -1,5 +1,6 @@
 import 'package:cookie_jar/cookie_jar.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_filex/open_filex.dart';
 
@@ -27,7 +28,8 @@ import 'features/reference/data/reference_repository.dart';
 
 // ---------- 인프라 ----------
 
-final tokenStoreProvider = Provider<TokenStore>((ref) => SecureTokenStore());
+final tokenStoreProvider = Provider<TokenStore>(
+    (ref) => kIsWeb ? WebTokenStore() : SecureTokenStore());
 
 final appDatabaseProvider = Provider<AppDatabase>((ref) {
   final store = ref.watch(tokenStoreProvider);

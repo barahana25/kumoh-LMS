@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -6,7 +7,13 @@ import '../../../core/error/failure.dart';
 import '../../../providers.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
-  const LoginScreen({super.key});
+  const LoginScreen({super.key, this.allowRememberMe = !kIsWeb, this.showInstallHint});
+
+  /// 웹은 비밀번호를 저장하지 않으므로 자동 로그인을 제공하지 않는다.
+  final bool allowRememberMe;
+
+  /// null이면 실행 환경으로 판단한다(Task 10).
+  final bool? showInstallHint;
 
   @override
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
@@ -99,13 +106,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           (v == null || v.isEmpty) ? '비밀번호를 입력해 주세요.' : null,
                     ),
                     const SizedBox(height: 4),
-                    SwitchListTile.adaptive(
-                      value: _rememberMe,
-                      onChanged: (v) => setState(() => _rememberMe = v),
-                      title: const Text('자동 로그인'),
-                      subtitle: const Text('학번과 비밀번호를 기기 보안 저장소에 보관합니다.'),
-                      contentPadding: EdgeInsets.zero,
-                    ),
+                    if (widget.allowRememberMe)
+                      SwitchListTile.adaptive(
+                        value: _rememberMe,
+                        onChanged: (v) => setState(() => _rememberMe = v),
+                        title: const Text('자동 로그인'),
+                        subtitle: const Text('학번과 비밀번호를 기기 보안 저장소에 보관합니다.'),
+                        contentPadding: EdgeInsets.zero,
+                      ),
                     if (auth.hasError) ...[
                       const SizedBox(height: 8),
                       Text(
