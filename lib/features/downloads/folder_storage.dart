@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/services.dart';
+import '../../core/platform/app_platform.dart';
 
 abstract interface class FolderStorage {
   Future<void> validate(String tree);
@@ -9,7 +10,7 @@ abstract interface class FolderStorage {
 
 class AndroidFolderStorage implements FolderStorage {
   static const channel = MethodChannel('kumoh/folders');
-  static bool get supported => Platform.isAndroid;
+  static bool get supported => isAndroidApp;
   static Future<({String uri, String name})?> pick() async {
     final result = await channel.invokeMapMethod<String, String>('pick');
     if (result == null) return null;

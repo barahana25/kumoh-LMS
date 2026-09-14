@@ -1,11 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:workmanager/workmanager.dart';
 import '../../core/network/token_store.dart';
+import '../../core/platform/app_platform.dart';
 import '../../core/storage/db/app_database.dart';
 import 'data/lms_notification_source.dart';
 import 'data/notification_models.dart';
@@ -101,14 +101,14 @@ class LocalNoticeSink implements NoticeSink {
   }
 
   Future<bool> requestPermission() async {
-    if (Platform.isAndroid) {
+    if (isAndroidApp) {
       return await plugin
               .resolvePlatformSpecificImplementation<
                   AndroidFlutterLocalNotificationsPlugin>()
               ?.requestNotificationsPermission() ??
           false;
     }
-    if (Platform.isIOS) {
+    if (isIOSApp) {
       return await plugin
               .resolvePlatformSpecificImplementation<
                   IOSFlutterLocalNotificationsPlugin>()
@@ -120,14 +120,14 @@ class LocalNoticeSink implements NoticeSink {
 
   @override
   Future<bool> permitted() async {
-    if (Platform.isAndroid) {
+    if (isAndroidApp) {
       return await plugin
               .resolvePlatformSpecificImplementation<
                   AndroidFlutterLocalNotificationsPlugin>()
               ?.areNotificationsEnabled() ??
           false;
     }
-    if (Platform.isIOS) {
+    if (isIOSApp) {
       return (await plugin
                   .resolvePlatformSpecificImplementation<
                       IOSFlutterLocalNotificationsPlugin>()
@@ -170,7 +170,7 @@ class LocalNoticeSink implements NoticeSink {
 }
 
 class NotificationRuntime {
-  static bool get supported => Platform.isAndroid || Platform.isIOS;
+  static bool get supported => isAndroidApp || isIOSApp;
   static final sink = LocalNoticeSink();
   static final destination = ValueNotifier<NotificationDestination?>(null);
   static Future<void>? _initialized;
@@ -198,7 +198,7 @@ class NotificationRuntime {
     await initialize();
     final now = DateTime.now().toUtc();
     final next = NotificationSchedule.next(now);
-    if (Platform.isAndroid) {
+    if (isAndroidApp) {
       // 단발 작업이 중단되어도 독립된 정기 작업이 예약과 누락 회차를 복구한다.
       // poller의 회차 잠금과 휴식 시간 검사를 그대로 사용한다.
       await Workmanager().registerPeriodicTask(
@@ -239,7 +239,7 @@ class NotificationRuntime {
   static Future<void> cancelScheduled() async {
     if (!supported) return;
     await Workmanager().cancelByUniqueName(notificationTask);
-    if (Platform.isAndroid) {
+    if (isAndroidApp) {
       await Workmanager().cancelByTag(notificationScheduleTag);
       await Workmanager().cancelByUniqueName(notificationRecoveryTask);
     }
@@ -247,7 +247,7 @@ class NotificationRuntime {
 
   static Future<bool> hasBackgroundWork(AppDatabase db) async =>
       (await NotificationStore(db).settings())?.enabled == true ||
-      (Platform.isAndroid &&
+      (isAndroidApp &&
           (await DownloadStore(db).settings())?.enabled == true);
 
   static Future<String> download(AppDatabase db, TokenStore secure,
@@ -264,7 +264,7 @@ class NotificationRuntime {
         await poll(db, secure);
       }
     } finally {
-      if (Platform.isAndroid &&
+      if (isAndroidApp &&
           (await DownloadStore(db).settings())?.enabled == true) {
         await download(db, secure);
       }
@@ -282,7 +282,7 @@ class NotificationRuntime {
       store: NotificationStore(db),
       sink: sink,
       sourceFactory: () => LmsNotificationSource(secure),
-      budget: Platform.isIOS
+      budget: isIOSApp
           ? const Duration(seconds: 20)
           : const Duration(minutes: 4),
     ).run(force: force);
