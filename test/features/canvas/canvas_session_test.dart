@@ -139,6 +139,32 @@ void main() {
     expect(session.isActive, isTrue);
   });
 
+  test('SSO 주소를 받은 뒤의 accessToken을 신원 쿠키에 심는다', () async {
+    // accessToken은 1시간이면 만료된다. 만료된 토큰은 redirect.do 호출에서
+    // 재발급되므로, 그 전에 읽은 토큰을 심으면 IdP가 S010으로 거부한다.
+    var token = 'eyJhbGci.EXPIRED.TOKEN';
+    final script = _SamlScript(idpBody: autoSubmitForm('BLOB=='));
+    final session = CanvasSession(
+      dio: buildCanvasDio(jar, adapter: script),
+      jar: jar,
+      fetchSsoUrl: (relayState) async {
+        token = 'eyJhbGci.REISSUED.TOKEN';
+        return _SamlScript.ssoUrl;
+      },
+      identityToken: () async => token,
+    );
+
+    await session.ensure();
+
+    final cookies = await jar.loadForRequest(
+      Uri.parse('https://lms.kumoh.ac.kr/api/v1/saml/redirect.do'),
+    );
+    expect(
+      cookies.firstWhere((c) => c.name == '_linus_saml_login').value,
+      'eyJhbGci.REISSUED.TOKEN',
+    );
+  });
+
   test('브릿지 전에 SAML 신원 쿠키(서명된 accessToken)를 .kumoh.ac.kr에 심는다', () async {
     // 이 쿠키가 없으면 IdP가 A001(SSO 연동 ID 없음)로 거부하고, 값이 서명된
     // accessToken이 아니면 S010(검증 실패)으로 막힌다.
