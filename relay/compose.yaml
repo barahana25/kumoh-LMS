@@ -14,7 +14,9 @@ services:
       # (누구나 X-Forwarded-For를 바꿔 제한을 피할 수 있다).
       RELAY_TRUST_FORWARDED_FOR: "1"
     ports:
-      - "127.0.0.1:8080:8080"
+      # NAS 포트:컨테이너 포트. NAS의 8080은 다른 서비스가 쓰고 있어 18080으로 연다.
+      # 이 번호를 바꾸면 DSM 리버스 프록시의 대상 포트도 같이 바꾼다.
+      - "127.0.0.1:18080:8080"
     read_only: true
     cap_drop:
       - ALL
