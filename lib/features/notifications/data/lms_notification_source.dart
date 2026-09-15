@@ -122,7 +122,21 @@ class LmsNotificationSource implements NotificationSource {
       if (kind == NoticeKind.announcement) 'only_announcements': true,
       if (kind == NoticeKind.discussion) 'only_announcements': false,
     });
-    return parseWatchedItems(json, kind);
+    if (kind != NoticeKind.discussion) return parseWatchedItems(json, kind);
+    // 다른 학생의 토론 글은 알리지 않는다. 수강 목록을 볼 수 없는 강좌는
+    // 강의자를 가릴 수 없으므로 토론 알림을 보내지 않는다.
+    final instructors = <int>{};
+    try {
+      for (final type in instructorEnrollmentTypes) {
+        instructors.addAll(parseInstructorIds(await fetchNotificationPages(
+            _canvas, '/courses/$courseId/enrollments',
+            query: {'type[]': type})));
+      }
+    } on ServerFailure catch (e) {
+      if (!const {'401', '403', '404'}.contains(e.code)) rethrow;
+    }
+    return parseWatchedItems(
+        json.where((r) => isInstructorPost(r, instructors)).toList(), kind);
   }
 
   @override

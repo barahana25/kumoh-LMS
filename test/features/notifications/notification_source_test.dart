@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kumoh_lms/features/canvas/data/canvas_api.dart';
 import 'package:http_mock_adapter/http_mock_adapter.dart';
 import 'package:kumoh_lms/core/error/failure.dart';
 import 'package:kumoh_lms/core/network/token_store.dart';
@@ -125,5 +126,23 @@ void main() {
             '{"owner":"student","courseId":12,"tab":"https://other.test"}'),
         isNull);
     expect(NotificationDestination.parse('not-json'), isNull);
+  });
+
+  test('토론 글은 강의자 id나 담당 교수 이름이 맞을 때만 강의자 글로 본다', () {
+    expect(parseInstructorIds([
+      {'type': 'TeacherEnrollment', 'user_id': 1},
+      {'type': 'TaEnrollment', 'user': {'id': 2}},
+      {'type': 'StudentEnrollment', 'user_id': 3},
+    ]), {1, 2});
+    expect(isInstructorPost({'author': {'id': 1}}, {1}), isTrue);
+    expect(isInstructorPost({'author': {'id': 3}}, {1}), isFalse);
+    expect(
+        isInstructorPost({'author': {'id': 9, 'display_name': '김교수'}}, {},
+            teacherNames: '김교수, 이조교'),
+        isTrue);
+    expect(
+        isInstructorPost({'author': {'id': 9, 'display_name': '김교'}}, {},
+            teacherNames: '김교수'),
+        isFalse);
   });
 }

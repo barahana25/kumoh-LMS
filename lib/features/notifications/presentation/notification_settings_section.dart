@@ -4,6 +4,7 @@ import 'package:sqlite3/sqlite3.dart' show SqliteException;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../core/storage/db/app_database.dart';
+import '../../../core/ui/settings_widgets.dart';
 import '../../../providers.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../data/notification_store.dart';
@@ -143,12 +144,17 @@ class _NotificationSettingsSectionState
   Widget build(BuildContext context) {
     final settings = ref.watch(notificationSettingsProvider);
     final config = settings.valueOrNull;
+    final batteryFree = ref.watch(backgroundBatteryProvider).valueOrNull == true;
+    String time(int? ms) => ms == null
+        ? '아직 없음'
+        : DateFormat('M/d HH:mm').format(DateTime.fromMillisecondsSinceEpoch(ms));
+
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       SwitchListTile(
         key: const Key('hourly_notifications'),
         secondary: const Icon(Icons.notifications_outlined),
         title: const Text('LMS 새 소식 알림'),
-        subtitle: const Text('현재 학기의 새 공지·파일·과제·토론를 매시 1분에 확인'),
+        subtitle: const Text('공지·파일·과제·토론이 올라오면 알려드려요'),
         value: config?.enabled ?? false,
         onChanged: _busy ||
                 settings.isLoading ||
@@ -157,36 +163,8 @@ class _NotificationSettingsSectionState
             ? null
             : _change,
       ),
-      const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16),
-          child: Text(
-            '매시 1분(08:01~23:01, 00:01)에 새 소식을 자동 확인합니다. '
-            '자동 로그인이 필요하며, 절전 모드 시 알림이 지연될 수 있습니다.',
-            style: TextStyle(fontSize: 12),
-          )),
       if (!NotificationRuntime.supported)
         const ListTile(title: Text('알림은 Android와 iOS에서 사용할 수 있습니다.')),
-      if (BackgroundSettings.supported)
-        ListTile(
-          leading: const Icon(Icons.battery_saver_outlined),
-          title: const Text('백그라운드 실행 설정'),
-          subtitle: Text(
-            '${ref.watch(backgroundBatteryProvider).valueOrNull == true ? '배터리 최적화 제외 상태입니다.' : '앱 정보 → 배터리에서 제한 없음을 선택해 주세요.'}\n'
-            '절전 앱·초절전 앱 목록에서도 제외해 주세요. 최근 앱에서 닫아도 예약은 유지되지만 절전 중에는 확인이 늦어질 수 있습니다.',
-          ),
-          trailing: const Icon(Icons.open_in_new),
-          onTap: () async {
-            try {
-              await BackgroundSettings.openAppSettings();
-            } on Exception {
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                  content: Text('휴대폰 설정 → 앱 → 금오공대 LMS → 배터리에서 확인해 주세요.'),
-                ));
-              }
-            }
-          },
-        ),
       if (settings.hasError)
         ListTile(
             title: const Text('알림 설정을 읽지 못했습니다.'),
@@ -194,18 +172,119 @@ class _NotificationSettingsSectionState
                 onPressed: () => ref.invalidate(notificationSettingsProvider),
                 child: const Text('다시 시도'))),
       if (config != null || _message != null || _busy)
+        SettingsStatusCard(
+          busy: _busy,
+          active: config?.enabled == true,
+          message: _busy ? '새 소식을 확인하고 있습니다…' : _message ?? config!.status,
+          detail: config?.lastAttempt == null
+              ? null
+              : '최근 완료 ${time(config!.lastSuccess)} · 시도 ${time(config.lastAttempt)}',
+          actionLabel: config?.enabled == true ? '지금 확인' : null,
+          onAction: _busy ? null : _check,
+        ),
+      if (BackgroundSettings.supported)
         ListTile(
-          title: Text(_busy ? '새 소식을 확인하고 있습니다…' : _message ?? config!.status),
-          subtitle: config?.lastAttempt == null
-              ? null
-              : Text(
-                  '최근 확인 시도: ${DateFormat('M/d HH:mm:ss').format(DateTime.fromMillisecondsSinceEpoch(config!.lastAttempt!))}\n'
-                  '최근 완료: ${config.lastSuccess == null ? '아직 없음' : DateFormat('M/d HH:mm:ss').format(DateTime.fromMillisecondsSinceEpoch(config.lastSuccess!))}'),
-          trailing: config?.enabled != true
-              ? null
-              : TextButton(
-                  onPressed: _busy ? null : _check, child: const Text('지금 확인')),
+          leading: const Icon(Icons.battery_saver_outlined),
+          title: const Text('백그라운드 실행'),
+          subtitle: Text(batteryFree ? '배터리 제한 없이 실행 중' : '배터리 사용을 "제한 없음"으로 바꿔 주세요'),
+          trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+            _StatusPill(ok: batteryFree),
+            IconButton(
+              tooltip: '알림이 늦게 올 때',
+              icon: const Icon(Icons.help_outline, size: 20),
+              onPressed: () => _showBackgroundGuide(context),
+            ),
+          ]),
+          onTap: _openBatterySettings,
         ),
     ]);
+  }
+
+  Future<void> _openBatterySettings() async {
+    try {
+      await BackgroundSettings.openAppSettings();
+    } on Exception {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('휴대폰 설정 → 앱 → 금오공대 LMS → 배터리에서 확인해 주세요.'),
+        ));
+      }
+    }
+  }
+
+  Future<void> _showBackgroundGuide(BuildContext context) =>
+      showModalBottomSheet<void>(
+        context: context,
+        showDragHandle: true,
+        builder: (sheetContext) {
+          final theme = Theme.of(sheetContext);
+          Widget step(int n, String text) => ListTile(
+                leading: CircleAvatar(
+                  radius: 13,
+                  backgroundColor: theme.colorScheme.primaryContainer,
+                  child: Text('$n',
+                      style: theme.textTheme.labelMedium?.copyWith(
+                          color: theme.colorScheme.onPrimaryContainer)),
+                ),
+                title: Text(text),
+              );
+          return SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 4),
+                  child: Text('알림이 늦게 온다면',
+                      style: theme.textTheme.titleMedium),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+                  child: Text(
+                    '매시 1분(08:01~23:01, 00:01)에 새 소식을 확인합니다. '
+                    '휴대폰이 절전 중이면 확인이 늦어질 수 있어요.',
+                    style: theme.textTheme.bodyMedium
+                        ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  ),
+                ),
+                step(1, '앱 정보 → 배터리에서 "제한 없음"을 선택해 주세요.'),
+                step(2, '절전 앱·초절전 앱 목록에서 금오 LMS를 빼 주세요.'),
+                step(3, '최근 앱에서 닫아도 예약은 유지돼요. 앱을 강제 종료하지만 않으면 됩니다.'),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                  child: FilledButton.tonal(
+                    onPressed: () {
+                      Navigator.pop(sheetContext);
+                      _openBatterySettings();
+                    },
+                    child: const Text('배터리 설정 열기'),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      );
+}
+
+class _StatusPill extends StatelessWidget {
+  const _StatusPill({required this.ok});
+  final bool ok;
+
+  @override
+  Widget build(BuildContext context) {
+    const green = Color(0xFF1E7A34);
+    const orange = Color(0xFFB35C00);
+    final color = ok ? green : orange;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Text(ok ? '설정됨' : '설정 필요',
+          style: TextStyle(
+              fontSize: 11, fontWeight: FontWeight.w600, color: color)),
+    );
   }
 }

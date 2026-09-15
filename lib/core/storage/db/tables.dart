@@ -113,14 +113,20 @@ class CalendarEvents extends Table {
   TextColumn get htmlUrl => text().withDefault(const Constant(''))();
   TextColumn get workflowState => text().withDefault(const Constant(''))();
 
+  /// 과제일 때 내가 제출했는가.
+  BoolColumn get submitted => boolean().withDefault(const Constant(false))();
+
   @override
   Set<Column<Object>> get primaryKey => {id};
 }
 
-/// 공지사항.
+/// 공지사항과 강좌 탭(과제·강의자료·토론)에서 모은 소식.
+/// kind는 NoticeKind.name이다. 공지가 아닌 항목의 id는 'file:123'처럼
+/// 종류를 앞에 붙여 서로 겹치지 않게 한다.
 @DataClassName('AnnouncementRow')
 class Announcements extends Table {
   TextColumn get id => text()();
+  TextColumn get kind => text().withDefault(const Constant('announcement'))();
   IntColumn get termId => integer()();
   IntColumn get courseId => integer().nullable()();
   TextColumn get contextName => text().withDefault(const Constant(''))();
@@ -130,8 +136,20 @@ class Announcements extends Table {
   DateTimeColumn get postedAt => dateTime().nullable()();
   TextColumn get htmlUrl => text().withDefault(const Constant(''))();
 
+  /// 과제일 때 내가 제출했는가.
+  BoolColumn get submitted => boolean().withDefault(const Constant(false))();
+
   @override
   Set<Column<Object>> get primaryKey => {id};
+}
+
+/// 공지 화면에서 사용자가 열어 본 소식. key는 목록 항목마다 고유하다.
+class ReadNotices extends Table {
+  TextColumn get key => text()();
+  DateTimeColumn get readAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {key};
 }
 
 /// 컬렉션 단위 마지막 조회 시각. TTL 판정에 쓴다.

@@ -10,6 +10,10 @@ String formatDue(DateTime? at) {
   return DateFormat('M월 d일 (E) HH:mm', 'ko_KR').format(at.toLocal());
 }
 
+/// '제출 완료' 표시 색. 마감 D-day와 헷갈리지 않게 초록 계열을 쓴다.
+const submittedBackground = Color(0xFFE3F4E6);
+const submittedForeground = Color(0xFF1E7A34);
+
 /// 마감까지 남은 시간을 사람이 읽는 문구로.
 String dueRelative(DateTime? at, {DateTime? now}) {
   if (at == null) return '';
@@ -21,14 +25,17 @@ String dueRelative(DateTime? at, {DateTime? now}) {
 }
 
 class EventTile extends StatelessWidget {
-  const EventTile({required this.event, super.key});
+  const EventTile({required this.event, this.onReturn, super.key});
 
   final CalendarEventRow event;
+
+  /// 과제 페이지에서 돌아왔을 때. 거기서 제출했을 수 있으니 다시 받는다.
+  final VoidCallback? onReturn;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final badge = dueRelative(event.startAt);
+    final badge = event.submitted ? '제출 완료' : dueRelative(event.startAt);
     final overdue = badge == '마감됨';
 
     return Card(
@@ -51,21 +58,38 @@ class EventTile extends StatelessWidget {
             : Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: overdue ? scheme.surfaceContainerHighest : scheme.primaryContainer,
+                  color: event.submitted
+                      ? submittedBackground
+                      : overdue
+                          ? scheme.surfaceContainerHighest
+                          : scheme.primaryContainer,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Text(
-                  badge,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: overdue ? scheme.outline : scheme.onPrimaryContainer,
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  if (event.submitted) ...[
+                    const Icon(Icons.check, size: 13, color: submittedForeground),
+                    const SizedBox(width: 3),
+                  ],
+                  Text(
+                    badge,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: event.submitted
+                          ? submittedForeground
+                          : overdue
+                              ? scheme.outline
+                              : scheme.onPrimaryContainer,
+                    ),
                   ),
-                ),
+                ]),
               ),
         onTap: event.htmlUrl.isEmpty
             ? null
-            : () => openCanvasPage(context, title: event.title, url: event.htmlUrl),
+            : () async {
+                await openCanvasPage(context, title: event.title, url: event.htmlUrl);
+                onReturn?.call();
+              },
       ),
     );
   }

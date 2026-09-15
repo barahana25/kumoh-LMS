@@ -58,6 +58,7 @@ class CanvasAssignment {
     this.dueAt,
     this.pointsPossible,
     this.htmlUrl = '',
+    this.submitted = false,
   });
 
   final int id;
@@ -65,6 +66,9 @@ class CanvasAssignment {
   final DateTime? dueAt;
   final num? pointsPossible;
   final String htmlUrl;
+
+  /// include[]=submission으로 받은 내 제출 여부.
+  final bool submitted;
 }
 
 /// 내 제출 상태.
@@ -363,7 +367,11 @@ class CanvasApi {
   Future<List<CanvasAssignment>> fetchAssignments(int courseId) async =>
       parseAssignments(await getListRaw(
         '/courses/$courseId/assignments',
-        query: const {'per_page': 50, 'order_by': 'due_at'},
+        query: const {
+          'per_page': 50,
+          'order_by': 'due_at',
+          'include[]': 'submission',
+        },
       ));
 
   Future<Map<int, CanvasSubmission>> fetchSubmissions(int courseId) async =>
@@ -422,6 +430,17 @@ class CanvasApi {
   Future<String?> fetchFrontPage(int courseId) async =>
       parseFrontPage(await getRaw('/courses/$courseId/front_page'));
 
+  /// 강의자(교수·조교)의 사용자 id. 토론에서 학생 글을 거르는 데 쓴다.
+  Future<Set<int>> fetchInstructorIds(int courseId) async {
+    final ids = <int>{};
+    for (final type in instructorEnrollmentTypes) {
+      ids.addAll(parseInstructorIds(await getListRaw(
+          '/courses/$courseId/enrollments',
+          query: {'type[]': type})));
+    }
+    return ids;
+  }
+
   Future<List<CanvasDiscussion>> fetchDiscussions(int courseId) async =>
       parseDiscussions(await getRaw(
         '/courses/$courseId/discussion_topics',
@@ -472,15 +491,21 @@ List<CanvasAssignment> parseAssignments(Object? json) => _asList(json)
           dueAt: _canvasDate(a['due_at']),
           pointsPossible: a['points_possible'] as num?,
           htmlUrl: a['html_url'] as String? ?? '',
+          submitted: isSubmitted(a['submission']),
         ))
     .toList();
+
+/// 실제로 낸 제출인가. 교수가 점수만 넣은 경우(submitted_at 없음)는 제출이 아니다.
+bool isSubmitted(Object? submission) =>
+    submission is Map &&
+    submission['workflow_state'] != 'unsubmitted' &&
+    submission['submitted_at'] != null;
 
 Map<int, CanvasSubmission> parseSubmissions(Object? json) => {
       for (final s in _asList(json))
         (s['assignment_id'] as num?)?.toInt() ?? 0: CanvasSubmission(
           assignmentId: (s['assignment_id'] as num?)?.toInt() ?? 0,
-          submitted:
-              s['workflow_state'] != 'unsubmitted' && s['submitted_at'] != null,
+          submitted: isSubmitted(s),
           missing: s['missing'] == true,
           late: s['late'] == true,
           score: s['score'] as num?,
@@ -524,6 +549,36 @@ List<CanvasPerson> parsePeople(Object? json) => _asList(json).map((e) {
         enrollmentType: e['type'] as String? ?? '',
       );
     }).toList();
+
+const instructorEnrollmentTypes = ['TeacherEnrollment', 'TaEnrollment'];
+
+/// 수강 목록에서 강의자의 사용자 id만 모은다. 서버가 type 필터를 무시해도
+/// 여기서 한 번 더 거른다.
+Set<int> parseInstructorIds(Object? json) {
+  final ids = <int>{};
+  for (final e in _asList(json)) {
+    if (!instructorEnrollmentTypes.contains(e['type'])) continue;
+    final id = e['user_id'] ?? (e['user'] as Map?)?['id'];
+    if (id is num) ids.add(id.toInt());
+  }
+  return ids;
+}
+
+/// 토론 글을 강의자가 썼는가.
+///
+/// 작성자 id로 판단한다. 수강 목록을 볼 수 없는 강좌에서는 강좌 정보의
+/// 담당 교수 이름([teacherNames])과 작성자 이름을 비교한다.
+bool isInstructorPost(Map<String, dynamic> row, Set<int> instructorIds,
+    {String teacherNames = ''}) {
+  final author = row['author'];
+  final id = (author is Map ? author['id'] : null) ?? row['user_id'];
+  if (id is num && instructorIds.contains(id.toInt())) return true;
+  final name = author is Map ? author['display_name'] : row['user_name'];
+  if (name is! String || name.trim().isEmpty) return false;
+  // 강좌 정보의 담당 교수는 '홍길동, 김철수'처럼 합쳐져 있다. 이름 일부만
+  // 같은 학생 글이 섞이지 않게 한 사람씩 정확히 비교한다.
+  return teacherNames.split(',').map((n) => n.trim()).contains(name.trim());
+}
 
 List<CanvasGroup> parseGroups(Object? json) => _asList(json)
     .map((g) => CanvasGroup(

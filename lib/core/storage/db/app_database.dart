@@ -25,7 +25,8 @@ part 'app_database.g.dart';
     NotificationSeenItems,
     NotificationOutbox,
     DownloadSettings,
-    DownloadedFiles
+    DownloadedFiles,
+    ReadNotices
   ],
   daos: [
     TermsDao,
@@ -54,7 +55,7 @@ class AppDatabase extends _$AppDatabase {
       const DriftDatabaseOptions(storeDateTimeAsText: true);
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 8;
 
   /// 스키마를 올릴 때마다 여기에 단계를 추가한다.
   ///
@@ -65,6 +66,19 @@ class AppDatabase extends _$AppDatabase {
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) => m.createAll(),
         onUpgrade: (m, from, to) async {
+          // v8: 과제 제출 여부
+          if (from < 8 && to >= 8) {
+            await m.addColumn(calendarEvents, calendarEvents.submitted);
+            await m.addColumn(announcements, announcements.submitted);
+          }
+          // v7: 공지 화면에 과제·강의자료·토론을 함께 담는다
+          if (from < 7 && to >= 7) {
+            await m.addColumn(announcements, announcements.kind);
+          }
+          // v6: 공지 읽음 표시
+          if (from < 6 && to >= 6) {
+            await m.createTable(readNotices);
+          }
           if (from < 5 && to >= 5) {
             await m.createTable(downloadSettings);
             await m.createTable(downloadedFiles);
