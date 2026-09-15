@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
 
 import 'curl_binding.dart';
 
@@ -46,12 +47,14 @@ class LibcurlHttpClientAdapter implements HttpClientAdapter {
       if (limit != null) pending = pending.timeout(limit);
       response = await pending;
     } on TimeoutException {
+      _debugFailure(options, '시간 초과');
       throw DioException(
         requestOptions: options,
         type: DioExceptionType.receiveTimeout,
         message: '응답 시간이 초과되었습니다.',
       );
     } on CurlException catch (e) {
+      _debugFailure(options, e.message);
       throw DioException.connectionError(
         requestOptions: options,
         reason: e.message,
@@ -65,6 +68,13 @@ class LibcurlHttpClientAdapter implements HttpClientAdapter {
     }
     return ResponseBody.fromBytes(response.body, response.status,
         headers: grouped);
+  }
+
+  /// 앱은 연결 오류를 "네트워크에 연결할 수 없습니다"로만 보여 준다.
+  /// 디버그 실행에서만 실제 원인을 남긴다. 경로와 쿼리에 토큰이 있을 수 있어 호스트만 적는다.
+  static void _debugFailure(RequestOptions options, String reason) {
+    if (!kDebugMode) return;
+    debugPrint('CURL_FAIL ${options.method} ${options.uri.host}: $reason');
   }
 
   static Duration? _timeLimit(RequestOptions options) {
