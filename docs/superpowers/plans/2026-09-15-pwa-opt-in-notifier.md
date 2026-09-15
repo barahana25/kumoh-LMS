@@ -1,5 +1,7 @@
 # PWA 선택 동의 알림 서버 구현 계획
 
+> **폐기 (2026-09-15).** 학교 서버가 계정당 refreshToken 하나만 인정해 설계가 성립하지 않는다([설계 문서](../specs/2026-09-15-pwa-opt-in-notifier-design.md) 참고). **Task 1(재발급에 accessToken 함께 보내기)만 유효**하며 별도로 진행한다. Task 2~10은 실행하지 않는다.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 알림을 켠 PWA 사용자만 NAS의 `notifier` 컨테이너가 토큰으로 학교 LMS를 매시 조회해 새 글을 Web Push로 알린다.
