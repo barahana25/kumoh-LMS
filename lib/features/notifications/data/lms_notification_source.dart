@@ -21,7 +21,8 @@ class LmsNotificationSource implements NotificationSource {
   LmsNotificationSource(this.secureStore,
       {Dio? linusDio, Dio? bridgeDio, Dio? canvasDio}) {
     _linus = linusDio ?? buildAuthDio();
-    final jar = CookieJar();
+    // CookieJar()는 웹에서 저장하지 않는 WebCookieJar가 된다.
+    final jar = DefaultCookieJar();
     cookieJar = jar;
     _bridge = bridgeDio ?? buildCanvasDio(jar);
     _canvas = canvasDio ?? buildCanvasDio(jar);
