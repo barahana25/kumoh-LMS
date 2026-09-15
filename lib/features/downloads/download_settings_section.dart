@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../core/storage/db/app_database.dart';
+import '../../core/ui/settings_widgets.dart';
 import '../../providers.dart';
 import '../auth/presentation/auth_controller.dart';
 import '../notifications/notification_runtime.dart';
@@ -123,50 +124,48 @@ class _DownloadSettingsSectionState
     if (!AndroidFolderStorage.supported) return const SizedBox.shrink();
     final async = ref.watch(downloadSettingsProvider);
     final setting = async.valueOrNull;
+    final hasFolder = setting != null && setting.treeUri.isNotEmpty;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       SwitchListTile(
         title: const Text('강의자료 자동 다운로드'),
-        subtitle: const Text('새 자료를 선택한 폴더 안에 강의별로 저장'),
+        subtitle: const Text('새 강의자료를 강의별 폴더에 저장해요'),
         secondary: const Icon(Icons.download_outlined),
         value: setting?.enabled ?? false,
         onChanged: busy || async.isLoading || async.hasError ? null : enable,
       ),
       ListTile(
-        title: const Text('저장 폴더 선택·만들기'),
-        subtitle: Text(setting?.folderName ?? '예: 다운로드 / 2학년 2학기'),
         leading: const Icon(Icons.create_new_folder_outlined),
-        trailing: const Icon(Icons.chevron_right),
+        title: const Text('저장 폴더'),
+        subtitle: Text(
+          hasFolder ? '${setting.folderName} / 강의명' : '폴더를 골라 주세요 · 예: 다운로드 / 2학년 2학기',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        trailing: Text(hasFolder ? '변경' : '선택',
+            style: TextStyle(
+                color: Theme.of(context).colorScheme.primary,
+                fontWeight: FontWeight.w600)),
         onTap: busy ? null : choose,
       ),
-      const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16),
-          child: Text(
-            '지정한 폴더 내에 새 강의자료를 강의별 폴더로 자동 다운로드합니다. '
-            '(예: 다운로드 / 2학년 2학기 / 강의명)',
-            style: TextStyle(fontSize: 12),
-          )),
       if (setting != null || message != null || async.hasError)
-        ListTile(
-          title: Text(busy
+        SettingsStatusCard(
+          busy: busy,
+          active: setting?.enabled == true,
+          message: busy
               ? '폴더와 파일을 처리하고 있습니다…'
-              : message ?? setting?.status ?? '설정을 불러오지 못했습니다.'),
-          subtitle: setting?.lastAttempt == null
+              : message ?? setting?.status ?? '설정을 불러오지 못했습니다.',
+          detail: setting?.lastAttempt == null
               ? null
-              : Text(
-                  '최근 확인: ${DateFormat('M/d HH:mm').format(DateTime.fromMillisecondsSinceEpoch(setting!.lastAttempt!))}'),
-          trailing: setting?.enabled == true
-              ? TextButton(
-                  onPressed: busy
-                      ? null
-                      : () => perform(() async {
-                            message = await NotificationRuntime.download(
-                                ref.read(appDatabaseProvider),
-                                ref.read(tokenStoreProvider),
-                                force: true);
-                          }),
-                  child: const Text('지금 다운로드'),
-                )
-              : null,
+              : '최근 확인 ${DateFormat('M/d HH:mm').format(DateTime.fromMillisecondsSinceEpoch(setting!.lastAttempt!))}',
+          actionLabel: setting?.enabled == true ? '지금 저장' : null,
+          onAction: busy
+              ? null
+              : () => perform(() async {
+                    message = await NotificationRuntime.download(
+                        ref.read(appDatabaseProvider),
+                        ref.read(tokenStoreProvider),
+                        force: true);
+                  }),
         ),
     ]);
   }

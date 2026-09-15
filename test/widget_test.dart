@@ -96,6 +96,18 @@ void main() {
     expect(find.text('리눅스시스템프로그래밍-01'), findsOneWidget);
     expect(await store.readCredentials(), isNull);
 
+    // 학기 선택은 강의 탭 머리에 있다.
+    await tester.tap(find.byKey(const Key('term_selector')));
+    await settle(tester);
+    await tester.tap(find.text('2026-1학기'));
+    await settle(tester);
+    expect(container.read(selectedTermIdProvider), 6);
+    await tester.tap(find.byKey(const Key('term_selector')));
+    await settle(tester);
+    await tester.tapAt(const Offset(10, 10));
+    await settle(tester);
+    expect(container.read(selectedTermIdProvider), 6);
+
     await tester.tap(find.byIcon(Icons.assignment_outlined).last);
     await settle(tester);
     expect(find.text('캘린더'), findsOneWidget);
@@ -110,16 +122,7 @@ void main() {
     await tester.tap(find.byIcon(Icons.settings_outlined).last);
     await settle(tester);
     expect(find.text('홍길동'), findsOneWidget);
-    await tester.tap(find.text('학기'));
-    await settle(tester);
-    await tester.tap(find.text('2026-1학기'));
-    await settle(tester);
-    expect(container.read(selectedTermIdProvider), 6);
-    await tester.tap(find.text('학기'));
-    await settle(tester);
-    await tester.tapAt(const Offset(10, 10));
-    await settle(tester);
-    expect(container.read(selectedTermIdProvider), 6);
+    expect(find.text('보안'), findsNothing);
 
     await tester.tap(find.widgetWithText(ListTile, '로그아웃'));
     await settle(tester);

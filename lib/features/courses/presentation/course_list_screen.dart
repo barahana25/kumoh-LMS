@@ -5,6 +5,7 @@ import '../../../core/ui/async_section.dart';
 import '../../../core/ui/empty_state.dart';
 import '../../../providers.dart';
 import '../../reference/presentation/term_providers.dart';
+import '../../reference/presentation/term_selector.dart';
 import 'courses_providers.dart';
 import 'widgets/course_card.dart';
 
@@ -17,21 +18,19 @@ class CourseListScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        centerTitle: true,
-        title: SizedBox(
-          width: 280,
-          height: 48,
-          child: ClipRect(
-            child: Transform.scale(
-              scale: 1.45,
-              child: Image.asset(
-                'assets/branding/kumoh-header-transparent.png',
-                fit: BoxFit.cover,
-                semanticLabel: '국립금오공과대학교',
-              ),
-            ),
+        toolbarHeight: 64,
+        titleSpacing: 16,
+        title: Row(children: [
+          Image.asset(
+            Theme.of(context).brightness == Brightness.dark
+                ? 'assets/branding/kumoh-ci-dark.png'
+                : 'assets/branding/kumoh-ci-light.png',
+            height: 40,
+            semanticLabel: '국립금오공과대학교 CI',
           ),
-        ),
+          const SizedBox(width: 12),
+          const TermSelector(),
+        ]),
       ),
       body: Column(
         children: [

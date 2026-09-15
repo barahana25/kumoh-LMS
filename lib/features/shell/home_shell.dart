@@ -2,16 +2,31 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../providers.dart';
+import '../announcements/presentation/announcements_providers.dart';
 import '../auth/presentation/auth_controller.dart';
 
 /// 하단 탭 네비게이션 셸. 각 탭은 자기 네비게이션 스택을 유지한다.
 class HomeShell extends ConsumerWidget {
-  const HomeShell({required this.navigationShell, super.key});
+  const HomeShell(
+      {required this.navigationShell, this.branchKeys = const [], super.key});
 
   final StatefulNavigationShell navigationShell;
 
+  /// 탭별 네비게이터. 지금 탭을 다시 누르면 그 위에 push한 화면(웹뷰 등)을 닫는다.
+  final List<GlobalKey<NavigatorState>> branchKeys;
+
+  void _select(int i) {
+    if (i == navigationShell.currentIndex && i < branchKeys.length) {
+      // Navigator.push로 띄운 화면은 go_router가 모르므로 직접 걷어낸다.
+      // go_router 페이지(강좌 상세 등)는 아래 goBranch가 처음으로 되돌린다.
+      branchKeys[i].currentState?.popUntil((route) => route.settings is Page);
+    }
+    navigationShell.goBranch(i, initialLocation: i == navigationShell.currentIndex);
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final unread = ref.watch(unreadNoticeCountProvider);
     return Scaffold(
       body: Column(children: [
         if (ref.watch(authControllerProvider).valueOrNull is AuthOffline)
@@ -26,27 +41,32 @@ class HomeShell extends ConsumerWidget {
       ]),
       bottomNavigationBar: NavigationBar(
         selectedIndex: navigationShell.currentIndex,
-        onDestinationSelected: (i) => navigationShell.goBranch(
-          i,
-          initialLocation: i == navigationShell.currentIndex,
-        ),
-        destinations: const [
-          NavigationDestination(
+        onDestinationSelected: _select,
+        destinations: [
+          const NavigationDestination(
             icon: Icon(Icons.menu_book_outlined),
             selectedIcon: Icon(Icons.menu_book),
             label: '강의',
           ),
-          NavigationDestination(
+          const NavigationDestination(
             icon: Icon(Icons.assignment_outlined),
             selectedIcon: Icon(Icons.assignment),
             label: '과제',
           ),
           NavigationDestination(
-            icon: Icon(Icons.campaign_outlined),
-            selectedIcon: Icon(Icons.campaign),
+            icon: Badge.count(
+              count: unread,
+              isLabelVisible: unread > 0,
+              child: const Icon(Icons.campaign_outlined),
+            ),
+            selectedIcon: Badge.count(
+              count: unread,
+              isLabelVisible: unread > 0,
+              child: const Icon(Icons.campaign),
+            ),
             label: '공지',
           ),
-          NavigationDestination(
+          const NavigationDestination(
             icon: Icon(Icons.settings_outlined),
             selectedIcon: Icon(Icons.settings),
             label: '설정',

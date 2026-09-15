@@ -31,6 +31,38 @@ void main() {
     });
   });
 
+  group('실제 파일 받기', () {
+    test('미리보기 페이지 주소를 내려받기 주소로 바꾼다', () {
+      // 미리보기 페이지를 받으면 HTML이 저장돼 Acrobat이 "지원하지 않는 형식"을 띄운다.
+      expect(canvasFileDownloadUrl('https://canvas.kumoh.ac.kr/courses/5342/files/77'),
+          'https://canvas.kumoh.ac.kr/files/77/download?download_frd=1');
+      expect(canvasFileDownloadUrl('https://canvas.kumoh.ac.kr/files/77'),
+          'https://canvas.kumoh.ac.kr/files/77/download?download_frd=1');
+      const direct = 'https://canvas.kumoh.ac.kr/files/77/download?download_frd=1&verifier=x';
+      expect(canvasFileDownloadUrl(direct), direct);
+    });
+
+    test('서버가 알려준 이름과 형식으로 확장자를 붙인다', () {
+      expect(
+          resolveDownloadName(
+              displayName: 'download',
+              disposition: "attachment; filename=\"a.pdf\"; filename*=UTF-8''%EA%B0%95%EC%9D%98.pdf"),
+          '강의.pdf');
+      expect(
+          resolveDownloadName(
+              displayName: 'download', disposition: 'attachment; filename="1주차.pptx"'),
+          '1주차.pptx');
+      expect(
+          resolveDownloadName(
+              displayName: '1주차 자료', contentType: 'application/pdf; charset=binary'),
+          '1주차 자료.pdf');
+      expect(
+          resolveDownloadName(displayName: '과제.hwp', disposition: 'attachment; filename="download"'),
+          '과제.hwp',
+          reason: '확장자 없는 서버 이름보다 확장자 있는 표시 이름이 낫다');
+    });
+  });
+
   group('저장할 파일 이름', () {
     test('표시 이름을 그대로 쓴다', () {
       expect(safeFileName('00_Introduction2026.pdf'), '00_Introduction2026.pdf');

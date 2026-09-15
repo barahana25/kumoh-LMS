@@ -52,7 +52,8 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  Future<void> seedEvent(DateTime dueAt) => db.calendarEventsDao.upsertAll([
+  Future<void> seedEvent(DateTime dueAt, {bool submitted = false}) =>
+      db.calendarEventsDao.upsertAll([
         CalendarEventsCompanion.insert(
           id: 'assignment_7931',
           termId: 8,
@@ -61,6 +62,7 @@ void main() {
           contextName: const Value('리눅스시스템프로그래밍-01'),
           startAt: Value(dueAt),
           endAt: Value(dueAt),
+          submitted: Value(submitted),
           htmlUrl: const Value(
               'https://canvas.kumoh.ac.kr/courses/4831/assignments/7931'),
         ),
@@ -91,6 +93,22 @@ void main() {
 
     expect(find.text('[토의 과제] 리눅스 상식'), findsOneWidget);
     expect(find.textContaining('리눅스시스템프로그래밍-01'), findsWidgets);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('제출한 과제는 D-day 대신 제출 완료로 표시한다', (tester) async {
+    await seedEvent(DateTime.now().toUtc().add(const Duration(days: 7)),
+        submitted: true);
+
+    await tester.pumpWidget(wrap());
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('목록'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('제출 완료'), findsOneWidget);
+    expect(find.text('D-6'), findsNothing);
+    expect(find.textContaining('D-'), findsNothing);
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pumpAndSettle();
   });

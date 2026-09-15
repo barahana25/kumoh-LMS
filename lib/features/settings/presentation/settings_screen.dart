@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../providers.dart';
 import '../../auth/presentation/auth_controller.dart';
-import '../../reference/presentation/term_providers.dart';
 import '../../notifications/presentation/notification_settings_section.dart';
 import '../../downloads/download_settings_section.dart';
 
@@ -14,8 +13,6 @@ class SettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final auth = ref.watch(authControllerProvider).value;
     final profile = auth is AuthAuthenticated ? auth.profile : null;
-    final termsAsync = ref.watch(termsProvider);
-    final selectedTermId = ref.watch(selectedTermIdProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('설정')),
@@ -28,58 +25,6 @@ class SettingsScreen extends ConsumerWidget {
               subtitle: Text('${profile.loginId}\n${profile.affiliation}'),
               isThreeLine: true,
             ),
-          const Divider(),
-          termsAsync.maybeWhen(
-            data: (terms) => ListTile(
-              leading: const Icon(Icons.calendar_month_outlined),
-              title: const Text('학기'),
-              subtitle: Text(
-                terms
-                        .where((t) => t.id == selectedTermId)
-                        .map((t) => t.name)
-                        .firstOrNull ??
-                    '현재 학기 자동 선택',
-              ),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () async {
-                final picked = await showModalBottomSheet<({int? id})>(
-                  context: context,
-                  builder: (_) => SafeArea(
-                    child: ListView(
-                      shrinkWrap: true,
-                      children: [
-                        ListTile(
-                          title: const Text('현재 학기 자동 선택'),
-                          onTap: () => Navigator.pop(context, (id: null)),
-                        ),
-                        for (final t in terms)
-                          ListTile(
-                            title: Text(t.name),
-                            selected: t.id == selectedTermId,
-                            onTap: () => Navigator.pop(context, (id: t.id)),
-                          ),
-                      ],
-                    ),
-                  ),
-                );
-                if (context.mounted && picked != null) {
-                  ref.read(selectedTermIdProvider.notifier).state = picked.id;
-                  ref.read(refreshErrorProvider.notifier).state = null;
-                }
-              },
-            ),
-            orElse: () => const SizedBox.shrink(),
-          ),
-          const Divider(),
-          ListTile(
-            leading: const Icon(Icons.lock_outline),
-            title: const Text('보안'),
-            subtitle: const Text(
-              '토큰은 기기 보안 저장소에, 학습 데이터는 암호화된 캐시에 저장합니다. '
-              '로그인과 데이터 조회 시 학교 서버에 연결합니다. '
-              '자동 로그인을 켠 경우에만 비밀번호를 기기에 저장합니다.',
-            ),
-          ),
           const Divider(),
           const NotificationSettingsSection(),
           const Divider(),
