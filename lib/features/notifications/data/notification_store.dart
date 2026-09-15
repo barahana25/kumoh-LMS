@@ -4,8 +4,10 @@ import '../../../core/storage/db/app_database.dart';
 import 'notification_models.dart';
 import 'notification_schedule.dart';
 
+// 1 << 32는 웹에서 0이 되어 nextInt가 RangeError를 던진다(로그인 실패).
+// 웹과 네이티브에서 같은 값인 리터럴을 쓴다.
 String _nonce() =>
-    '${DateTime.now().microsecondsSinceEpoch}-${Random.secure().nextInt(1 << 32)}';
+    '${DateTime.now().microsecondsSinceEpoch}-${Random.secure().nextInt(0xFFFFFFFF)}';
 
 class NotificationStore {
   NotificationStore(this.db);

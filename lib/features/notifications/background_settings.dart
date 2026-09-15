@@ -1,8 +1,8 @@
-import 'dart:io';
 import 'package:flutter/services.dart';
+import '../../core/platform/app_platform.dart';
 
 class BackgroundSettings {
-  static bool get supported => Platform.isAndroid;
+  static bool get supported => isAndroidApp;
   static const _channel = MethodChannel('ac.kumoh.kumoh_lms/background');
 
   static Future<bool?> batteryUnrestricted() async {

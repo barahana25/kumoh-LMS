@@ -8,6 +8,7 @@ import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kumoh_lms/core/storage/cache_policy.dart';
 import 'package:kumoh_lms/core/storage/db/app_database.dart';
+import 'package:kumoh_lms/core/storage/db/connection_native.dart';
 
 import '../helpers/test_db.dart';
 

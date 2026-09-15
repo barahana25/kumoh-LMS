@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:open_filex/open_filex.dart';
 import 'package:kumoh_lms/core/error/failure.dart';
 import 'package:kumoh_lms/features/canvas/data/canvas_download.dart';
 import 'package:kumoh_lms/features/canvas/presentation/canvas_file_open.dart';
@@ -36,18 +37,30 @@ class _FakeDownloader implements CanvasDownloader {
 }
 
 void main() {
+  // 실제 OpenFilex는 Windows 호스트에서 `cmd /c start`로 파일을 연다.
+  // 테스트가 기본 PDF 뷰어를 띄우고, tearDown이 먼저 파일을 지우면
+  // "note.pdf를 찾을 수 없습니다" 알림이 뜬다. 여는 동작은 기록만 한다.
+  final opened = <String>[];
+
   tearDown(() {
     for (final f in _temp) {
       if (f.existsSync()) f.deleteSync();
     }
     _temp.clear();
+    opened.clear();
   });
 
   /// 이 앱은 go_router 셸 때문에 네비게이터가 중첩돼 있다.
   /// showDialog는 기본으로 루트에 올리므로, 닫을 때 가장 가까운 네비게이터를
   /// 팝하면 다이얼로그가 아니라 엉뚱한 화면이 사라진다.
   Widget nestedApp(CanvasDownloader downloader) => ProviderScope(
-        overrides: [canvasDownloaderProvider.overrideWithValue(downloader)],
+        overrides: [
+          canvasDownloaderProvider.overrideWithValue(downloader),
+          fileOpenerProvider.overrideWithValue((path) async {
+            opened.add(path);
+            return OpenResult();
+          }),
+        ],
         child: MaterialApp(
           home: Navigator(
             onGenerateRoute: (_) => MaterialPageRoute<void>(
@@ -102,6 +115,8 @@ void main() {
         reason: '앱으로 돌아왔을 때 "받는 중" 문구가 남아 있으면 안 된다');
     expect(find.text('열기'), findsOneWidget,
         reason: '다이얼로그 대신 화면이 사라지면 안 된다');
+    expect(opened.single, endsWith('note.pdf'),
+        reason: '받은 파일을 기기 뷰어로 넘겨야 한다');
   });
 
   testWidgets('실패해도 진행 표시가 사라지고 이유를 알린다', (tester) async {
@@ -114,5 +129,6 @@ void main() {
     expect(find.textContaining('받는 중'), findsNothing);
     expect(find.textContaining('네트워크에 연결할 수 없습니다'), findsOneWidget);
     expect(find.text('열기'), findsOneWidget);
+    expect(opened, isEmpty);
   });
 }

@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 
 import '../config/env.dart';
 import 'auth_interceptor.dart';
+import 'platform_http.dart';
 import 'token_store.dart';
 import '../../features/auth/data/auth_dto.dart';
 
@@ -25,6 +26,9 @@ Dio buildDio({
     validateStatus: (status) => status != null && status < 500,
   ));
 
+  final adapter = platformHttpAdapter();
+  if (adapter != null) dio.httpClientAdapter = adapter;
+
   dio.interceptors.add(AuthInterceptor(
     tokenStore: tokenStore,
     reissue: reissue,
@@ -36,13 +40,18 @@ Dio buildDio({
 }
 
 /// 로그인·재발급 전용 dio. 인터셉터가 없어 재발급 재귀가 생기지 않는다.
-Dio buildAuthDio() => Dio(BaseOptions(
-      baseUrl: Env.apiBaseUrl,
-      connectTimeout: Env.connectTimeout,
-      receiveTimeout: Env.receiveTimeout,
-      headers: {
-        'Content-Type': 'application/json',
-        'Origin': Env.webOrigin,
-        'Referer': '${Env.webOrigin}/',
-      },
-    ));
+Dio buildAuthDio() {
+  final dio = Dio(BaseOptions(
+    baseUrl: Env.apiBaseUrl,
+    connectTimeout: Env.connectTimeout,
+    receiveTimeout: Env.receiveTimeout,
+    headers: {
+      'Content-Type': 'application/json',
+      'Origin': Env.webOrigin,
+      'Referer': '${Env.webOrigin}/',
+    },
+  ));
+  final adapter = platformHttpAdapter();
+  if (adapter != null) dio.httpClientAdapter = adapter;
+  return dio;
+}

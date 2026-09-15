@@ -1,0 +1,24 @@
+# Synology Container Manager > 프로젝트에 이 파일을 넣는다.
+# image는 README의 "이미지 고정" 절차대로 digest로 바꾼다.
+services:
+  relay:
+    image: ghcr.io/barahana25/kumoh-lms-relay:main
+    restart: unless-stopped
+    environment:
+      RELAY_ALLOWED_ORIGINS: https://barahana25.github.io
+      PORT: "8080"
+      # Docker 브리지 뒤에서는 리버스 프록시가 루프백이 아닌 게이트웨이 주소로 보여,
+      # 이 값이 없으면 모든 사용자가 한 주소로 묶여 연결 제한을 함께 쓴다.
+      # 아래 ports가 127.0.0.1에만 열려 있어 접속자가 같은 호스트의 DSM 리버스
+      # 프록시뿐이므로 안전하다. 포트를 외부에 직접 열면 절대 켜지 않는다
+      # (누구나 X-Forwarded-For를 바꿔 제한을 피할 수 있다).
+      RELAY_TRUST_FORWARDED_FOR: "1"
+    ports:
+      # NAS 포트:컨테이너 포트. NAS의 8080은 다른 서비스가 쓰고 있어 18080으로 연다.
+      # 이 번호를 바꾸면 DSM 리버스 프록시의 대상 포트도 같이 바꾼다.
+      - "127.0.0.1:18080:8080"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true

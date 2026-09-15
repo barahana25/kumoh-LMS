@@ -1,8 +1,8 @@
 import 'package:cookie_jar/cookie_jar.dart';
 import 'package:dio/dio.dart';
-import 'package:dio_cookie_manager/dio_cookie_manager.dart';
 
 import '../../../core/config/env.dart';
+import '../../../core/network/platform_http.dart';
 
 /// Canvas는 Bearer 토큰이 아니라 세션 쿠키로 인증한다. 쿠키 매니저가 없으면
 /// ACS 응답의 `_normandy_session`이 저장되지 않아 이후 모든 API가 막힌다.
@@ -13,7 +13,8 @@ Dio buildCanvasDio(CookieJar jar, {HttpClientAdapter? adapter}) {
     receiveTimeout: Env.receiveTimeout,
     headers: {'Accept': 'application/json'},
   ));
-  if (adapter != null) dio.httpClientAdapter = adapter;
-  dio.interceptors.add(CookieManager(jar));
+  final selected = adapter ?? platformHttpAdapter();
+  if (selected != null) dio.httpClientAdapter = selected;
+  dio.interceptors.add(platformCookieInterceptor(jar));
   return dio;
 }

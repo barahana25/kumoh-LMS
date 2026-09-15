@@ -1,0 +1,9 @@
+flutter_launcher_icons:
+  android: false
+  ios: false
+  image_path: assets/branding/lms_app_icon_ochungi.png
+  web:
+    generate: true
+    image_path: assets/branding/lms_app_icon_ochungi.png
+    background_color: '#FFFFFF'
+    theme_color: '#FFFFFF'

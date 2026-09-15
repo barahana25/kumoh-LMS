@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/config/env.dart';
-import 'canvas_web_screen.dart';
+import 'canvas_page_launcher.dart';
 
 /// SSO에 넘길 relayState(경로)를 만든다.
 ///
@@ -41,9 +41,5 @@ Future<void> openCanvasPage(
     );
     return;
   }
-  await Navigator.of(context).push(
-    MaterialPageRoute<void>(
-      builder: (_) => CanvasWebScreen(title: title, url: url),
-    ),
-  );
+  await launchCanvasPage(context, title: title, url: url);
 }
