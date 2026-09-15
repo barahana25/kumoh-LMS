@@ -43,6 +43,8 @@
   -->
   <!-- 학교 서버와의 TLS를 브라우저 안에서 맺는다. 파일은 web/vendor/SHA256SUMS로 검증한다. -->
   <script src="vendor/libcurl.js"></script>
+  <!-- libcurl.js는 최상위 const로 선언해 window 속성이 없다. 앱(@JS('libcurl'))이 읽도록 내보낸다. -->
+  <script>window.libcurl = libcurl;</script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>
