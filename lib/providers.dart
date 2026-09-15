@@ -103,7 +103,11 @@ final selectedTermIdProvider = StateProvider<int?>((ref) => null);
 // ---------- Canvas (강좌 상세 탭) ----------
 
 /// Canvas 세션 쿠키 보관소. 브릿지용 dio와 API용 dio가 함께 쓴다.
-final canvasCookieJarProvider = Provider<CookieJar>((ref) => CookieJar());
+///
+/// CookieJar()는 웹에서 아무것도 저장하지 않는 WebCookieJar가 된다. 웹은
+/// libcurl.js로 요청해 브라우저가 쿠키를 다루지 않으므로 직접 보관한다.
+final canvasCookieJarProvider =
+    Provider<CookieJar>((ref) => DefaultCookieJar());
 
 /// 브릿지 전용 dio. 세션 인터셉터가 없어야 재브릿지가 스스로를 다시 부르지 않는다.
 final canvasBridgeDioProvider = Provider<Dio>(

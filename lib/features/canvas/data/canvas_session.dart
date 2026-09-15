@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:cookie_jar/cookie_jar.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
 
 import '../../../core/config/env.dart';
 import '../../../core/error/failure.dart';
@@ -87,6 +88,34 @@ class CanvasSession {
   }
 
 
+  /// 디버그 실행에서만 SSO 리다이렉트 과정을 남긴다. 토큰이 들어가는 쿼리와
+  /// 쿠키 값은 빼고 상태, 호스트·경로, 쿠키 이름만 적는다.
+  static void _debugHop(int hop, Uri url, Response<String> res) {
+    if (!kDebugMode) return;
+    final setCookies = [
+      for (final v in res.headers['set-cookie'] ?? const <String>[])
+        v.split('=').first.trim(),
+    ];
+    final location = res.headers.value('location');
+    final next = location == null ? '' : Uri.tryParse(location);
+    final nextText = next is Uri ? ' -> ${next.host}${next.path}' : '';
+    debugPrint('SAML_HOP $hop ${res.statusCode} ${url.host}${url.path}'
+        '$nextText set-cookie=$setCookies');
+  }
+
+  /// 폼 대신 돌아온 페이지의 제목과 IdP 오류 코드(예: S010, A001)만 남긴다.
+  static void _debugNoForm(String html) {
+    if (!kDebugMode) return;
+    final title = RegExp(r'<title[^>]*>([^<]*)</title>', caseSensitive: false)
+        .firstMatch(html)
+        ?.group(1)
+        ?.trim();
+    final codes = {
+      for (final m in RegExp(r'\b[A-Z]\d{3}\b').allMatches(html)) m.group(0)
+    };
+    debugPrint('SAML_NO_FORM length=${html.length} title=$title codes=$codes');
+  }
+
   /// 홉마다 요청을 새로 보내 쿠키 매니저가 매번 동작하게 한다.
   Future<String> _followRedirects(Uri start, {int maxHops = 10}) async {
     var url = start;
@@ -101,6 +130,7 @@ class CanvasSession {
       );
       final location = res.headers.value('location');
       final status = res.statusCode ?? 0;
+      _debugHop(hop, url, res);
       if (status >= 300 && status < 400 && location != null) {
         url = url.resolve(location);
         continue;
@@ -151,6 +181,7 @@ class CanvasSession {
 
     final form = parseSamlForm(idp);
     if (form == null) {
+      _debugNoForm(idp);
       throw const AuthFailure('Canvas 연결에 실패했습니다. 다시 로그인해 주세요.');
     }
     return form;
