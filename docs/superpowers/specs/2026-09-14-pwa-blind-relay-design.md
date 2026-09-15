@@ -42,7 +42,7 @@ iOS PWA는 백그라운드 실행 API(Background Sync, Periodic Sync, Background
 iPhone 홈 화면 PWA (https://barahana25.github.io/kumoh-LMS/)
  │  Flutter web + libcurl.js(WASM): 학교 서버 TLS 종단이 브라우저 안에 있다
  │
- └─ wss://<이름>.synology.me  (DSM 리버스 프록시, Let's Encrypt)
+ └─ wss://barahana.synology.me/ (DSM 리버스 프록시, Let's Encrypt)
       └─ [Container Manager] wisp-js 서버
            └─ TCP 전달 ─▶ lms.kumoh.ac.kr:82, lms.kumoh.ac.kr:443, canvas.kumoh.ac.kr:443
 ```

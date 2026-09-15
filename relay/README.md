@@ -28,19 +28,20 @@ Flutter 쪽: `flutter run -d chrome --web-port 8000 --dart-define=RELAY_URL=ws:/
 
 ## Synology NAS 배포
 
-1. **DDNS**: 제어판 → 외부 액세스 → DDNS → 추가. 서비스 공급자 Synology, 호스트 이름 예: `kumoh-relay.synology.me`
+1. **DDNS**: 제어판 → 외부 액세스 → DDNS → 추가. 서비스 공급자 Synology, 호스트 이름 `barahana.synology.me`
+   - 이 NAS의 443 포트를 다른 서비스(Web Station, 다른 리버스 프록시 규칙)가 같은 호스트 이름으로 이미 쓰고 있다면 규칙이 겹친다. 그때는 5의 소스 포트를 다른 번호(예: 8443)로 정하고 `RELAY_URL`에 포트를 넣는다(`wss://barahana.synology.me:8443/`)
 2. **인증서**: 제어판 → 보안 → 인증서 → 추가 → Let's Encrypt에서 인증서 받기. 도메인은 1의 호스트 이름
 3. **컨테이너**: Container Manager → 프로젝트 → 생성. 경로에 `compose.yaml`을 두고 실행
    - `compose.yaml`은 `RELAY_TRUST_FORWARDED_FOR: "1"`을 켠다. Docker 브리지 뒤에서는 리버스 프록시가 게이트웨이 주소(예: `172.17.0.1`)로 보여, 끄면 모든 사용자가 한 주소로 묶여 연결 제한(기본 32)을 함께 쓰기 때문이다. `ports`를 `127.0.0.1:8080:8080`에서 바꿔 포트를 외부에 직접 열 경우 반드시 이 값을 지운다
 4. **이미지 고정**: GitHub 저장소 → Packages → `kumoh-lms-relay`에서 배포할 커밋의 `sha256:...` digest를 확인하고 `compose.yaml`의 `image`를 `ghcr.io/barahana25/kumoh-lms-relay@sha256:<digest>`로 바꾼 뒤 프로젝트를 다시 빌드한다
    - GHCR 패키지는 처음에 비공개다. GitHub → Packages → `kumoh-lms-relay` → Package settings에서 공개로 바꾸거나, NAS에서 `docker login ghcr.io`(read:packages 권한 토큰)로 로그인해야 이미지를 받을 수 있다
 5. **리버스 프록시**: 제어판 → 로그인 포털 → 고급 → 리버스 프록시 → 생성
-   - 소스: HTTPS, 호스트 이름 `kumoh-relay.synology.me`, 포트 443
+   - 소스: HTTPS, 호스트 이름 `barahana.synology.me`, 포트 443
    - 대상: HTTP, `localhost`, 포트 8080
    - 사용자 지정 머리글 → 생성 → **WebSocket** (Upgrade, Connection 헤더 자동 추가)
    - 인증서: 제어판 → 보안 → 인증서 → 설정에서 이 호스트에 2의 인증서 지정
    - 고급 설정의 프록시 시간 제한(WebSocket 유휴 시간)은 600초 정도로 둔다. 너무 길면(예: 3600초) 백그라운드로 멈춘 iOS PWA의 연결이 한 시간씩 연결 수 한도를 차지한다
    - 연결 수 제한은 `X-Forwarded-For`의 마지막 주소로 센다. DSM 리버스 프록시가 이 헤더 끝에 실제 접속 주소를 붙여야 한다
 6. **공유기**: TCP 443 → NAS만 포워딩한다. DSM 관리 포트 5000/5001은 외부에 열지 않는다
-7. **확인**: `https://kumoh-relay.synology.me/healthz`가 `ok`
-8. GitHub 저장소 → Settings → Secrets and variables → Actions → Variables에 `RELAY_URL` = `wss://kumoh-relay.synology.me/` 등록 (끝의 `/` 필수)
+7. **확인**: `https://barahana.synology.me/healthz`가 `ok`
+8. GitHub 저장소 → Settings → Secrets and variables → Actions → Variables에 `RELAY_URL` = `wss://barahana.synology.me/` 등록 (끝의 `/` 필수)
