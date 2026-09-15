@@ -9,7 +9,8 @@ import 'package:web/web.dart' as web;
 import '../../../core/ui/empty_state.dart';
 import '../../../providers.dart';
 import '../../auth/data/auth_api.dart' show throwAsFailure;
-import '../data/canvas_download.dart' show safeFileName;
+import '../data/canvas_download.dart'
+    show canvasFileDownloadUrl, fileNameFromDisposition, safeFileName;
 import '../data/inline_file_type.dart';
 
 /// 세션이 붙은 dio(libcurl 터널)로 받아 Blob URL로 연다.
@@ -27,8 +28,9 @@ Future<void> openCanvasFile(
   try {
     final Response<List<int>> res;
     try {
+      // 미리보기 주소(/courses/1/files/9)를 그대로 받으면 파일 대신 HTML이 온다.
       res = await ref.read(canvasDioProvider).getUri<List<int>>(
-            Uri.parse(url),
+            Uri.parse(canvasFileDownloadUrl(url)),
             options: Options(
               responseType: ResponseType.bytes,
               // 웹 어댑터는 connect+receive를 요청 전체 제한으로 쓴다. 기본값(35초)이면
@@ -53,8 +55,8 @@ Future<void> openCanvasFile(
       if (win.closed) {
         web.URL.revokeObjectURL(objectUrl);
         messenger.hideCurrentSnackBar();
-        messenger.showSnackBar(
-            const SnackBar(content: Text('창이 닫혀 파일을 열지 못했습니다.')));
+        messenger
+            .showSnackBar(const SnackBar(content: Text('창이 닫혀 파일을 열지 못했습니다.')));
         return;
       }
       win.location.href = objectUrl;
@@ -62,7 +64,9 @@ Future<void> openCanvasFile(
       win?.close();
       (web.HTMLAnchorElement()
             ..href = objectUrl
-            ..download = safeFileName(displayName))
+            ..download = safeFileName(fileNameFromDisposition(
+                    res.headers.value('content-disposition')) ??
+                displayName))
           .click();
     }
     messenger.hideCurrentSnackBar();

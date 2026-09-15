@@ -92,6 +92,7 @@ class AssignmentsRepository {
               title: a.name,
               startAt: Value(a.dueAt),
               endAt: Value(a.dueAt),
+              submitted: Value(a.submitted),
               htmlUrl: Value(a.htmlUrl.isEmpty
                   ? '/courses/${c.id}/assignments/${a.id}'
                   : a.htmlUrl),

@@ -194,7 +194,7 @@ class _CalendarTab extends StatelessWidget {
               child: Column(
                 children: [
                   for (final e in dayEvents) ...[
-                    EventTile(event: e),
+                    EventTile(event: e, onReturn: onRefresh),
                     const SizedBox(height: 12),
                   ],
                 ],
@@ -210,7 +210,7 @@ class _CalendarTab extends StatelessWidget {
                         style: Theme.of(context).textTheme.titleMedium),
                     const SizedBox(height: 8),
                     for (final event in events.where((e) => e.startAt == null))
-                      EventTile(event: event),
+                      EventTile(event: event, onReturn: onRefresh),
                   ]),
             ),
         ],
@@ -258,7 +258,8 @@ class _ListTab extends StatelessWidget {
               padding: const EdgeInsets.all(16),
               itemCount: upcoming.length,
               separatorBuilder: (_, __) => const SizedBox(height: 12),
-              itemBuilder: (_, i) => EventTile(event: upcoming[i]),
+              itemBuilder: (_, i) =>
+                  EventTile(event: upcoming[i], onReturn: onRefresh),
             ),
     );
   }

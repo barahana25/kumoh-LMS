@@ -1,7 +1,7 @@
 name: kumoh_lms
 description: 금오공과대학교 Canvas LMS 모바일 클라이언트
 publish_to: 'none'
-version: 0.2.3+9
+version: 0.2.9+15
 
 environment:
   sdk: ^3.5.0
@@ -47,5 +47,6 @@ flutter:
   assets:
     - assets/branding/lms_app_icon_ochungi.png
     - assets/branding/kumoh-lms-logo-v4.png
-    - assets/branding/kumoh-header-transparent.png
+    - assets/branding/kumoh-ci-light.png
+    - assets/branding/kumoh-ci-dark.png
     - assets/branding/kumoh-lms-startup-ochungi.png
