@@ -136,7 +136,7 @@ SQLite 파일 하나(`/data/notifier.sqlite`, 컨테이너 볼륨).
 
 ## 웹앱
 
-- `web/push_sw.js`: `push` 이벤트에서 알림 표시, `notificationclick`에서 `/kumoh-LMS/#/announcements`를 연다. 스코프 `/kumoh-LMS/`.
+- `web/push_sw.js`: `push` 이벤트에서 알림 표시, `notificationclick`에서 푸시에 담긴 앱 내부 경로를 연다. 새 글 한 건은 안드로이드 알림과 같은 `/kumoh-LMS/#/courses/{id}?tab={announcements|files|assignments|discussions}`, 묶음 알림은 `/kumoh-LMS/#/announcements`, "멈췄어요"는 `/kumoh-LMS/#/settings`. `/kumoh-LMS/`로 시작하지 않는 경로는 무시한다. 스코프 `/kumoh-LMS/`.
 - 설정 화면: 웹에서만 "새 소식 알림 (서버 확인)" 영역. 스위치, 동의 화면, 상태, 끄기. 기존 `settings_widgets` 스타일.
 - 홈 화면에 추가하지 않은 Safari(`display-mode: standalone` 아님) 또는 `PushManager` 없음: 스위치 대신 "홈 화면에 추가한 뒤 켤 수 있어요" 안내.
 - `NOTIFIER_URL`은 `--dart-define`으로 넣는다(`RELAY_URL`과 같은 방식, `pwa.yml`에 `vars.NOTIFIER_URL` 검사 추가). 비어 있으면 영역을 숨긴다.
