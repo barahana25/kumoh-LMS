@@ -46,3 +46,8 @@ kumoh_lms.sqlite
 
 # SSO 우회 재현·진단 스크립트 (공개 저장소 커밋 금지)
 python/
+
+# Google Play 배포용 서비스 계정 키. 절대 커밋하지 않는다.
+*.iam.gserviceaccount.json
+stalwart-realm-*.json
+play-deploy*.json
