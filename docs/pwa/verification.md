@@ -4,7 +4,7 @@
 
 ## 준비
 
-- [ ] `https://barahana.synology.me/healthz` → `ok`
+- [ ] `https://barahana.synology.me:8443/healthz` → `ok`
 - [ ] 저장소 Packages에서 배포한 relay 이미지 digest와 compose.yaml의 digest가 같다
 - [ ] DSM 리버스 프록시가 X-Forwarded-For 끝에 실제 접속 주소를 붙이는지 확인(relay 로그가 아니라 임시 디버그로 확인 후 되돌림)
 
@@ -30,4 +30,4 @@
 
 ## 중계 서버 차단
 
-- [ ] 다른 사이트 Origin으로 WebSocket 연결 시 403 (`relay/test/relay.test.mjs`와 같은 요청을 curl로: `curl -i -H "Connection: Upgrade" -H "Upgrade: websocket" -H "Origin: https://evil.example" -H "Sec-WebSocket-Version: 13" -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" https://barahana.synology.me/`)
+- [ ] 다른 사이트 Origin으로 WebSocket 연결 시 403 (`relay/test/relay.test.mjs`와 같은 요청을 curl로: `curl -i -H "Connection: Upgrade" -H "Upgrade: websocket" -H "Origin: https://evil.example" -H "Sec-WebSocket-Version: 13" -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" https://barahana.synology.me:8443/`)
