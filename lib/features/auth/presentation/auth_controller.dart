@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -146,6 +148,8 @@ class AuthController extends AsyncNotifier<AuthState> {
       );
       ref.read(selectedTermIdProvider.notifier).state = null;
       ref.invalidate(activeTermIdProvider);
+      // 화면을 막지 않는다. 실패하면 쿠키 경로로 조용히 동작한다.
+      unawaited(ref.read(canvasTokenServiceProvider).ensure());
       return authenticated;
     });
     if (generation == _generation) {
@@ -191,6 +195,11 @@ class AuthController extends AsyncNotifier<AuthState> {
     // 저장소나 DB가 던지더라도 세션은 반드시 끝난 상태로 남겨야 한다.
     // 그러지 않으면 사용자가 쓸 수 없는 세션에 갇힌 채 로그인 화면으로도 못 간다.
     try {
+      // 다리를 건널 수 있는 동안 Canvas 토큰을 지운다. 실패해도 진행한다.
+      await ref
+          .read(canvasTokenServiceProvider)
+          .revoke()
+          .timeout(const Duration(seconds: 5), onTimeout: () {});
       try {
         await DownloadStore(db).setEnabled(false);
         await NotificationRuntime.stop(db);
