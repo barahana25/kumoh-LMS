@@ -11,6 +11,7 @@ import '../../auth/data/auth_api.dart';
 import '../../canvas/data/canvas_api.dart';
 import '../../canvas/data/canvas_client.dart';
 import '../../canvas/data/canvas_session.dart';
+import '../../canvas/data/canvas_token_store.dart';
 import '../../canvas/data/saml_bridge_api.dart';
 import '../../courses/data/courses_api.dart';
 import '../../reference/data/reference_api.dart';
@@ -19,7 +20,11 @@ import 'notification_models.dart';
 /// 화면 캐시의 TTL을 사용하지 않는다. 페이지를 끝까지 조회한 경우만 비교한다.
 class LmsNotificationSource implements NotificationSource {
   LmsNotificationSource(this.secureStore,
-      {Dio? linusDio, Dio? bridgeDio, Dio? canvasDio}) {
+      {Dio? linusDio,
+      Dio? bridgeDio,
+      Dio? canvasDio,
+      CanvasTokenStore? canvasTokenStore})
+      : _canvasTokenStore = canvasTokenStore {
     _linus = linusDio ?? buildAuthDio();
     // CookieJar()는 웹에서 저장하지 않는 WebCookieJar가 된다.
     final jar = DefaultCookieJar();
@@ -29,9 +34,14 @@ class LmsNotificationSource implements NotificationSource {
     _canvas.options.baseUrl = Env.canvasApiBaseUrl;
   }
   final TokenStore secureStore;
+  final CanvasTokenStore? _canvasTokenStore;
   late final Dio _linus;
   late final Dio _bridge;
   late final Dio _canvas;
+
+  /// 화면 쪽에서 발급해 둔 Canvas 토큰. 없으면 null이고 다리로 폴백한다.
+  Future<String?> canvasAccessToken() async =>
+      (await _canvasTokenStore?.read())?.token;
 
   @override
   Future<String> authenticate() async {
@@ -67,6 +77,7 @@ class LmsNotificationSource implements NotificationSource {
         canvasSessionInterceptor(
             dio: _canvas,
             ensureSession: session.ensure,
+            accessToken: canvasAccessToken,
             reBridge: () async {
               session.invalidate();
               await session.ensure();

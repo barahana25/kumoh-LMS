@@ -7,6 +7,7 @@ import 'package:workmanager/workmanager.dart';
 import '../../core/network/token_store.dart';
 import '../../core/platform/app_platform.dart';
 import '../../core/storage/db/app_database.dart';
+import '../canvas/data/canvas_token_store.dart';
 import 'data/lms_notification_source.dart';
 import 'data/notification_models.dart';
 import 'data/notification_poller.dart';
@@ -281,7 +282,8 @@ class NotificationRuntime {
     return NotificationPoller(
       store: NotificationStore(db),
       sink: sink,
-      sourceFactory: () => LmsNotificationSource(secure),
+      sourceFactory: () => LmsNotificationSource(secure,
+          canvasTokenStore: SecureCanvasTokenStore()),
       budget: isIOSApp
           ? const Duration(seconds: 20)
           : const Duration(minutes: 4),
