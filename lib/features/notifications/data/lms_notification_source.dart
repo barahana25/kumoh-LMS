@@ -40,8 +40,14 @@ class LmsNotificationSource implements NotificationSource {
   late final Dio _canvas;
 
   /// 화면 쪽에서 발급해 둔 Canvas 토큰. 없으면 null이고 다리로 폴백한다.
-  Future<String?> canvasAccessToken() async =>
-      (await _canvasTokenStore?.read())?.token;
+  Future<String?> canvasAccessToken() async {
+    try {
+      return (await _canvasTokenStore?.read())?.token;
+    } on Object {
+      // 보관소 읽기 실패는 조용히 처리해 쿠키 다리로 폴백한다.
+      return null;
+    }
+  }
 
   @override
   Future<String> authenticate() async {
