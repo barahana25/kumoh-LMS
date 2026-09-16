@@ -31,3 +31,19 @@
 ## 중계 서버 차단
 
 - [ ] 다른 사이트 Origin으로 WebSocket 연결 시 403 (`relay/test/relay.test.mjs`와 같은 요청을 curl로: `curl -i -H "Connection: Upgrade" -H "Upgrade: websocket" -H "Origin: https://evil.example" -H "Sec-WebSocket-Version: 13" -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" https://barahana.synology.me:8443/`)
+
+## Canvas 토큰 실기기 확인 (안드로이드)
+
+`flutter run -d <기기 id>` 로 올린 뒤 순서대로 확인한다. Canvas 설정은
+`https://canvas.kumoh.ac.kr/profile/settings` → 승인된 통합.
+
+- [ ] 로그인하면 Canvas 설정에 `금오LMS 앱 · android · ****` 항목이 **하나** 생기고, 앱 설정 → Canvas 연결이 `토큰으로 연결됨`이다
+      (`쿠키 방식으로 연결됨`이면 발급이 조용히 실패한 것이다. CSRF 쿠키를 못 받는 경우가 가장 유력하다)
+- [ ] 강좌 모듈에서 PDF를 열면 파일이 도착하고 열린다
+      (교차 호스트 홉에는 토큰도 쿠키도 보내지 않으므로, 이 항목이 가장 위험하다. 리다이렉트가 canvas.kumoh.ac.kr을 벗어나는지도 적어 둔다)
+- [ ] 앱을 완전히 껐다 켜고 강좌를 열어도 항목이 여전히 하나다(재발급하지 않는다)
+- [ ] PC에서 학교 홈페이지에 로그인해 LINUS 세션을 끊은 뒤 앱을 쓰면, 조용히 복구되고 Canvas 항목이 **같은 것**으로 남는다
+- [ ] (기기가 둘이면) B에서 발급한 뒤 A를 써도 두 항목이 서로 다른 끝자리로 남고 A가 계속 동작한다
+- [ ] Canvas에서 토큰을 지우고 강좌를 새로고침하면 내용이 뜨고 새 항목이 하나 생긴다
+- [ ] 연결 해제하면 Canvas 항목이 사라지고, 강좌 내용은 쿠키 방식으로 계속 열린다. 비행기 모드에서 다시 연결을 눌러도 오류가 뜨지 않는다
+- [ ] 로그아웃하면 Canvas 항목이 사라진다
