@@ -164,12 +164,28 @@ class CanvasTokenService {
     }
   }
 
-  /// 같은 이름의 토큰이 남아 있으면 지운다. 값을 다시 볼 수 없어 쓸 수 없고,
-  /// 그대로 두면 재설치할 때마다 계정에 쌓인다.
+  /// 이 기기의 예전 토큰이 남아 있으면 지운다. 값을 다시 볼 수 없어 쓸 수
+  /// 없고, 그대로 두면 계정에 권한 제한 없는 토큰이 쌓인다.
+  ///
+  /// purpose 정확히 일치가 아니라 안정적인 접두어(`금오LMS 앱 · 플랫폼 ·
+  /// `)로 찾는다. 접미사(임의 4자리 hex)는 이 저장소에만 있고, Android는
+  /// `allowBackup="false"`라 앱을 지우면 함께 사라진다. 재설치하면 새
+  /// 접미사가 생겨 정확 일치로는 예전 설치가 남긴 토큰을 영영 찾지 못한다
+  /// — 그 토큰은 범위 제한 없이 계정에 계속 살아 있게 된다.
+  ///
+  /// 호출 시점에는 항상 로컬 저장소에서 지금 쓰는 토큰이 이미 지워진
+  /// 뒤이므로([_issue]를 부르는 모든 경로가 먼저 store를 비운다), 접두어로
+  /// 넓게 찾아도 "지금 앱이 쓰는 중인" 토큰을 지울 위험은 없다.
   Future<void> _deleteStale(String purpose) async {
+    final prefix = buildCanvasTokenPurpose(
+      platformLabel: _platformLabel,
+      suffix: '',
+    );
     try {
       for (final token in await _api.list()) {
-        if (token.purpose == purpose) await _api.delete(token.id);
+        if (token.purpose == purpose || token.purpose.startsWith(prefix)) {
+          await _api.delete(token.id);
+        }
       }
     } on Object {
       // 목록을 못 봐도 발급은 계속한다.

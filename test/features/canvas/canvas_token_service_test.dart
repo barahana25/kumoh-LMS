@@ -118,6 +118,38 @@ void main() {
     expect(api.deleted, [41]);
   });
 
+  test('재설치로 접미사가 바뀐 예전 토큰을 접두어로 쓸어 지우고, 무관한 '
+      '토큰은 남겨 둔다', () async {
+    final store = InMemoryCanvasTokenStore();
+    final purpose = await store.ensurePurpose('Android');
+    final api = _FakeTokenApi(existing: [
+      // 예전 설치가 남긴 토큰. 접두어는 같지만 접미사(재설치로 새로 뽑힘)가
+      // 지금 저장소의 purpose와 다르다.
+      const CanvasTokenSummary(id: 40, purpose: '금오LMS 앱 · Android · dead1'),
+      // 사용자가 Canvas에서 직접 만든, 이름이 겹치지 않는 토큰.
+      const CanvasTokenSummary(id: 41, purpose: '내가 만든 토큰'),
+    ]);
+
+    await _service(api, store).ensure();
+
+    expect(api.deleted, [40]);
+    expect(purpose, isNot(contains('dead1')));
+  });
+
+  test('접두어가 같아도 지금 쓰는 토큰은 건드리지 않는다', () async {
+    final store = InMemoryCanvasTokenStore();
+    await store.save(const StoredCanvasToken(
+        token: '7~old', id: 44, purpose: '금오LMS 앱 · Android · a3f9'));
+    final api = _FakeTokenApi(existing: [
+      const CanvasTokenSummary(id: 44, purpose: '금오LMS 앱 · Android · a3f9'),
+    ]);
+
+    final result = await _service(api, store).ensure();
+
+    expect(result, '7~old');
+    expect(api.deleted, isEmpty);
+  });
+
   test('발급이 실패하면 null을 돌려주고 저장하지 않는다', () async {
     final api = _FakeTokenApi(failCreate: true);
     final store = InMemoryCanvasTokenStore();
