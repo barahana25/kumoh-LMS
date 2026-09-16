@@ -1308,7 +1308,7 @@ Expected: PASS (3 tests)
       unawaited(ref.read(canvasTokenServiceProvider).ensure());
 ```
 
-파일 맨 위에 `import 'dart:async';`와 `import '../../canvas/data/canvas_token_service.dart';`가 필요하다. `canvasTokenServiceProvider`는 이미 import된 `../../../providers.dart`에서 온다.
+`unawaited`를 쓰려면 파일 맨 위에 `import 'dart:async';`가 필요하다. `canvasTokenServiceProvider`는 이미 import된 `../../../providers.dart`에서 오므로 다른 import는 더하지 않는다(쓰지 않는 import는 analyze 경고가 된다).
 
 - [ ] **Step 6: 로그아웃에서 토큰을 해지한다**
 
