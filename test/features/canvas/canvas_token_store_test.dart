@@ -57,6 +57,24 @@ void main() {
       FlutterSecureStorage.setMockInitialValues({'canvas_pat_token': '7~abc'});
       expect(await SecureCanvasTokenStore().read(), isNull);
     });
+
+    test('토큰을 지워도 기기 이름은 남는다', () async {
+      final store = SecureCanvasTokenStore();
+      final purpose = await store.ensurePurpose('Android');
+      await store.save(StoredCanvasToken(token: 't', id: 1, purpose: purpose));
+      await store.clear();
+
+      expect(await store.ensurePurpose('Android'), purpose);
+    });
+
+    test('ensurePurpose는 처음에 만들고 이후 같은 값을 돌려준다', () async {
+      final store = SecureCanvasTokenStore();
+      final first = await store.ensurePurpose('Android');
+      final second = await store.ensurePurpose('Android');
+
+      expect(first, startsWith('금오LMS 앱 · Android · '));
+      expect(second, first);
+    });
   });
 
   test('buildCanvasTokenPurpose는 사람이 알아볼 형식을 만든다', () {
