@@ -136,4 +136,20 @@ void main() {
     expect(res.statusCode, 401);
     expect(script.calls, 2);
   });
+
+  test('토큰이 없고 401이면 ensureSession을 재시도에서도 호출한다', () async {
+    var ensureSessionCallCount = 0;
+    final script = _Script(firstStatus: 401);
+    final dio = _dio(
+      script,
+      ensureSession: () async => ensureSessionCallCount++,
+      accessToken: () async => null,
+      reBridge: () async {},
+    );
+
+    final res = await dio.get<dynamic>('/users/self');
+
+    expect(res.statusCode, 200);
+    expect(ensureSessionCallCount, 2);
+  });
 }

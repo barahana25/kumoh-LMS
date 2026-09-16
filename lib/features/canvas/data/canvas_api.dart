@@ -281,19 +281,17 @@ Interceptor canvasSessionInterceptor({
       // dio.fetch()로 재시도하면 이 onRequest가 다시 실행된다. recover()가
       // 이미 Authorization을 확정했으니(갱신된 토큰 또는 쿠키 폴백을 위한 제거),
       // 여기서 다시 accessToken()을 붙이면 그 결정을 덮어써 버린다.
-      if (options.extra[kCanvasRetryFlag] == true) {
-        handler.next(options);
-        return;
+      if (options.extra[kCanvasRetryFlag] != true) {
+        final token = await accessToken?.call();
+        if (token != null && token.isNotEmpty) {
+          options.headers['Authorization'] = 'Bearer $token';
+          handler.next(options);
+          return;
+        }
       }
-      final token = await accessToken?.call();
-      if (token != null && token.isNotEmpty) {
-        options.headers['Authorization'] = 'Bearer $token';
-        handler.next(options);
-        return;
-      }
-      // 첫 요청 전에 다리를 건너 둔다. 401을 기다리면 사용자가 매번
-      // 실패 왕복을 한 번씩 겪는다.
-      if (ensureSession != null) {
+      // Authorization이 없으면 다리를 건넌다. 401을 기다리면 사용자가 매번
+      // 실패 왕복을 한 번씩 겪는다. 재시도에서도 토큰이 없으면 다시 호출한다.
+      if (!options.headers.containsKey('Authorization') && ensureSession != null) {
         try {
           await ensureSession();
         } on Object catch (e) {
