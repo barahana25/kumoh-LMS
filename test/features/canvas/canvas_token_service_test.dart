@@ -32,6 +32,24 @@ class _FakeTokenApi implements CanvasTokenApi {
   }
 }
 
+/// 저장소 read와 clear가 실패하는 경우를 흉내낸다.
+/// PlatformException (flutter_secure_storage)처럼 던진다.
+class _ThrowingCanvasTokenStore implements CanvasTokenStore {
+  @override
+  Future<StoredCanvasToken?> read() async =>
+      throw Exception('Storage failed to read');
+
+  @override
+  Future<void> save(StoredCanvasToken value) async {}
+
+  @override
+  Future<void> clear() async =>
+      throw Exception('Storage failed to clear');
+
+  @override
+  Future<String> ensurePurpose(String platformLabel) async => 'purpose';
+}
+
 CanvasTokenService _service(
   _FakeTokenApi api,
   CanvasTokenStore store, {
@@ -149,5 +167,43 @@ void main() {
     // 가짜가 실제 타입에서 벗어나지 않았는지 확인한다.
     final jar = DefaultCookieJar();
     expect(CanvasTokenApi(buildCanvasDio(jar), jar), isA<CanvasTokenApi>());
+  });
+
+  test('저장소가 read에서 실패하면 current는 null을 돌려주고 던지지 않는다',
+      () async {
+    final store = _ThrowingCanvasTokenStore();
+    final service = _service(_FakeTokenApi(), store);
+
+    expect(await service.current(), isNull);
+  });
+
+  test('저장소가 던져도 ensure는 예외를 밖으로 던지지 않는다', () async {
+    final store = _ThrowingCanvasTokenStore();
+    final service = _service(_FakeTokenApi(), store);
+
+    // ensure()는 current()를 호출하는데, current가 실패해도
+    // _issue()는 API를 호출해 토큰을 발급한다.
+    // 예외를 던지지 않아야 한다.
+    final result = await service.ensure();
+    expect(result, isNotNull);
+  });
+
+  test('저장소 clear 실패해도 reissueAfterInvalid는 던지지 않는다', () async {
+    final store = _ThrowingCanvasTokenStore();
+    final service = _service(_FakeTokenApi(), store);
+
+    // reissueAfterInvalid()는 clear()에서 실패할 수 있다.
+    // 예외를 던지지 않고 새 토큰을 발급해야 한다.
+    final result = await service.reissueAfterInvalid();
+    expect(result, isNotNull);
+  });
+
+  test('저장소가 실패해도 revoke는 예외를 던지지 않는다', () async {
+    final store = _ThrowingCanvasTokenStore();
+    final service = _service(_FakeTokenApi(), store);
+
+    // revoke()는 read()와 clear()에서 실패할 수 있다.
+    // 예외를 던지지 않아야 한다.
+    await service.revoke();
   });
 }

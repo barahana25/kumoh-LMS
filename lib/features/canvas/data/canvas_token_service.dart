@@ -24,7 +24,14 @@ class CanvasTokenService {
   Future<String?>? _issuing;
 
   /// 저장된 토큰. 없으면 null. 발급하지 않는다.
-  Future<String?> current() async => (await _store.read())?.token;
+  Future<String?> current() async {
+    try {
+      return (await _store.read())?.token;
+    } on Object {
+      // 저장소 읽기 실패. 토큰이 없는 것처럼 처리한다.
+      return null;
+    }
+  }
 
   /// 없으면 발급한다. 동시 호출은 한 번의 발급을 공유한다.
   Future<String?> ensure() async {
@@ -35,13 +42,23 @@ class CanvasTokenService {
 
   /// 401을 만난 뒤 쓴다. 저장된 토큰을 버리고 한 번 다시 발급한다.
   Future<String?> reissueAfterInvalid() async {
-    await _store.clear();
+    try {
+      await _store.clear();
+    } on Object {
+      // 저장소 지우기 실패해도 새 토큰 발급을 계속한다.
+    }
     return ensure();
   }
 
   /// Canvas에서 이 기기 토큰을 지우고 로컬도 비운다.
   Future<void> revoke() async {
-    final stored = await _store.read();
+    late final StoredCanvasToken? stored;
+    try {
+      stored = await _store.read();
+    } on Object {
+      // 저장소 읽기 실패. null로 처리하고 계속한다.
+      stored = null;
+    }
     try {
       if (stored != null) {
         await _ensureSession();
@@ -50,7 +67,11 @@ class CanvasTokenService {
     } on Object {
       // 지우지 못해도 로컬은 비운다. 사용자는 Canvas 설정에서 직접 지울 수 있다.
     } finally {
-      await _store.clear();
+      try {
+        await _store.clear();
+      } on Object {
+        // 저장소 지우기도 실패할 수 있다. 그래도 계속한다.
+      }
     }
   }
 
