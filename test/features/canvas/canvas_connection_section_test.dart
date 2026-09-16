@@ -100,6 +100,21 @@ void main() {
     expect(find.text('연결 해제'), findsOneWidget);
   });
 
+  testWidgets('자세히를 누르면 토큰 권한을 설명하는 대화상자가 뜬다', (tester) async {
+    await _pump(tester, InMemoryCanvasTokenStore());
+
+    await tester.tap(find.text('자세히'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Canvas 토큰이 하는 일'), findsOneWidget);
+    expect(find.textContaining('범위 제한이 없습니다'), findsOneWidget);
+
+    await tester.tap(find.text('닫기'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Canvas 토큰이 하는 일'), findsNothing);
+  });
+
   testWidgets('동작이 진행 중이면 버튼이 비활성화된다', (tester) async {
     final store = InMemoryCanvasTokenStore();
     final gate = Completer<void>();
@@ -109,7 +124,8 @@ void main() {
     await tester.tap(find.text('다시 연결'));
     await tester.pump();
 
-    final button = tester.widget<TextButton>(find.byType(TextButton));
+    final button = tester.widget<TextButton>(find.descendant(
+        of: find.byType(ListTile), matching: find.byType(TextButton)));
     expect(button.onPressed, isNull);
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
 
