@@ -245,6 +245,41 @@ void main() {
     expect(await store.read(), isNull);
   });
 
+  test('진행 중인 revoke는 그사이 시작한 다음 세션의 토큰을 지우지 않는다',
+      () async {
+    final store = InMemoryCanvasTokenStore();
+    await store.save(const StoredCanvasToken(
+        token: '7~A', id: 1, purpose: '금오LMS 앱 · Android · a3f9'));
+    final api = _FakeTokenApi();
+    final gate = Completer<void>();
+    var ensureCalls = 0;
+    final service = CanvasTokenService(
+      api: api,
+      store: store,
+      // A의 로그아웃 브릿지만 멈춘다. B의 로그인 브릿지는 바로 끝난다.
+      ensureSession: () async {
+        ensureCalls++;
+        if (ensureCalls == 1) await gate.future;
+      },
+      platformLabel: 'Android',
+    );
+
+    final revokeFuture = service.revoke(); // A 로그아웃 시작, 다리에서 멈춤
+    await Future<void>.delayed(Duration.zero);
+
+    // B가 로그인해 새 세션을 시작하고, 그 사이 토큰 발급까지 끝낸다.
+    final freshToken = await service.issueFresh();
+
+    // A의 정체됐던 로그아웃 다리가 뒤늦게 풀린다.
+    gate.complete();
+    await revokeFuture;
+
+    expect(freshToken, '7~new');
+    expect((await store.read())?.token, '7~new',
+        reason: 'A의 늦은 revoke가 B의 토큰을 지우면 안 된다');
+    expect(api.deleted, contains(1), reason: 'A의 예전 토큰은 여전히 지운다');
+  });
+
   test('current는 저장된 값만 본다. 발급하지 않는다', () async {
     final api = _FakeTokenApi();
     final service = _service(api, InMemoryCanvasTokenStore());

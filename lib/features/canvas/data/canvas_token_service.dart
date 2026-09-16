@@ -95,6 +95,11 @@ class CanvasTokenService {
   /// 이후 디스크에 새 토큰을 남기는 걸 막는다.
   Future<void> revoke() async {
     _session++;
+    // _issue()와 같은 이유로, await 전에 동기적으로 세션 번호를 찍어 둔다.
+    // 기기를 공유하는 다음 사용자가 로그인해 세션이 또 바뀌면(_session이
+    // sessionAtStart와 달라지면), 이 revoke는 이미 끝난 세션 소관이라 마지막에
+    // 저장소를 지우면 안 된다 — 다음 사용자가 막 받은 토큰을 지워 버린다.
+    final sessionAtStart = _session;
     late final StoredCanvasToken? stored;
     try {
       stored = await _store.read();
@@ -110,10 +115,12 @@ class CanvasTokenService {
     } on Object {
       // 지우지 못해도 로컬은 비운다. 사용자는 Canvas 설정에서 직접 지울 수 있다.
     } finally {
-      try {
-        await _store.clear();
-      } on Object {
-        // 저장소 지우기도 실패할 수 있다. 그래도 계속한다.
+      if (_session == sessionAtStart) {
+        try {
+          await _store.clear();
+        } on Object {
+          // 저장소 지우기도 실패할 수 있다. 그래도 계속한다.
+        }
       }
     }
   }
