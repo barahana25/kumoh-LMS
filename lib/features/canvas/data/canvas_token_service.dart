@@ -174,23 +174,28 @@ class CanvasTokenService {
   /// 이 기기의 예전 토큰이 남아 있으면 지운다. 값을 다시 볼 수 없어 쓸 수
   /// 없고, 그대로 두면 계정에 권한 제한 없는 토큰이 쌓인다.
   ///
-  /// purpose 정확히 일치가 아니라 안정적인 접두어(`금오LMS 앱 · 플랫폼 ·
-  /// `)로 찾는다. 접미사(임의 4자리 hex)는 이 저장소에만 있고, Android는
-  /// `allowBackup="false"`라 앱을 지우면 함께 사라진다. 재설치하면 새
-  /// 접미사가 생겨 정확 일치로는 예전 설치가 남긴 토큰을 영영 찾지 못한다
-  /// — 그 토큰은 범위 제한 없이 계정에 계속 살아 있게 된다.
+  /// purpose **정확히 일치**하는 것만 지운다. 접두어(`금오LMS 앱 · 플랫폼 ·
+  /// `)로 넓혀 찾으면 같은 플랫폼을 쓰는 다른 기기의 토큰까지 걸린다 —
+  /// `_platformLabel`은 `defaultTargetPlatform.name`이라 안드로이드
+  /// 기기라면 전부 문자열 그대로 `android`이고, 접미사로만 기기를 구분한다.
+  /// 접두어 일치로 넓히면 두 기기(예: 폰과 태블릿)를 같은 계정으로 번갈아
+  /// 쓸 때 한 기기가 발급할 때마다 다른 기기의 살아 있는 토큰을 지우는
+  /// 핑퐁이 생겨 영원히 수렴하지 않는다.
+  ///
+  /// 이 좁은 매칭의 대가: 재설치로 이 기기의 접미사가 바뀌면(Android는
+  /// `allowBackup="false"`라 앱을 지우면 저장소도 함께 사라진다) 예전
+  /// 설치가 남긴 토큰은 더 이상 정확히 일치하지 않아 여기서 지워지지
+  /// 않는다 — 그 토큰은 범위 제한 없이 계정에 남는다. 접미사를 기기마다
+  /// 안정적으로 재현할 방법(예: 안정적인 기기 식별자)이 이 저장소에 없어
+  /// 감수한 트레이드오프다. 자세한 내용은 `.superpowers/sdd/final-fix-report.md`.
   ///
   /// 호출 시점에는 항상 로컬 저장소에서 지금 쓰는 토큰이 이미 지워진
-  /// 뒤이므로([_issue]를 부르는 모든 경로가 먼저 store를 비운다), 접두어로
-  /// 넓게 찾아도 "지금 앱이 쓰는 중인" 토큰을 지울 위험은 없다.
+  /// 뒤이므로([_issue]를 부르는 모든 경로가 먼저 store를 비운다), 정확
+  /// 일치로 찾아도 "지금 앱이 쓰는 중인" 토큰을 지울 위험은 없다.
   Future<void> _deleteStale(String purpose) async {
-    final prefix = buildCanvasTokenPurpose(
-      platformLabel: _platformLabel,
-      suffix: '',
-    );
     try {
       for (final token in await _api.list()) {
-        if (token.purpose == purpose || token.purpose.startsWith(prefix)) {
+        if (token.purpose == purpose) {
           await _api.delete(token.id);
         }
       }

@@ -118,36 +118,42 @@ void main() {
     expect(api.deleted, [41]);
   });
 
-  test('재설치로 접미사가 바뀐 예전 토큰을 접두어로 쓸어 지우고, 무관한 '
-      '토큰은 남겨 둔다', () async {
+  test('접두어가 같아도 접미사가 다른 다른 기기(또는 재설치 전 예전 설치)의 '
+      '토큰은 건드리지 않는다', () async {
+    // 두 기기가 한 계정을 같이 쓸 때(예: 폰과 태블릿), _platformLabel은
+    // 둘 다 'Android'로 같다. 접두어까지 넓혀 지우면 한 기기가 발급할
+    // 때마다 다른 기기의 살아 있는 토큰을 지우는 핑퐁이 생긴다. 정확
+    // 일치만 지워야 이 핑퐁이 생기지 않는다.
     final store = InMemoryCanvasTokenStore();
-    final purpose = await store.ensurePurpose('Android');
+    await store.ensurePurpose('Android');
     final api = _FakeTokenApi(existing: [
-      // 예전 설치가 남긴 토큰. 접두어는 같지만 접미사(재설치로 새로 뽑힘)가
-      // 지금 저장소의 purpose와 다르다.
+      // 접두어(`금오LMS 앱 · Android · `)는 같지만 접미사가 다르다 —
+      // 다른 기기의 토큰이거나, 재설치로 접미사가 바뀐 예전 설치의 토큰.
       const CanvasTokenSummary(id: 40, purpose: '금오LMS 앱 · Android · dead1'),
-      // 사용자가 Canvas에서 직접 만든, 이름이 겹치지 않는 토큰.
-      const CanvasTokenSummary(id: 41, purpose: '내가 만든 토큰'),
     ]);
 
     await _service(api, store).ensure();
 
-    expect(api.deleted, [40]);
-    expect(purpose, isNot(contains('dead1')));
+    expect(api.deleted, isEmpty);
   });
 
-  test('접두어가 같아도 지금 쓰는 토큰은 건드리지 않는다', () async {
+  test('발급 중 스윕은 이 기기의 예전 토큰(정확히 같은 purpose)은 지우고, '
+      '사용자가 직접 만든 토큰은 건드리지 않는다', () async {
+    // ensure()가 current()에서 바로 반환하면 _issue()도 _deleteStale()도
+    // 돌지 않는다. 저장소를 비운 채로 시작해 스윕이 실제로 실행되게 한다.
     final store = InMemoryCanvasTokenStore();
-    await store.save(const StoredCanvasToken(
-        token: '7~old', id: 44, purpose: '금오LMS 앱 · Android · a3f9'));
+    final purpose = await store.ensurePurpose('Android');
     final api = _FakeTokenApi(existing: [
-      const CanvasTokenSummary(id: 44, purpose: '금오LMS 앱 · Android · a3f9'),
+      // 이 기기의 예전 발급(예: 앱을 껐다 켠 사이 남은 토큰). purpose가
+      // 지금 저장소의 것과 정확히 같다.
+      CanvasTokenSummary(id: 41, purpose: purpose),
+      // 사용자가 Canvas 설정에서 직접 만든, 이름이 겹치지 않는 토큰.
+      const CanvasTokenSummary(id: 42, purpose: '내가 만든 토큰'),
     ]);
 
-    final result = await _service(api, store).ensure();
+    await _service(api, store).ensure();
 
-    expect(result, '7~old');
-    expect(api.deleted, isEmpty);
+    expect(api.deleted, [41]);
   });
 
   test('발급이 실패하면 null을 돌려주고 저장하지 않는다', () async {
