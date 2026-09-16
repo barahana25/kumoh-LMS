@@ -39,14 +39,34 @@ class LmsNotificationSource implements NotificationSource {
   late final Dio _bridge;
   late final Dio _canvas;
 
+  /// 이번 실행(포그라운드 요청 한 번, 또는 백그라운드 폴링 한 번) 중 401로
+  /// 죽었다고 확인한 토큰 값. 다시 붙이지 않는다.
+  ///
+  /// 공유 저장소는 건드리지 않는다. 백그라운드는 새 토큰을 발급하지
+  /// 않는데(발급하면 포그라운드가 들고 있는 토큰을 무효화한다), 저장소를
+  /// 지우기만 해도 그사이 포그라운드가 새로 발급해 둔 유효한 토큰까지
+  /// 함께 날아갈 수 있다. 이 인스턴스 안에서만 기억해 두는 편이 안전하다.
+  String? _deadCanvasToken;
+
   /// 화면 쪽에서 발급해 둔 Canvas 토큰. 없으면 null이고 다리로 폴백한다.
+  /// 이번 실행에서 이미 401로 죽었다고 확인한 토큰은 다시 돌려주지 않는다.
   Future<String?> canvasAccessToken() async {
     try {
-      return (await _canvasTokenStore?.read())?.token;
+      final token = (await _canvasTokenStore?.read())?.token;
+      if (token == null || token == _deadCanvasToken) return null;
+      return token;
     } on Object {
       // 보관소 읽기 실패는 조용히 처리해 쿠키 다리로 폴백한다.
       return null;
     }
+  }
+
+  /// 인터셉터가 401을 만나면 호출한다. 백그라운드는 새 토큰을 발급하지
+  /// 않고(그 이유는 [_deadCanvasToken] 참고), 실패한 토큰 값만 기억해 이번
+  /// 실행의 나머지 요청이 쿠키 경로로 곧장 가게 한다.
+  Future<String?> retireCanvasToken(String invalidToken) async {
+    _deadCanvasToken = invalidToken;
+    return null;
   }
 
   @override
@@ -84,6 +104,7 @@ class LmsNotificationSource implements NotificationSource {
             dio: _canvas,
             ensureSession: session.ensure,
             accessToken: canvasAccessToken,
+            reissueToken: retireCanvasToken,
             reBridge: () async {
               session.invalidate();
               await session.ensure();
