@@ -6,6 +6,9 @@ import '../../auth/data/auth_api.dart' show throwAsFailure;
 /// `RequestOptions.extra`에 두는 재시도 표시. 무한 재브릿지를 막는다.
 const String kCanvasRetryFlag = 'canvas_retry';
 
+/// 이 인터셉터가 Bearer 토큰을 붙였는지 기록하는 표시.
+const String _kCanvasTokenFlag = 'canvas_token';
+
 /// 강좌가 실제로 노출하는 탭 하나.
 class CourseTab {
   const CourseTab({
@@ -255,13 +258,14 @@ Interceptor canvasSessionInterceptor({
   ) async {
     options.extra[kCanvasRetryFlag] = true;
     try {
-      final usedToken = options.headers.containsKey('Authorization');
+      final usedToken = options.extra[_kCanvasTokenFlag] == true;
       final renewed = usedToken ? await reissueToken?.call() : null;
       if (renewed != null) {
         options.headers['Authorization'] = 'Bearer $renewed';
       } else {
         // 쿠키 폴백. Canvas는 Bearer가 붙어 있으면 세션 쿠키를 보지 않는다.
         options.headers.remove('Authorization');
+        options.extra.remove(_kCanvasTokenFlag);
         await reBridge();
       }
       resolve(await dio.fetch<dynamic>(options));
@@ -285,13 +289,14 @@ Interceptor canvasSessionInterceptor({
         final token = await accessToken?.call();
         if (token != null && token.isNotEmpty) {
           options.headers['Authorization'] = 'Bearer $token';
+          options.extra[_kCanvasTokenFlag] = true;
           handler.next(options);
           return;
         }
       }
-      // Authorization이 없으면 다리를 건넌다. 401을 기다리면 사용자가 매번
-      // 실패 왕복을 한 번씩 겪는다. 재시도에서도 토큰이 없으면 다시 호출한다.
-      if (!options.headers.containsKey('Authorization') && ensureSession != null) {
+      // 이 인터셉터가 토큰을 붙이지 않았으면 다리를 건넌다. 401을 기다리면 사용자가
+      // 매번 실패 왕복을 한 번씩 겪는다. 재시도에서도 토큰이 없으면 다시 호출한다.
+      if (options.extra[_kCanvasTokenFlag] != true && ensureSession != null) {
         try {
           await ensureSession();
         } on Object catch (e) {

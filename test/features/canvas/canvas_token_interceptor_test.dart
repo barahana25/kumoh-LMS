@@ -152,4 +152,19 @@ void main() {
     expect(res.statusCode, 200);
     expect(ensureSessionCallCount, 2);
   });
+
+  test('호출자가 설정한 Authorization 헤더가 있어도 토큰이 없으면 ensureSession을 호출한다', () async {
+    var ensured = false;
+    final script = _Script();
+    final dio = _dio(
+      script,
+      ensureSession: () async => ensured = true,
+      accessToken: () async => null,
+      reBridge: () async {},
+    );
+
+    await dio.get<dynamic>('/users/self', options: Options(headers: {'Authorization': 'Bearer caller-set'}));
+
+    expect(ensured, isTrue);
+  });
 }
