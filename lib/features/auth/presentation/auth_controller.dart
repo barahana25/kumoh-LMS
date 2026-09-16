@@ -62,6 +62,11 @@ class AuthController extends AsyncNotifier<AuthState> {
           refreshToken: tokens.refreshToken,
         );
         final profile = await authApi.fetchProfile();
+        // 같은 사용자, 같은 기기로 돌아온 세션이다. 화면을 막지 않는다.
+        // issueFresh()가 아니라 ensure()를 쓴다 — 콜드 스타트마다 멀쩡한
+        // 토큰을 버리고 새로 발급하면 재시작할 때마다 Canvas 계정에 토큰이
+        // 쌓인다. 다음 사용자에게 넘어갈 위험이 없는 한 있는 토큰을 쓴다.
+        unawaited(ref.read(canvasTokenServiceProvider).ensure());
         return AuthAuthenticated(profile: profile);
       } on Object catch (e) {
         // 서버 점검(5xx)이나 연결 실패로 토큰을 버리면 콜드 스타트 한 번에
@@ -124,6 +129,14 @@ class AuthController extends AsyncNotifier<AuthState> {
       return const AuthUnauthenticated();
     }
     final profile = await authApi.fetchProfile();
+    // 화면을 막지 않는다. 실패하면 쿠키 경로로 조용히 동작한다.
+    // ensure()가 아니라 issueFresh()를 쓴다 — 로그아웃과 겹쳐 저장된
+    // 토큰이 비어 있더라도, 발급이 이전 세션 것이면 재사용하지 않고
+    // 항상 새 세션 번호로 새로 발급한다. 대화형 로그인([login])과
+    // 자동 로그인(저장된 자격증명으로 다시 로그인하는
+    // [_autoLoginOrUnauthenticated]) 모두 이 함수를 거치므로, 여기 한
+    // 곳에서만 발급해야 두 번 발급되지 않는다.
+    unawaited(ref.read(canvasTokenServiceProvider).issueFresh());
     return AuthAuthenticated(profile: profile);
   }
 
@@ -148,11 +161,8 @@ class AuthController extends AsyncNotifier<AuthState> {
       );
       ref.read(selectedTermIdProvider.notifier).state = null;
       ref.invalidate(activeTermIdProvider);
-      // 화면을 막지 않는다. 실패하면 쿠키 경로로 조용히 동작한다.
-      // ensure()가 아니라 issueFresh()를 쓴다 — 로그아웃과 겹쳐 저장된
-      // 토큰이 비어 있더라도, 발급이 이전 세션 것이면 재사용하지 않고
-      // 항상 새 세션 번호로 새로 발급한다.
-      unawaited(ref.read(canvasTokenServiceProvider).issueFresh());
+      // Canvas 토큰 발급은 _performLogin 안에서 한다 — 대화형 로그인과
+      // 자동 로그인이 같은 곳을 거치므로 여기서 다시 부르면 두 번 발급된다.
       return authenticated;
     });
     if (generation == _generation) {
