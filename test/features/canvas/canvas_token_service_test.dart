@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cookie_jar/cookie_jar.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kumoh_lms/features/canvas/data/canvas_client.dart';
@@ -32,6 +34,28 @@ class _FakeTokenApi implements CanvasTokenApi {
   }
 }
 
+/// create()가 완료될 때까지 멈춰 있는 API. 발급이 진행 중인 사이에
+/// revoke()가 끼어드는 경합을 재현하는 데 쓴다.
+class _SlowCreateTokenApi implements CanvasTokenApi {
+  _SlowCreateTokenApi(this._completer, {this.failDelete = false});
+
+  final Completer<IssuedCanvasToken> _completer;
+  final bool failDelete;
+  final List<int> deleted = [];
+
+  @override
+  Future<IssuedCanvasToken> create(String purpose) => _completer.future;
+
+  @override
+  Future<List<CanvasTokenSummary>> list() async => const [];
+
+  @override
+  Future<void> delete(int id) async {
+    if (failDelete) throw const CanvasTokenUnavailable();
+    deleted.add(id);
+  }
+}
+
 /// 저장소 read와 clear가 실패하는 경우를 흉내낸다.
 /// PlatformException (flutter_secure_storage)처럼 던진다.
 class _ThrowingCanvasTokenStore implements CanvasTokenStore {
@@ -51,7 +75,7 @@ class _ThrowingCanvasTokenStore implements CanvasTokenStore {
 }
 
 CanvasTokenService _service(
-  _FakeTokenApi api,
+  CanvasTokenApi api,
   CanvasTokenStore store, {
   Future<void> Function()? ensureSession,
 }) =>
@@ -205,5 +229,53 @@ void main() {
     // revoke()는 read()와 clear()에서 실패할 수 있다.
     // 예외를 던지지 않아야 한다.
     await service.revoke();
+  });
+
+  test('발급 도중 로그아웃하면 저장하지 않고 Canvas에서 만든 토큰을 지운다',
+      () async {
+    final completer = Completer<IssuedCanvasToken>();
+    final api = _SlowCreateTokenApi(completer);
+    final store = InMemoryCanvasTokenStore();
+    final service = _service(api, store);
+
+    // create()가 completer를 기다리는 사이에 로그아웃이 끼어든다.
+    final ensureFuture = service.ensure();
+    await service.revoke();
+    completer.complete(
+        const IssuedCanvasToken(id: 99, token: '7~late', purpose: 'p'));
+
+    expect(await ensureFuture, isNull);
+    expect(await store.read(), isNull);
+    expect(api.deleted, [99]);
+  });
+
+  test('issueFresh는 이전 세션이 남긴 토큰을 이어받지 않고 새로 발급한다',
+      () async {
+    final api = _FakeTokenApi();
+    final store = InMemoryCanvasTokenStore();
+    await store.save(const StoredCanvasToken(
+        token: '7~old', id: 1, purpose: '금오LMS 앱 · Android · a3f9'));
+
+    final result = await _service(api, store).issueFresh();
+
+    expect(result, '7~new');
+    expect(api.createCount, 1);
+    expect((await store.read())!.token, '7~new');
+  });
+
+  test('세션이 끝난 뒤 정리 삭제가 실패해도 아무것도 던지지 않는다',
+      () async {
+    final completer = Completer<IssuedCanvasToken>();
+    final api = _SlowCreateTokenApi(completer, failDelete: true);
+    final store = InMemoryCanvasTokenStore();
+    final service = _service(api, store);
+
+    final ensureFuture = service.ensure();
+    await service.revoke();
+    completer.complete(
+        const IssuedCanvasToken(id: 99, token: '7~late', purpose: 'p'));
+
+    expect(await ensureFuture, isNull);
+    expect(await store.read(), isNull);
   });
 }

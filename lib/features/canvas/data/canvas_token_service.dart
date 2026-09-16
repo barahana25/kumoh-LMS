@@ -23,6 +23,10 @@ class CanvasTokenService {
 
   Future<String?>? _issuing;
 
+  /// 로그인/로그아웃이 바뀔 때마다 올라간다. 진행 중인 발급이 이 번호가
+  /// 바뀐 걸 보면, 자신을 요청한 세션이 이미 끝났다는 뜻이다.
+  int _session = 0;
+
   /// 저장된 토큰. 없으면 null. 발급하지 않는다.
   Future<String?> current() async {
     try {
@@ -35,12 +39,19 @@ class CanvasTokenService {
 
   /// 없으면 발급한다. 동시 호출은 한 번의 발급을 공유한다.
   Future<String?> ensure() async {
+    // 저장소를 들여다보기(await) 전에, 지금 이 요청이 속한 세션 번호부터
+    // 동기적으로 찍어 둔다. 그러지 않으면 이 await가 도는 사이에 로그아웃이
+    // 끼어들어 세션 번호를 올려도, 뒤늦게 찍는 번호는 이미 바뀐 값을 보게
+    // 되어 경합을 놓친다.
+    final sessionAtStart = _session;
     final existing = await current();
     if (existing != null) return existing;
-    return _issuing ??= _issue().whenComplete(() => _issuing = null);
+    return _issuing ??= _runIssue(sessionAtStart);
   }
 
-  /// 401을 만난 뒤 쓴다. 저장된 토큰을 버리고 한 번 다시 발급한다.
+  /// 401을 만난 뒤 쓴다. 같은 로그인 세션 안에서 저장된 토큰을 버리고 한
+  /// 번 다시 발급한다. 세션 번호는 올리지 않는다 — 로그인은 그대로이고
+  /// 토큰만 무효가 됐을 뿐이라, 새 로그인([issueFresh])과는 의도가 다르다.
   Future<String?> reissueAfterInvalid() async {
     try {
       await _store.clear();
@@ -50,8 +61,28 @@ class CanvasTokenService {
     return ensure();
   }
 
+  /// 새 로그인에서 쓴다. 세션 번호를 올려 이전 세션이 발급하던 토큰을
+  /// 무효화하고, 저장된 토큰(로그아웃 경합으로 남았다면 이전 사용자 것일
+  /// 수 있다)을 지운 뒤 새로 발급한다. 기기를 함께 쓰는 다음 사용자가
+  /// 이전 사용자의 Canvas 토큰을 이어받지 않게 하는 것이 목적이라
+  /// [reissueAfterInvalid]와는 의도가 다르다.
+  Future<String?> issueFresh() async {
+    _session++;
+    final sessionAtStart = _session;
+    try {
+      await _store.clear();
+    } on Object {
+      // 저장소 지우기 실패해도 새 토큰 발급을 계속한다.
+    }
+    return _issuing = _runIssue(sessionAtStart);
+  }
+
   /// Canvas에서 이 기기 토큰을 지우고 로컬도 비운다.
+  /// 세션 번호를 올려, 지금 막 발급 중인 토큰이 있다면 그 결과를 저장하지
+  /// 않고 Canvas에서도 지우게 한다 — 로그아웃과 경합하는 발급이 로그아웃
+  /// 이후 디스크에 새 토큰을 남기는 걸 막는다.
   Future<void> revoke() async {
+    _session++;
     late final StoredCanvasToken? stored;
     try {
       stored = await _store.read();
@@ -75,12 +106,30 @@ class CanvasTokenService {
     }
   }
 
-  Future<String?> _issue() async {
+  /// [_issue]를 시작하고, 이 시도가 끝났을 때 그사이 아무도 새 시도로
+  /// [_issuing]을 바꿔치기하지 않았을 때만 [_issuing]을 비운다.
+  Future<String?> _runIssue(int sessionAtStart) {
+    late final Future<String?> attempt;
+    attempt = _issue(sessionAtStart).whenComplete(() {
+      if (identical(_issuing, attempt)) _issuing = null;
+    });
+    return attempt;
+  }
+
+  Future<String?> _issue(int sessionAtStart) async {
     try {
       await _ensureSession();
       final purpose = await _store.ensurePurpose(_platformLabel);
       await _deleteStale(purpose);
       final issued = await _api.create(purpose);
+      if (_session != sessionAtStart) {
+        // 이 발급을 요청한 세션은 이미 끝났다(로그아웃/재로그인이 먼저
+        // 끝남). 저장하면 로그아웃 이후 디스크에 토큰이 남거나, 다음
+        // 사용자가 이전 사용자의 토큰을 이어받는다. 저장하지 않고
+        // 최선을 다해 Canvas에서도 지운다.
+        await _bestEffortDelete(issued.id);
+        return null;
+      }
       await _store.save(StoredCanvasToken(
         token: issued.token,
         id: issued.id,
@@ -89,6 +138,17 @@ class CanvasTokenService {
       return issued.token;
     } on Object {
       return null;
+    }
+  }
+
+  /// 세션이 바뀌어 저장할 수 없게 된 토큰을 Canvas에서 지운다.
+  /// 실패해도 던지지 않는다 — 여기서 할 수 있는 최선을 다했을 뿐이고,
+  /// 지우지 못한 토큰은 사용자가 Canvas 설정에서 직접 지울 수 있다.
+  Future<void> _bestEffortDelete(int id) async {
+    try {
+      await _api.delete(id);
+    } on Object {
+      // 지우지 못해도 여기서는 더 할 수 있는 게 없다.
     }
   }
 

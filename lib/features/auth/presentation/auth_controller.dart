@@ -149,7 +149,10 @@ class AuthController extends AsyncNotifier<AuthState> {
       ref.read(selectedTermIdProvider.notifier).state = null;
       ref.invalidate(activeTermIdProvider);
       // 화면을 막지 않는다. 실패하면 쿠키 경로로 조용히 동작한다.
-      unawaited(ref.read(canvasTokenServiceProvider).ensure());
+      // ensure()가 아니라 issueFresh()를 쓴다 — 로그아웃과 겹쳐 저장된
+      // 토큰이 비어 있더라도, 발급이 이전 세션 것이면 재사용하지 않고
+      // 항상 새 세션 번호로 새로 발급한다.
+      unawaited(ref.read(canvasTokenServiceProvider).issueFresh());
       return authenticated;
     });
     if (generation == _generation) {
