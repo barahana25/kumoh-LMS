@@ -6,7 +6,12 @@ import '../../auth/data/auth_api.dart' show throwAsFailure;
 /// `RequestOptions.extra`에 두는 재시도 표시. 무한 재브릿지를 막는다.
 const String kCanvasRetryFlag = 'canvas_retry';
 
-/// 이 인터셉터가 Bearer 토큰을 붙였는지 기록하는 표시.
+/// 이 인터셉터가 실제로 붙인 Bearer 토큰 값을 기록하는 표시.
+///
+/// 불리언이 아니라 값 자체를 담아 둔다. 401을 만났을 때 "토큰을 붙였다"만
+/// 아니라 "정확히 어떤 토큰을 붙였다"를 알아야, 뒤늦게 도착한 같은 만료
+/// 토큰의 두 번째 401이 그사이 다른 요청이 이미 받아 둔 새 토큰을 착각해
+/// 지우지 않는다.
 const String _kCanvasTokenFlag = 'canvas_token';
 
 /// 강좌가 실제로 노출하는 탭 하나.
@@ -249,7 +254,7 @@ Interceptor canvasSessionInterceptor({
   required Future<void> Function() reBridge,
   Future<void> Function()? ensureSession,
   Future<String?> Function()? accessToken,
-  Future<String?> Function()? reissueToken,
+  Future<String?> Function(String invalidToken)? reissueToken,
 }) {
   Future<void> recover(
     RequestOptions options,
@@ -258,10 +263,12 @@ Interceptor canvasSessionInterceptor({
   ) async {
     options.extra[kCanvasRetryFlag] = true;
     try {
-      final usedToken = options.extra[_kCanvasTokenFlag] == true;
-      final renewed = usedToken ? await reissueToken?.call() : null;
+      final usedToken = options.extra[_kCanvasTokenFlag] as String?;
+      final renewed =
+          usedToken != null ? await reissueToken?.call(usedToken) : null;
       if (renewed != null) {
         options.headers['Authorization'] = 'Bearer $renewed';
+        options.extra[_kCanvasTokenFlag] = renewed;
       } else {
         // 쿠키 폴백. Canvas는 Bearer가 붙어 있으면 세션 쿠키를 보지 않는다.
         options.headers.remove('Authorization');
@@ -289,14 +296,14 @@ Interceptor canvasSessionInterceptor({
         final token = await accessToken?.call();
         if (token != null && token.isNotEmpty) {
           options.headers['Authorization'] = 'Bearer $token';
-          options.extra[_kCanvasTokenFlag] = true;
+          options.extra[_kCanvasTokenFlag] = token;
           handler.next(options);
           return;
         }
       }
       // 이 인터셉터가 토큰을 붙이지 않았으면 다리를 건넌다. 401을 기다리면 사용자가
       // 매번 실패 왕복을 한 번씩 겪는다. 재시도에서도 토큰이 없으면 다시 호출한다.
-      if (options.extra[_kCanvasTokenFlag] != true && ensureSession != null) {
+      if (options.extra[_kCanvasTokenFlag] == null && ensureSession != null) {
         try {
           await ensureSession();
         } on Object catch (e) {

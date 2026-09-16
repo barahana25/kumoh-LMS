@@ -35,7 +35,7 @@ Dio _dio(
   _Script script, {
   Future<void> Function()? ensureSession,
   Future<String?> Function()? accessToken,
-  Future<String?> Function()? reissueToken,
+  Future<String?> Function(String invalidToken)? reissueToken,
   required Future<void> Function() reBridge,
 }) {
   final dio = Dio(BaseOptions(
@@ -94,7 +94,10 @@ void main() {
     final dio = _dio(
       script,
       accessToken: () async => '7~old',
-      reissueToken: () async => '7~new',
+      reissueToken: (invalidToken) async {
+        expect(invalidToken, '7~old');
+        return '7~new';
+      },
       reBridge: () async => reBridged = true,
     );
 
@@ -111,7 +114,7 @@ void main() {
     final dio = _dio(
       script,
       accessToken: () async => '7~old',
-      reissueToken: () async => null,
+      reissueToken: (invalidToken) async => null,
       reBridge: () async => reBridged = true,
     );
 
@@ -127,7 +130,7 @@ void main() {
     final dio = _dio(
       script,
       accessToken: () async => '7~old',
-      reissueToken: () async => '7~new',
+      reissueToken: (invalidToken) async => '7~new',
       reBridge: () async {},
     );
 

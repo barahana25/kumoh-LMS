@@ -49,10 +49,22 @@ class CanvasTokenService {
     return _issuing ??= _runIssue(sessionAtStart);
   }
 
-  /// 401을 만난 뒤 쓴다. 같은 로그인 세션 안에서 저장된 토큰을 버리고 한
-  /// 번 다시 발급한다. 세션 번호는 올리지 않는다 — 로그인은 그대로이고
-  /// 토큰만 무효가 됐을 뿐이라, 새 로그인([issueFresh])과는 의도가 다르다.
-  Future<String?> reissueAfterInvalid() async {
+  /// 401을 만난 뒤 쓴다. 실패한 요청이 실제로 들고 있던 토큰([invalidToken])이
+  /// 지금 저장된 값과 같을 때만 지우고 한 번 다시 발급한다. 세션 번호는
+  /// 올리지 않는다 — 로그인은 그대로이고 토큰만 무효가 됐을 뿐이라, 새
+  /// 로그인([issueFresh])과는 의도가 다르다.
+  ///
+  /// 같은 만료 토큰으로 보낸 요청 여럿이 겹쳐 401을 여러 번 받을 수 있다.
+  /// 먼저 도착한 401이 이미 새 토큰을 저장해 둔 뒤, 뒤늦게 도착한 401이
+  /// [invalidToken]만 보고 무조건 지우면 방금 저장한 유효한 토큰을 날리고
+  /// 또 재발급하게 된다 — 그사이 저장소가 비어 다른 요청이 불필요하게
+  /// 쿠키/SAML 경로로 떨어진다. 저장된 값이 [invalidToken]과 다르면 이미
+  /// 누군가 처리를 끝냈다는 뜻이니 그 값을 그대로 돌려준다.
+  Future<String?> reissueAfterInvalid(String invalidToken) async {
+    final storedToken = await current();
+    if (storedToken != null && storedToken != invalidToken) {
+      return storedToken;
+    }
     try {
       await _store.clear();
     } on Object {

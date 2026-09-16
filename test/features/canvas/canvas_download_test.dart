@@ -49,7 +49,7 @@ CanvasDownloader _downloaderFor(_RedirectScript script, {String? token = '7~abc'
     canvasSessionInterceptor(
       dio: dio,
       accessToken: () async => token,
-      reissueToken: () async => null,
+      reissueToken: (invalidToken) async => null,
       reBridge: () async {},
     ),
   );

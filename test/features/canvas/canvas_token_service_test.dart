@@ -152,8 +152,42 @@ void main() {
     await store.save(const StoredCanvasToken(
         token: '7~old', id: 1, purpose: '금오LMS 앱 · Android · a3f9'));
 
-    expect(await _service(api, store).reissueAfterInvalid(), '7~new');
+    expect(await _service(api, store).reissueAfterInvalid('7~old'), '7~new');
     expect(api.createCount, 1);
+  });
+
+  test(
+      '같은 만료 토큰으로 겹친 두 번째 401은 방금 저장된 새 토큰을 지우지 않는다',
+      () async {
+    final api = _FakeTokenApi();
+    final store = InMemoryCanvasTokenStore();
+    await store.save(const StoredCanvasToken(
+        token: '7~old', id: 1, purpose: '금오LMS 앱 · Android · a3f9'));
+    final service = _service(api, store);
+
+    final first = await service.reissueAfterInvalid('7~old');
+    // 두 번째 401도 같은 '7~old'를 들고 있었다. 이미 새 토큰이 저장된 뒤라
+    // 다시 지우거나 재발급하면 안 된다.
+    final second = await service.reissueAfterInvalid('7~old');
+
+    expect(first, '7~new');
+    expect(second, '7~new');
+    expect(api.createCount, 1);
+    expect((await store.read())!.token, '7~new');
+  });
+
+  test('저장된 토큰이 이미 다른 값이면 재발급 없이 그 값을 돌려준다', () async {
+    final api = _FakeTokenApi();
+    final store = InMemoryCanvasTokenStore();
+    await store.save(const StoredCanvasToken(
+        token: '7~current', id: 2, purpose: '금오LMS 앱 · Android · a3f9'));
+    final service = _service(api, store);
+
+    final result = await service.reissueAfterInvalid('7~stale');
+
+    expect(result, '7~current');
+    expect(api.createCount, 0);
+    expect((await store.read())!.token, '7~current');
   });
 
   test('revoke는 Canvas에서 지우고 로컬도 비운다', () async {
@@ -218,7 +252,7 @@ void main() {
 
     // reissueAfterInvalid()는 clear()에서 실패할 수 있다.
     // 예외를 던지지 않고 새 토큰을 발급해야 한다.
-    final result = await service.reissueAfterInvalid();
+    final result = await service.reissueAfterInvalid('7~old');
     expect(result, isNotNull);
   });
 
