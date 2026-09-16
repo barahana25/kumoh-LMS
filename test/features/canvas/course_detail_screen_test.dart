@@ -5,6 +5,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:kumoh_lms/core/error/failure.dart';
 import 'package:kumoh_lms/core/storage/db/app_database.dart';
 import 'package:kumoh_lms/features/canvas/data/canvas_api.dart';
+import 'package:kumoh_lms/features/canvas/data/canvas_token_store.dart';
 import 'package:kumoh_lms/features/canvas/presentation/course_detail_screen.dart';
 import 'package:kumoh_lms/providers.dart';
 
@@ -24,6 +25,7 @@ void main() {
       ProviderScope(
         overrides: [
           appDatabaseProvider.overrideWithValue(db),
+          canvasTokenStoreProvider.overrideWithValue(InMemoryCanvasTokenStore()),
           courseTabsProvider(4831).overrideWith((ref) async {
             if (tabsError != null) throw tabsError;
             return tabs;

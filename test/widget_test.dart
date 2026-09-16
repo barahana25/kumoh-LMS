@@ -12,6 +12,7 @@ import 'package:kumoh_lms/core/ui/startup_screen.dart';
 import 'package:kumoh_lms/core/network/token_store.dart';
 import 'package:kumoh_lms/core/storage/db/app_database.dart';
 import 'package:kumoh_lms/features/auth/presentation/auth_controller.dart';
+import 'package:kumoh_lms/features/canvas/data/canvas_token_store.dart';
 import 'package:kumoh_lms/features/reference/presentation/term_providers.dart';
 import 'package:kumoh_lms/providers.dart';
 
@@ -49,6 +50,7 @@ void main() {
       authDioProvider.overrideWithValue(dio),
       dioProvider.overrideWithValue(dio),
       canvasDioProvider.overrideWithValue(dio),
+      canvasTokenStoreProvider.overrideWithValue(InMemoryCanvasTokenStore()),
     ]);
   });
   tearDown(() async {
