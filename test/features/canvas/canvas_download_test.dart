@@ -1,5 +1,60 @@
+import 'dart:io';
+
+import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kumoh_lms/features/canvas/data/canvas_api.dart';
 import 'package:kumoh_lms/features/canvas/data/canvas_download.dart';
+
+/// 홉을 대본대로 재현한다. 리다이렉트는 `location` 응답으로, 끝은 실제
+/// 바이트 응답으로 표현한다. 요청마다 호스트와 Authorization 헤더를 남긴다.
+class _RedirectScript implements HttpClientAdapter {
+  _RedirectScript(this._routes);
+  final Map<String, ({int status, String? location, String? body})> _routes;
+  final List<({String host, String? auth})> seen = [];
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<List<int>>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    seen.add((
+      host: options.uri.host,
+      auth: options.headers['Authorization'] as String?,
+    ));
+    final hop = _routes[options.uri.toString()];
+    if (hop == null) {
+      return ResponseBody.fromString('경로 없음', 404);
+    }
+    if (hop.location != null) {
+      return ResponseBody.fromString('', hop.status, headers: {
+        'location': [hop.location!],
+      });
+    }
+    return ResponseBody.fromString(hop.body ?? '', hop.status, headers: {
+      'content-type': ['application/pdf'],
+      'content-disposition': ['attachment; filename="lecture.pdf"'],
+    });
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
+CanvasDownloader _downloaderFor(_RedirectScript script, {String? token = '7~abc'}) {
+  final dio = Dio(BaseOptions(validateStatus: (s) => s != null && s < 500))
+    ..httpClientAdapter = script;
+  dio.interceptors.insert(
+    0,
+    canvasSessionInterceptor(
+      dio: dio,
+      accessToken: () async => token,
+      reissueToken: () async => null,
+      reBridge: () async {},
+    ),
+  );
+  return CanvasDownloader(dio, crossHostDio: Dio()..httpClientAdapter = script);
+}
 
 void main() {
   group('다운로드 URL 판별', () {
@@ -85,6 +140,76 @@ void main() {
       expect(result.length, lessThanOrEqualTo(120));
       expect(result.endsWith('.pdf'), isTrue,
           reason: '확장자가 없으면 기기 뷰어가 무엇으로 열지 모른다');
+    });
+  });
+
+  group('리다이렉트를 따라가는 실제 다운로드', () {
+    late Directory tmp;
+
+    setUp(() => tmp = Directory.systemTemp.createTempSync('canvas_dl_'));
+    tearDown(() => tmp.deleteSync(recursive: true));
+
+    const start = 'https://canvas.kumoh.ac.kr/files/9/download?download_frd=1';
+
+    test('Canvas 밖 호스트로 리다이렉트되면 Authorization 없이 받되 내용은 그대로 온다', () async {
+      // Canvas 파일은 자주 별도 파일 서버로 302된다. 거기까지 Bearer가
+      // 따라가면 만료 없는 토큰이 제3자 로그에 남는다.
+      final script = _RedirectScript({
+        start: (status: 302, location: 'https://files.example.edu/blob/abc123', body: null),
+        'https://files.example.edu/blob/abc123':
+            (status: 200, location: null, body: 'PDF-BYTES'),
+      });
+
+      final file = await _downloaderFor(script).download(
+        url: start,
+        displayName: 'note',
+        directory: tmp,
+      );
+
+      expect(file.readAsStringSync(), 'PDF-BYTES', reason: '호스트가 바뀌어도 파일은 받아야 한다');
+      expect(script.seen, [
+        (host: 'canvas.kumoh.ac.kr', auth: 'Bearer 7~abc'),
+        (host: 'files.example.edu', auth: null),
+      ]);
+    });
+
+    test('같은 Canvas 호스트 안에서의 리다이렉트는 Authorization을 계속 지닌다', () async {
+      final script = _RedirectScript({
+        start: (
+          status: 302,
+          location: 'https://canvas.kumoh.ac.kr/files/9/redirected',
+          body: null,
+        ),
+        'https://canvas.kumoh.ac.kr/files/9/redirected':
+            (status: 200, location: null, body: 'PDF-BYTES'),
+      });
+
+      final file = await _downloaderFor(script).download(
+        url: start,
+        displayName: 'note',
+        directory: tmp,
+      );
+
+      expect(file.readAsStringSync(), 'PDF-BYTES');
+      expect(
+        script.seen.every((s) => s.host == 'canvas.kumoh.ac.kr' && s.auth == 'Bearer 7~abc'),
+        isTrue,
+        reason: 'Canvas 안에서의 리다이렉트까지 토큰을 떼면 멀쩡한 요청도 막힌다',
+      );
+    });
+
+    test('리다이렉트가 끝나지 않으면 홉 한도에서 멈춘다', () async {
+      // 두 주소가 서로를 계속 가리키는 순환 리다이렉트.
+      final script = _RedirectScript({
+        start: (status: 302, location: 'https://canvas.kumoh.ac.kr/files/9/b', body: null),
+        'https://canvas.kumoh.ac.kr/files/9/b': (status: 302, location: start, body: null),
+      });
+
+      await expectLater(
+        _downloaderFor(script).download(url: start, displayName: 'note', directory: tmp),
+        throwsA(anything),
+      );
+      expect(script.seen.length, 6, reason: '홉 한도(5) + 첫 요청 = 6번에서 멈춰야 한다');
     });
   });
 }

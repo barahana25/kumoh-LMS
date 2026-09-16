@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:path/path.dart' as p;
@@ -6,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../../../core/config/env.dart';
 import '../../../core/error/failure.dart';
+import '../../../core/network/platform_http.dart';
 import '../../auth/data/auth_api.dart' show throwAsFailure;
 
 final _filePattern = RegExp(r'(^|/)files/\d+');
@@ -127,9 +130,34 @@ String safeFileName(String displayName) {
 ///
 /// Canvas 파일은 로그인 상태에서만 받을 수 있어 외부 브라우저나 기기의
 /// 다운로드 관리자에 넘길 수 없다.
+///
+/// 리다이렉트는 직접 홉마다 따라간다. dio의 `followRedirects: true`에
+/// 맡기면 플랫폼 HTTP 클라이언트(안드로이드는 dart:io HttpClient)가 내부에서
+/// 리다이렉트를 따라가며 요청 헤더를 그대로 옮긴다. 그 내부 홉에는
+/// 인터셉터가 끼어들 수 없어, 만료 없는 Canvas Bearer 토큰이 파일 서버
+/// 같은 다른 호스트로 그대로 새어나가고 그쪽 로그에 남는다. 서명된 쿼리를
+/// 쓰는 파일 서버는 Authorization이 함께 오면 400으로 거부하기도 해서,
+/// 401이 아니라서 쿠키 폴백도 걸리지 않고 다운로드 자체가 막힌다.
 class CanvasDownloader {
-  CanvasDownloader(this._dio);
+  CanvasDownloader(this._dio, {Dio? crossHostDio})
+      : _crossHostDio = crossHostDio ?? _buildCrossHostDio();
+
+  /// 세션 인터셉터가 붙은 dio. Canvas 호스트로 가는 홉에서만 쓴다.
   final Dio _dio;
+
+  /// Canvas를 벗어난 홉 전용. 세션 인터셉터가 없어 Bearer를 붙이지 않고
+  /// 다리를 건너려 하지도 않는다 — 파일 서버는 Canvas 인증과 무관하다.
+  final Dio _crossHostDio;
+
+  static Dio _buildCrossHostDio() {
+    final dio = Dio(BaseOptions(
+      connectTimeout: Env.connectTimeout,
+      receiveTimeout: Env.receiveTimeout,
+    ));
+    final adapter = platformHttpAdapter();
+    if (adapter != null) dio.httpClientAdapter = adapter;
+    return dio;
+  }
 
   Future<File> download({
     required String url,
@@ -144,12 +172,15 @@ class CanvasDownloader {
       final partial = File(p.join(folder, '${safeFileName(displayName)}.part'));
       await partial.parent.create(recursive: true);
 
-      final response = await _dio.downloadUri(
+      final response = await _fetchFollowingRedirects(
         Uri.parse(canvasFileDownloadUrl(url)),
-        partial.path,
         cancelToken: cancelToken,
-        onReceiveProgress: onProgress,
-        options: Options(followRedirects: true, maxRedirects: 5),
+      );
+      await _writeToFile(
+        response,
+        partial,
+        onProgress: onProgress,
+        cancelToken: cancelToken,
       );
 
       if (!partial.existsSync() || partial.lengthSync() == 0) {
@@ -179,5 +210,107 @@ class CanvasDownloader {
     } on FileSystemException {
       throw const ServerFailure(code: 'IO', message: '기기에 파일을 저장하지 못했습니다.');
     }
+  }
+
+  /// 홉마다 새로 요청해, 응답이 Canvas 호스트를 벗어나는 순간부터는
+  /// Authorization을 붙이지 않는 [_crossHostDio]로 넘어간다.
+  Future<Response<ResponseBody>> _fetchFollowingRedirects(
+    Uri start, {
+    CancelToken? cancelToken,
+    int maxHops = 5,
+  }) async {
+    final canvasHost = Uri.parse(Env.canvasHost).host;
+    var url = start;
+    for (var hop = 0; hop <= maxHops; hop++) {
+      final dio = url.host == canvasHost ? _dio : _crossHostDio;
+      final response = await dio.getUri<ResponseBody>(
+        url,
+        cancelToken: cancelToken,
+        options: Options(
+          responseType: ResponseType.stream,
+          followRedirects: false,
+          validateStatus: (s) => s != null && s < 400,
+        ),
+      );
+      final status = response.statusCode ?? 0;
+      final location = response.headers.value('location');
+      if (status >= 300 && status < 400 && location != null) {
+        await response.data?.stream.drain<void>();
+        url = url.resolve(location);
+        continue;
+      }
+      return response;
+    }
+    throw const ServerFailure(
+        code: 'REDIRECT_LOOP', message: '파일을 받지 못했습니다. 잠시 후 다시 시도해 주세요.');
+  }
+
+  /// [response]의 스트림을 [file]에 받아쓴다. dio의 `download()`가 하는
+  /// 일(배압을 지키는 쓰기, 진행 보고, 취소, 실패 시 부분 파일 정리)을
+  /// 그대로 따르되, 이미 받은 [response]를 다시 요청하지 않고 그대로 쓴다.
+  Future<void> _writeToFile(
+    Response<ResponseBody> response,
+    File file, {
+    void Function(int received, int total)? onProgress,
+    CancelToken? cancelToken,
+  }) {
+    final completer = Completer<void>();
+    final raf = file.openSync(mode: FileMode.write);
+    var received = 0;
+    // 서버가 gzip 등으로 압축해 보내면 content-length는 압축 전 크기가
+    // 아니라서, 그 값으로 진행률을 계산하면 100%를 넘거나 못 미치고 끝난다.
+    final contentEncoding =
+        response.headers.value(Headers.contentEncodingHeader);
+    final compressed =
+        ['gzip', 'deflate', 'compress'].contains(contentEncoding);
+    final total = compressed
+        ? -1
+        : int.tryParse(
+              response.headers.value(Headers.contentLengthHeader) ?? '',
+            ) ??
+            -1;
+
+    var closed = false;
+    Future<void>? pendingWrite;
+    late StreamSubscription<Uint8List> sub;
+
+    Future<void> finish({Object? error}) async {
+      if (closed) return;
+      closed = true;
+      await pendingWrite;
+      await raf.close().catchError((_) => raf);
+      if (error == null) {
+        completer.complete();
+        return;
+      }
+      if (file.existsSync()) await file.delete().catchError((_) => file);
+      completer.completeError(
+        error is DioException
+            ? error
+            : DioException(requestOptions: response.requestOptions, error: error),
+      );
+    }
+
+    final stream = response.data?.stream ?? const Stream<Uint8List>.empty();
+    sub = stream.listen(
+      (chunk) {
+        sub.pause();
+        pendingWrite = raf.writeFrom(chunk).then((_) {
+          received += chunk.length;
+          onProgress?.call(received, total);
+          if (cancelToken == null || !cancelToken.isCancelled) sub.resume();
+        }).catchError((Object e) async {
+          await finish(error: e);
+        });
+      },
+      onDone: () => finish(),
+      onError: (Object e) => finish(error: e),
+      cancelOnError: true,
+    );
+    cancelToken?.whenCancel.then((cancelError) async {
+      await sub.cancel();
+      await finish(error: cancelError);
+    });
+    return completer.future;
   }
 }
