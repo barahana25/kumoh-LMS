@@ -16,8 +16,8 @@ Canvas가 만들어 주는 토큰에는 범위 제한이 없습니다. **Canvas 
 
 ## 어디에 보관하나요
 
-기기 보안 저장소(Android EncryptedSharedPreferences)에만 둡니다. 서버로
-보내지 않고, 로그에도 남기지 않습니다.
+기기 보안 저장소에만 둡니다(Android EncryptedSharedPreferences, iOS
+Keychain). 서버로 보내지 않고, 로그에도 남기지 않습니다.
 
 ## 어떻게 지우나요
 
