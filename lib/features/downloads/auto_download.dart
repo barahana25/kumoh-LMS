@@ -5,6 +5,7 @@ import 'package:path_provider/path_provider.dart';
 import '../../core/error/failure.dart';
 import '../../core/network/token_store.dart';
 import '../canvas/data/canvas_download.dart';
+import '../canvas/data/canvas_token_store.dart';
 import '../notifications/data/lms_notification_source.dart';
 import '../notifications/data/notification_models.dart';
 import '../notifications/data/notification_schedule.dart';
@@ -21,7 +22,8 @@ abstract interface class DownloadSource {
 
 class CanvasDownloadSource implements DownloadSource {
   CanvasDownloadSource(TokenStore tokens)
-      : source = LmsNotificationSource(tokens);
+      : source = LmsNotificationSource(tokens,
+            canvasTokenStore: SecureCanvasTokenStore());
   final LmsNotificationSource source;
   Directory? temporary;
   @override

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -41,8 +43,39 @@ bool _isTransient(Object error) {
 
 class AuthController extends AsyncNotifier<AuthState> {
   int _generation = 0;
+
+  /// 인증에 성공한 경로(콜드 스타트 복원, 자동 로그인, 대화형 로그인)가
+  /// Canvas 토큰 발급을 곧장 부르지 않고 여기 적어 둔다.
+  ///
+  /// ensure()/issueFresh()는 CanvasSession을 거쳐 canvasIdentityTokenProvider를
+  /// 부르는데, 그 클로저는 `ref.read(authControllerProvider).valueOrNull`로
+  /// 인증 여부를 가른다. build()가 아직 실행 중이거나 로그인 결과를 state에
+  /// 쓰기 전에 발급을 부르면 이 값은 AsyncLoading → null이라, 방금 인증에
+  /// 성공했는데도 미인증으로 보여 SAML 다리가 조용히 포기한다. 저장소
+  /// 왕복 시간 덕에 대개는 이기는 경합이었을 뿐, 보장은 아니었다.
+  ///
+  /// [listenSelf]는 state가 실제로 갱신된 뒤에만 불리므로, 여기 적어 둔
+  /// 호출을 그 콜백에서 실행하면 이 경합이 사라진다. 적어 둘 때의 세대
+  /// 번호를 함께 들고 있다가, 실행 시점에 세대가 이미 바뀌었으면(그사이
+  /// 더 최근 로그인이나 로그아웃이 끼어들었으면) 실행하지 않는다 — 진
+  /// 시도의 발급이 나중의 엉뚱한 상태 전환에 끼어 붙는 것을 막는다.
+  ({int generation, Future<String?> Function() issue})? _pendingCanvasIssuance;
+
+  void _issueCanvasTokenWhenStateSettles(Future<String?> Function() issue) {
+    _pendingCanvasIssuance = (generation: _generation, issue: issue);
+  }
+
   @override
-  Future<AuthState> build() => _restoreSession();
+  Future<AuthState> build() {
+    listenSelf((previous, next) {
+      final pending = _pendingCanvasIssuance;
+      _pendingCanvasIssuance = null;
+      if (pending != null && pending.generation == _generation) {
+        unawaited(pending.issue());
+      }
+    });
+    return _restoreSession();
+  }
 
   /// 앱 시작 시 저장된 refreshToken으로 세션을 되살린다.
   /// 실패하면 자동 로그인이 켜져 있을 때만 자격증명으로 재시도한다.
@@ -60,6 +93,13 @@ class AuthController extends AsyncNotifier<AuthState> {
           refreshToken: tokens.refreshToken,
         );
         final profile = await authApi.fetchProfile();
+        // 같은 사용자, 같은 기기로 돌아온 세션이다. 화면을 막지 않는다.
+        // issueFresh()가 아니라 ensure()를 쓴다 — 콜드 스타트마다 멀쩡한
+        // 토큰을 버리고 새로 발급하면 재시작할 때마다 Canvas 계정에 토큰이
+        // 쌓인다. 다음 사용자에게 넘어갈 위험이 없는 한 있는 토큰을 쓴다.
+        _issueCanvasTokenWhenStateSettles(
+          () => ref.read(canvasTokenServiceProvider).ensure(),
+        );
         return AuthAuthenticated(profile: profile);
       } on Object catch (e) {
         // 서버 점검(5xx)이나 연결 실패로 토큰을 버리면 콜드 스타트 한 번에
@@ -79,11 +119,22 @@ class AuthController extends AsyncNotifier<AuthState> {
     final creds = await store.readCredentials();
     if (creds == null) return const AuthUnauthenticated();
     try {
-      return await _performLogin(
+      final result = await _performLogin(
         userId: creds.userId,
         password: creds.password,
         rememberMe: true,
       );
+      if (result is AuthAuthenticated) {
+        // 저장된 자격증명으로 조용히 다시 로그인한 것이다. 같은 계정으로
+        // 돌아온 세션이니 issueFresh()로 멀쩡한 토큰을 버리지 않는다 —
+        // 이 경로는 handleSessionExpired()의 세션 복구도 거쳐 가므로,
+        // 여기서 issueFresh()를 쓰면 LINUS 세션이 끊겨 조용히 재로그인할
+        // 때마다 멀쩡한 Canvas 토큰을 버리고 SAML 다리를 다시 타게 된다.
+        _issueCanvasTokenWhenStateSettles(
+          () => ref.read(canvasTokenServiceProvider).ensure(),
+        );
+      }
+      return result;
     } on Object catch (e) {
       // 일시적 장애면 자격증명을 지키고 캐시를 연다.
       if (_isTransient(e)) return const AuthOffline();
@@ -122,6 +173,14 @@ class AuthController extends AsyncNotifier<AuthState> {
       return const AuthUnauthenticated();
     }
     final profile = await authApi.fetchProfile();
+    // Canvas 토큰 발급은 여기서 하지 않는다. 이 함수는 대화형 로그인
+    // ([login])과 자동 로그인(저장된 자격증명으로 다시 로그인하는
+    // [_autoLoginOrUnauthenticated], 그리고 그 경로로 이어지는
+    // [handleSessionExpired]의 조용한 세션 복구) 모두를 거친다. 계정이
+    // 바뀔 수 있는 대화형 로그인은 issueFresh()로 이전 세션의 토큰을
+    // 이어받지 않아야 하지만, 같은 계정으로 돌아오는 자동 로그인·세션
+    // 복구는 ensure()로 있는 토큰을 챙겨야 한다 — 발급 방식이 호출자마다
+    // 달라야 하므로, 발급은 각 호출자가 자신의 결과를 보고 직접 건다.
     return AuthAuthenticated(profile: profile);
   }
 
@@ -146,6 +205,16 @@ class AuthController extends AsyncNotifier<AuthState> {
       );
       ref.read(selectedTermIdProvider.notifier).state = null;
       ref.invalidate(activeTermIdProvider);
+      if (authenticated is AuthAuthenticated) {
+        // 대화형 로그인은 계정이 바뀔 수 있는 지점이다. issueFresh()로
+        // 이전 세션(또는 이전 사용자)의 토큰을 이어받지 않고 항상 새로
+        // 발급한다. _autoLoginOrUnauthenticated()는 같은 곳(_performLogin)을
+        // 거치지만 자신의 결과에 대해 ensure()를 직접 걸므로, 두 번
+        // 발급되지 않는다.
+        _issueCanvasTokenWhenStateSettles(
+          () => ref.read(canvasTokenServiceProvider).issueFresh(),
+        );
+      }
       return authenticated;
     });
     if (generation == _generation) {
@@ -191,6 +260,11 @@ class AuthController extends AsyncNotifier<AuthState> {
     // 저장소나 DB가 던지더라도 세션은 반드시 끝난 상태로 남겨야 한다.
     // 그러지 않으면 사용자가 쓸 수 없는 세션에 갇힌 채 로그인 화면으로도 못 간다.
     try {
+      // 다리를 건널 수 있는 동안 Canvas 토큰을 지운다. 실패해도 진행한다.
+      await ref
+          .read(canvasTokenServiceProvider)
+          .revoke()
+          .timeout(const Duration(seconds: 5), onTimeout: () {});
       try {
         await DownloadStore(db).setEnabled(false);
         await NotificationRuntime.stop(db);
