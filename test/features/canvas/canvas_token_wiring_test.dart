@@ -363,14 +363,11 @@ void main() {
 }
 
 /// [CanvasTokenService.ensure]가 SAML 다리를 성공한 것처럼 진행하도록,
-/// 목록·생성·삭제에 최소한으로만 응답하는 가짜.
+/// 생성·삭제에 최소한으로만 응답하는 가짜.
 class _StubTokenApi implements CanvasTokenApi {
   @override
   Future<IssuedCanvasToken> create(String purpose) async =>
       IssuedCanvasToken(id: 1, token: '7~stub', purpose: purpose);
-
-  @override
-  Future<List<CanvasTokenSummary>> list() async => const [];
 
   @override
   Future<void> delete(int id) async {}

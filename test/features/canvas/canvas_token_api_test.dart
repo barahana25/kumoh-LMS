@@ -39,16 +39,6 @@ class _TokenScript implements HttpClientAdapter {
         },
       );
     }
-    if (options.method == 'GET' && options.uri.path == '/api/v1/users/self/tokens') {
-      return ResponseBody.fromString(
-        '[{"id":41,"purpose":"금오LMS 앱 · Android · a3f9"},'
-        '{"id":42,"purpose":"내가 만든 토큰"}]',
-        200,
-        headers: {
-          'content-type': ['application/json'],
-        },
-      );
-    }
     if (options.method == 'DELETE') {
       return ResponseBody.fromString('{"id":41}', 200, headers: {
         'content-type': ['application/json'],
@@ -104,17 +94,6 @@ void main() {
 
     expect(() => api.create('금오LMS 앱 · Android · a3f9'),
         throwsA(isA<CanvasTokenUnavailable>()));
-  });
-
-  test('목록은 id와 purpose만 뽑는다', () async {
-    final jar = await _jarWithCsrf('x');
-    final api = CanvasTokenApi(
-        buildCanvasDio(jar, adapter: _TokenScript()), jar);
-
-    final tokens = await api.list();
-
-    expect(tokens.map((t) => t.id), [41, 42]);
-    expect(tokens.first.purpose, '금오LMS 앱 · Android · a3f9');
   });
 
   test('삭제는 id 경로로 요청하고 CSRF를 붙인다', () async {

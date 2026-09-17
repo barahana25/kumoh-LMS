@@ -8,10 +8,11 @@ import 'package:kumoh_lms/features/canvas/data/canvas_token_service.dart';
 import 'package:kumoh_lms/features/canvas/data/canvas_token_store.dart';
 
 /// 토큰 API를 대본대로 흉내낸다. 실제 HTTP는 Task 1에서 검증했다.
+/// 이 Canvas 서버는 `GET /api/v1/users/self/tokens`가 404라 목록 조회가
+/// 없다 — [CanvasTokenApi]도 `list()`를 두지 않는다.
 class _FakeTokenApi implements CanvasTokenApi {
-  _FakeTokenApi({this.existing = const [], this.failCreate = false});
+  _FakeTokenApi({this.failCreate = false});
 
-  List<CanvasTokenSummary> existing;
   bool failCreate;
   int createCount = 0;
   final List<int> deleted = [];
@@ -23,9 +24,6 @@ class _FakeTokenApi implements CanvasTokenApi {
     if (failCreate) throw const CanvasTokenUnavailable();
     return IssuedCanvasToken(id: 44, token: '7~new', purpose: purpose);
   }
-
-  @override
-  Future<List<CanvasTokenSummary>> list() async => existing;
 
   @override
   Future<void> delete(int id) async {
@@ -45,9 +43,6 @@ class _SlowCreateTokenApi implements CanvasTokenApi {
 
   @override
   Future<IssuedCanvasToken> create(String purpose) => _completer.future;
-
-  @override
-  Future<List<CanvasTokenSummary>> list() async => const [];
 
   @override
   Future<void> delete(int id) async {
@@ -95,7 +90,7 @@ void main() {
     expect((await store.read())!.id, 44);
   });
 
-  test('이미 있으면 발급하지 않는다', () async {
+  test('이미 있으면 발급하지 않고, 아무것도 지우지 않는다', () async {
     final api = _FakeTokenApi();
     final store = InMemoryCanvasTokenStore();
     await store.save(const StoredCanvasToken(
@@ -103,57 +98,8 @@ void main() {
 
     expect(await _service(api, store).ensure(), '7~old');
     expect(api.createCount, 0);
-  });
-
-  test('같은 이름의 남은 토큰을 지우고 새로 만든다', () async {
-    final store = InMemoryCanvasTokenStore();
-    final purpose = await store.ensurePurpose('Android');
-    final api = _FakeTokenApi(existing: [
-      CanvasTokenSummary(id: 41, purpose: purpose),
-      const CanvasTokenSummary(id: 42, purpose: '내가 만든 토큰'),
-    ]);
-
-    await _service(api, store).ensure();
-
-    expect(api.deleted, [41]);
-  });
-
-  test('접두어가 같아도 접미사가 다른 다른 기기(또는 재설치 전 예전 설치)의 '
-      '토큰은 건드리지 않는다', () async {
-    // 두 기기가 한 계정을 같이 쓸 때(예: 폰과 태블릿), _platformLabel은
-    // 둘 다 'Android'로 같다. 접두어까지 넓혀 지우면 한 기기가 발급할
-    // 때마다 다른 기기의 살아 있는 토큰을 지우는 핑퐁이 생긴다. 정확
-    // 일치만 지워야 이 핑퐁이 생기지 않는다.
-    final store = InMemoryCanvasTokenStore();
-    await store.ensurePurpose('Android');
-    final api = _FakeTokenApi(existing: [
-      // 접두어(`금오LMS 앱 · Android · `)는 같지만 접미사가 다르다 —
-      // 다른 기기의 토큰이거나, 재설치로 접미사가 바뀐 예전 설치의 토큰.
-      const CanvasTokenSummary(id: 40, purpose: '금오LMS 앱 · Android · dead1'),
-    ]);
-
-    await _service(api, store).ensure();
-
-    expect(api.deleted, isEmpty);
-  });
-
-  test('발급 중 스윕은 이 기기의 예전 토큰(정확히 같은 purpose)은 지우고, '
-      '사용자가 직접 만든 토큰은 건드리지 않는다', () async {
-    // ensure()가 current()에서 바로 반환하면 _issue()도 _deleteStale()도
-    // 돌지 않는다. 저장소를 비운 채로 시작해 스윕이 실제로 실행되게 한다.
-    final store = InMemoryCanvasTokenStore();
-    final purpose = await store.ensurePurpose('Android');
-    final api = _FakeTokenApi(existing: [
-      // 이 기기의 예전 발급(예: 앱을 껐다 켠 사이 남은 토큰). purpose가
-      // 지금 저장소의 것과 정확히 같다.
-      CanvasTokenSummary(id: 41, purpose: purpose),
-      // 사용자가 Canvas 설정에서 직접 만든, 이름이 겹치지 않는 토큰.
-      const CanvasTokenSummary(id: 42, purpose: '내가 만든 토큰'),
-    ]);
-
-    await _service(api, store).ensure();
-
-    expect(api.deleted, [41]);
+    expect(api.deleted, isEmpty,
+        reason: 'ensure()의 지름길은 멀쩡한 토큰을 그대로 두어야 한다');
   });
 
   test('발급이 실패하면 null을 돌려주고 저장하지 않는다', () async {
@@ -184,7 +130,7 @@ void main() {
     expect(api.createCount, 1);
   });
 
-  test('reissueAfterInvalid는 저장된 토큰을 버리고 새로 발급한다', () async {
+  test('reissueAfterInvalid는 저장된 토큰을 id로 지우고 새로 발급한다', () async {
     final api = _FakeTokenApi();
     final store = InMemoryCanvasTokenStore();
     await store.save(const StoredCanvasToken(
@@ -192,6 +138,7 @@ void main() {
 
     expect(await _service(api, store).reissueAfterInvalid('7~old'), '7~new');
     expect(api.createCount, 1);
+    expect(api.deleted, [1]);
   });
 
   test(
@@ -356,9 +303,25 @@ void main() {
     expect(api.deleted, [99]);
   });
 
-  test('issueFresh는 이전 세션이 남긴 토큰을 이어받지 않고 새로 발급한다',
-      () async {
+  test('issueFresh는 이전 세션이 남긴 토큰을 이어받지 않고 새로 발급하면서, '
+      '전에 저장돼 있던 토큰을 id로 지운다', () async {
     final api = _FakeTokenApi();
+    final store = InMemoryCanvasTokenStore();
+    await store.save(const StoredCanvasToken(
+        token: '7~old', id: 1, purpose: '금오LMS 앱 · Android · a3f9'));
+
+    final result = await _service(api, store).issueFresh();
+
+    expect(result, '7~new');
+    expect(api.createCount, 1);
+    expect((await store.read())!.token, '7~new');
+    expect(api.deleted, [1],
+        reason: '이 서버는 목록 조회(GET .../tokens)가 404라, 발급 전 '
+            '저장돼 있던 id로만 예전 토큰을 지울 수 있다');
+  });
+
+  test('예전 토큰 삭제가 실패해도 새 토큰은 그대로 발급되어 저장된다', () async {
+    final api = _FakeTokenApi()..failDelete = true;
     final store = InMemoryCanvasTokenStore();
     await store.save(const StoredCanvasToken(
         token: '7~old', id: 1, purpose: '금오LMS 앱 · Android · a3f9'));

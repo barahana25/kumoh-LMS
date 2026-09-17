@@ -16,14 +16,6 @@ class IssuedCanvasToken {
   final String purpose;
 }
 
-/// 목록에서 보이는 토큰. 값은 포함되지 않는다.
-class CanvasTokenSummary {
-  const CanvasTokenSummary({required this.id, required this.purpose});
-
-  final int id;
-  final String purpose;
-}
-
 /// CSRF 쿠키를 얻지 못해 토큰을 다룰 수 없는 상태.
 class CanvasTokenUnavailable implements Exception {
   const CanvasTokenUnavailable();
@@ -81,25 +73,6 @@ class CanvasTokenApi {
       throw const CanvasTokenUnavailable();
     }
     return IssuedCanvasToken(id: id, token: token, purpose: purpose);
-  }
-
-  Future<List<CanvasTokenSummary>> list() async {
-    final csrf = await _csrf();
-    final res = await _dio.getUri<List<dynamic>>(
-      _tokensUri.replace(queryParameters: {'per_page': '100'}),
-      options: Options(headers: {'X-CSRF-Token': csrf}),
-    );
-    final result = <CanvasTokenSummary>[];
-    for (final item in res.data ?? const <dynamic>[]) {
-      if (item is! Map) continue;
-      final id = item['id'];
-      if (id is! int) continue;
-      result.add(CanvasTokenSummary(
-        id: id,
-        purpose: item['purpose'] as String? ?? '',
-      ));
-    }
-    return result;
   }
 
   Future<void> delete(int id) async {
