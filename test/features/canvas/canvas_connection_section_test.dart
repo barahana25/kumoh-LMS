@@ -43,6 +43,21 @@ class _FakeCanvasTokenService extends CanvasTokenService {
   }
 }
 
+/// "다시 연결"을 눌러도 항상 실패하는(LINUS 세션이 끊긴 상황을 흉내내는)
+/// 토큰 서비스. ensure()는 실제 서비스처럼 null을 돌려줄 뿐 던지지 않는다.
+class _FailingConnectCanvasTokenService extends CanvasTokenService {
+  _FailingConnectCanvasTokenService()
+      : super(
+          api: CanvasTokenApi(Dio(), CookieJar()),
+          store: InMemoryCanvasTokenStore(),
+          ensureSession: () async {},
+          platformLabel: 'test',
+        );
+
+  @override
+  Future<String?> ensure() async => null;
+}
+
 Future<void> _pump(WidgetTester tester, CanvasTokenStore store,
     {CanvasTokenService? service}) async {
   await tester.pumpWidget(ProviderScope(
@@ -98,6 +113,36 @@ void main() {
 
     expect(find.text('토큰으로 연결됨'), findsOneWidget);
     expect(find.text('연결 해제'), findsOneWidget);
+    expect(find.textContaining('연결에 실패했습니다'), findsNothing,
+        reason: '연결이 성공하면 실패 안내가 뜨면 안 된다');
+  });
+
+  testWidgets('다시 연결이 실패하면(예: LINUS 세션 끊김) 안내 메시지를 보여준다',
+      (tester) async {
+    final store = InMemoryCanvasTokenStore();
+    await _pump(tester, store, service: _FailingConnectCanvasTokenService());
+
+    expect(find.text('다시 연결'), findsOneWidget);
+
+    await tester.tap(find.text('다시 연결'));
+    await tester.pumpAndSettle();
+
+    // 실패해도 연결 상태는 바뀌지 않는다 — 여전히 쿠키 방식이다.
+    expect(find.text('쿠키 방식으로 연결됨'), findsOneWidget);
+    expect(find.text('다시 연결'), findsOneWidget);
+    expect(find.textContaining('연결에 실패했습니다'), findsOneWidget);
+  });
+
+  testWidgets('로그인 직후 자동 발급이 실패해도 화면에는 아무 안내도 뜨지 않는다',
+      (tester) async {
+    // 이 위젯은 자동 발급(로그인 경로의 ensure()/issueFresh())을 직접
+    // 호출하지 않는다 — 저장소를 읽기만 한다. 그 자동 시도가 실패해
+    // 저장소에 토큰이 없는 채로 화면에 온 상황을 그대로 재현한다: 버튼을
+    // 누르지 않아도 실패 안내가 나타나면 안 된다.
+    await _pump(tester, InMemoryCanvasTokenStore());
+
+    expect(find.text('쿠키 방식으로 연결됨'), findsOneWidget);
+    expect(find.textContaining('연결에 실패했습니다'), findsNothing);
   });
 
   testWidgets('자세히를 누르면 토큰 권한을 설명하는 대화상자가 뜬다', (tester) async {

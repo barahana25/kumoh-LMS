@@ -25,10 +25,14 @@ class _CanvasConnectionSectionState
   Future<void> _toggle(bool connected) async {
     setState(() => _busy = true);
     final service = ref.read(canvasTokenServiceProvider);
+    // 사용자가 직접 누른 시도만 실패를 알린다. 로그인 뒤 조용히 시도하는
+    // 자동 발급(ensure()/issueFresh())은 이 위젯을 거치지 않으므로 여기서
+    // 실패를 알려도 그 경로에는 영향이 없다.
+    var connectFailed = false;
     if (connected) {
       await service.revoke();
     } else {
-      await service.ensure();
+      connectFailed = await service.ensure() == null;
     }
     // SAML 다리를 넘는 동안 사용자가 설정 화면을 떠나면 이 위젯과 ref가
     // 이미 폐기됐을 수 있다. await 뒤에 ref나 setState를 건드리기 전에
@@ -36,6 +40,14 @@ class _CanvasConnectionSectionState
     if (!mounted) return;
     ref.invalidate(canvasConnectionProvider);
     setState(() => _busy = false);
+    if (connectFailed) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text(
+          '연결에 실패했습니다. 토큰이 없어도 앱은 그대로 동작합니다. '
+          '다시 로그인한 뒤 다시 시도해 주세요.',
+        ),
+      ));
+    }
   }
 
   @override
