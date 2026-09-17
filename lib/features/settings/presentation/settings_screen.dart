@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../providers.dart';
 import '../../auth/presentation/auth_controller.dart';
-import '../../canvas/presentation/canvas_connection_section.dart';
 import '../../notifications/presentation/notification_settings_section.dart';
 import '../../downloads/download_settings_section.dart';
 
@@ -30,8 +29,6 @@ class SettingsScreen extends ConsumerWidget {
           const NotificationSettingsSection(),
           const Divider(),
           const DownloadSettingsSection(),
-          const Divider(),
-          const CanvasConnectionSection(),
           const Divider(),
           ListTile(
             leading: const Icon(Icons.logout, color: Colors.red),
