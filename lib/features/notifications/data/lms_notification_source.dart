@@ -162,6 +162,8 @@ class LmsNotificationSource implements NotificationSource {
       if (kind == NoticeKind.discussion) 'only_announcements': false,
     });
     if (kind != NoticeKind.discussion) return parseWatchedItems(json, kind);
+    // 거를 글이 없으면 수강 목록을 받아 올 이유가 없다.
+    if (json.isEmpty) return const [];
     // 다른 학생의 토론 글은 알리지 않는다. 수강 목록을 볼 수 없는 강좌는
     // 강의자를 가릴 수 없으므로 토론 알림을 보내지 않는다.
     final instructors = <int>{};

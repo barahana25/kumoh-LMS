@@ -465,15 +465,11 @@ class CanvasApi {
       parseFrontPage(await getRaw('/courses/$courseId/front_page'));
 
   /// 강의자(교수·조교)의 사용자 id. 토론에서 학생 글을 거르는 데 쓴다.
-  Future<Set<int>> fetchInstructorIds(int courseId) async {
-    final ids = <int>{};
-    for (final type in instructorEnrollmentTypes) {
-      ids.addAll(parseInstructorIds(await getListRaw(
-          '/courses/$courseId/enrollments',
-          query: {'type[]': type})));
-    }
-    return ids;
-  }
+  /// 역할을 하나씩 묻지 않고 한 요청에 담는다. 서버가 type 필터를 무시해도
+  /// parseInstructorIds가 한 번 더 거르므로 결과는 같다.
+  Future<Set<int>> fetchInstructorIds(int courseId) async =>
+      parseInstructorIds(await getListRaw('/courses/$courseId/enrollments',
+          query: const {'type[]': instructorEnrollmentTypes}));
 
   Future<List<CanvasDiscussion>> fetchDiscussions(int courseId) async =>
       parseDiscussions(await getRaw(
