@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../providers.dart';
 import '../announcements/presentation/announcements_providers.dart';
 import '../auth/presentation/auth_controller.dart';
+import '../notifications/presentation/background_setup_screen.dart';
 
 /// 하단 탭 네비게이션 셸. 각 탭은 자기 네비게이션 스택을 유지한다.
 class HomeShell extends ConsumerWidget {
@@ -37,6 +38,7 @@ class HomeShell extends ConsumerWidget {
               child: const Text('다시 연결'),
             )],
           )),
+        const BackgroundSetupLauncher(),
         Expanded(child: navigationShell),
       ]),
       bottomNavigationBar: NavigationBar(

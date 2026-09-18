@@ -6,10 +6,9 @@ import 'package:intl/intl.dart';
 import '../../../core/storage/db/app_database.dart';
 import '../../../core/ui/settings_widgets.dart';
 import '../../../providers.dart';
-import '../../auth/presentation/auth_controller.dart';
-import '../data/notification_store.dart';
 import '../notification_runtime.dart';
 import '../background_settings.dart';
+import 'notification_setup.dart';
 
 final backgroundBatteryProvider = FutureProvider<bool?>(
     (ref) => BackgroundSettings.batteryUnrestricted());
@@ -72,47 +71,14 @@ class _NotificationSettingsSectionState
       _busy = true;
       _message = null;
     });
-    final db = ref.read(appDatabaseProvider);
-    final tokens = ref.read(tokenStoreProvider);
-    final auth = ref.read(authControllerProvider).valueOrNull;
-    var stage = '알림 설정 시작';
     try {
-      if (!enable) {
-        stage = '알림 끄기';
-        await NotificationRuntime.stop(db);
+      if (enable) {
+        _message = await enableNotifications(ref, stillValid: () => mounted);
       } else {
-        stage = '자동 로그인 정보 확인';
-        final credentials = await tokens.readCredentials();
-        if (auth is! AuthAuthenticated ||
-            credentials == null ||
-            credentials.userId.trim().toUpperCase() !=
-                auth.profile.loginId.trim().toUpperCase()) {
-          _message = '자동 로그인을 켜고 다시 로그인한 후 알림을 켜 주세요.';
-          return;
-        }
-        stage = '알림 기능 준비';
-        await NotificationRuntime.initialize();
-        stage = '알림 권한 요청';
-        if (!await NotificationRuntime.sink.requestPermission()) {
-          _message = '기기 설정에서 금오 LMS의 알림을 허용해 주세요.';
-          return;
-        }
-        if (!mounted || ref.read(authControllerProvider).valueOrNull != auth) {
-          return;
-        }
-        stage = '알림 설정 저장';
-        await NotificationStore(db).enable(auth.profile.loginId);
-        try {
-          stage = '자동 확인 예약';
-          await NotificationRuntime.schedule();
-        } on Exception {
-          await NotificationStore(db).disable();
-          rethrow;
-        }
-        // 토글은 켜기만 한다. 첫 조회는 예약된 회차나 '지금 확인'에서 수행한다.
+        await NotificationRuntime.stop(ref.read(appDatabaseProvider));
       }
     } on Exception catch (e) {
-      _message = notificationSetupMessage(stage, e);
+      _message = notificationSetupMessage('알림 끄기', e);
     } finally {
       if (mounted) {
         ref.invalidate(notificationSettingsProvider);
