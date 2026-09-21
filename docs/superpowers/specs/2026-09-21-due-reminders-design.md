@@ -115,20 +115,25 @@ LINUS는 계정당 가장 최근 로그인 하나만 유효하다. 백그라운�
 
 과제 목록 응답도 나눠 쓴다. `LmsNotificationSource`가 강좌별 `/assignments?include[]=submission` 응답을 한 실행 동안 기억해 두고, 새 과제 감지(`items(assignment)`)와 마감 알림(`dueAssignments()`)이 같은 응답을 쓴다. 둘 다 켜 두어도 과제 목록 요청은 늘지 않는다.
 
-`NotificationPoller`는 지금처럼 `sourceFactory()`로 소스를 받고 `authenticate()`·`close()`를 부른다. 공유 감싸개를 넘기기만 하므로 poller 코드는 바꾸지 않는다.
+`NotificationPoller`는 지금처럼 `sourceFactory()`로 소스를 받고 `authenticate()`·`close()`를 부른다. 공유 감싸개를 넘기고, 부르는 쪽이 미리 잡은 잠금을 `reserved`로 받는다.
 
-`checkAll`의 흐름:
+`checkAll`의 흐름(`runSharedAlerts`):
 
 ```
-공유 세션 = (새 소식 켜짐 || 마감 켜짐) ? SharedLmsSession(...) : null
+새 소식 잠금 = 새 소식 켜짐 ? notices.acquire(now) : null
+마감 잠금   = 마감 켜짐 && 발송 회차 ? due.acquire(now, 회차) : null
 try {
-  새 소식 켜짐 → poller.run(sourceFactory: () => 공유 세션)
-  마감 켜짐   → dueReminder.run(source: 공유 세션)
+  if (둘 다 null) 끝 — 소스를 열지 않고 로그인하지 않는다
+  공유 세션 = SharedLmsSession(...)
+  새 소식 잠금 → poller.run(reserved: 새 소식 잠금, sourceFactory: () => 공유 세션)
+  마감 잠금   → dueReminder.run(reserved: 마감 잠금, source: 공유 세션)
+  공유 세션.dispose()
 } finally {
-  공유 세션?.dispose()
   자동 다운로드(지금과 같음, 별도 로그인)
 }
 ```
+
+두 잠금을 네트워크 전에 잡는 이유: 잠금을 러너마다 따로 잡으면, 한 작업이 새 소식을 확인하는 동안 같은 회차의 복구 작업이 새 소식 잠금은 못 잡고 마감 잠금만 잡아 제 세션으로 한 번 더 로그인한다.
 
 설정 화면의 "지금 확인"은 지금처럼 새 소식만 따로 돈다. 마감 알림에는 수동 버튼을 두지 않는다.
 
