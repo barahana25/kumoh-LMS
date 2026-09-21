@@ -42,7 +42,8 @@ Future<String?> enableDueReminders(WidgetRef ref,
     stillValid: stillValid,
     missingCredentials: '자동 로그인을 켜고 다시 로그인한 후 마감 알림을 켜 주세요.',
     saveStage: '마감 알림 설정 저장',
-    enable: (db, owner) => DueReminderStore(db).enable(owner),
+    enable: (db, owner) =>
+        DueReminderStore(db).enable(owner, since: DateTime.now()),
     disable: (db) => DueReminderStore(db).disable(),
   );
 }

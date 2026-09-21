@@ -73,4 +73,13 @@ void main() {
     expect(saved.enabled, isFalse);
     expect(saved.status, '자동 로그인을 켜고 다시 로그인해 주세요.');
   });
+
+  test('켤 때 시각을 주면 그 회차는 건너뛰고 다음 회차에 잡는다', () async {
+    await store.enable('student', since: now);
+    expect(await store.acquire(now.add(const Duration(minutes: 15)), slot), isNull,
+        reason: '켠 회차에는 복구 작업이 로그인하지 않는다');
+    final nextSlot = slot.add(const Duration(hours: 1));
+    expect(await store.acquire(nextSlot.add(const Duration(seconds: 5)), nextSlot),
+        isNotNull);
+  });
 }

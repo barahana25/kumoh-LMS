@@ -16,7 +16,9 @@ class DueReminderStore {
       (db.select(db.dueReminderSettings)..where((t) => t.id.equals(1)))
           .getSingleOrNull();
 
-  Future<void> enable(String owner) async {
+  /// [since]를 주면 그 시각이 속한 회차에는 돌지 않는다. 설정 화면에서 켤 때
+  /// 지금 시각을 넘겨, 켠 그 회차에 복구 작업이 바로 로그인하지 않게 한다.
+  Future<void> enable(String owner, {DateTime? since}) async {
     await db.into(db.dueReminderSettings).insertOnConflictUpdate(
           DueReminderSettingsCompanion.insert(
             id: const Value(1),
@@ -24,7 +26,7 @@ class DueReminderStore {
             generation: _nonce(),
             enabled: true,
             status: const Value('다음 확인부터 마감이 가까운 미제출 과제를 알려드립니다.'),
-            lastAttempt: const Value(null),
+            lastAttempt: Value(since?.millisecondsSinceEpoch),
             lastSuccess: const Value(null),
             lease: const Value(null),
             leaseUntil: const Value(null),
