@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/token_store.dart';
+import '../../../core/storage/db/app_database.dart';
 import '../../../providers.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../background_settings.dart';
@@ -15,37 +16,15 @@ import 'notification_settings_section.dart';
 /// 권한 창을 닫는 사이 화면이 사라졌거나 계정이 바뀐 것이므로 저장하지 않는다.
 Future<String?> enableNotifications(WidgetRef ref,
     {required bool Function() stillValid}) async {
-  final db = ref.read(appDatabaseProvider);
-  final tokens = ref.read(tokenStoreProvider);
-  final auth = ref.read(authControllerProvider).valueOrNull;
-  var stage = '자동 로그인 정보 확인';
   try {
-    if (!await hasMatchingCredentials(auth, tokens)) {
-      return '자동 로그인을 켜고 다시 로그인한 후 알림을 켜 주세요.';
-    }
-    stage = '알림 기능 준비';
-    await NotificationRuntime.initialize();
-    stage = '알림 권한 요청';
-    if (!await NotificationRuntime.sink.requestPermission()) {
-      return '기기 설정에서 금오 LMS의 알림을 허용해 주세요.';
-    }
-    if (!stillValid() || ref.read(authControllerProvider).valueOrNull != auth) {
-      return null;
-    }
-    stage = '알림 설정 저장';
-    final login = (auth! as AuthAuthenticated).profile.loginId;
-    await NotificationStore(db).enable(login);
-    try {
-      stage = '자동 확인 예약';
-      await NotificationRuntime.schedule();
-    } on Exception {
-      await NotificationStore(db).disable();
-      rethrow;
-    }
-    // 켜기만 한다. 첫 조회는 예약된 회차나 '지금 확인'에서 수행한다.
-    return null;
-  } on Exception catch (e) {
-    return notificationSetupMessage(stage, e);
+    return await _enableBackgroundAlerts(
+      ref,
+      stillValid: stillValid,
+      missingCredentials: '자동 로그인을 켜고 다시 로그인한 후 알림을 켜 주세요.',
+      saveStage: '알림 설정 저장',
+      enable: (db, owner) => NotificationStore(db).enable(owner),
+      disable: (db) => NotificationStore(db).disable(),
+    );
   } finally {
     ref.invalidate(notificationSettingsProvider);
   }
@@ -58,13 +37,37 @@ Future<String?> enableNotifications(WidgetRef ref,
 /// 자리에서 서버를 조회하지 않는다.
 Future<String?> enableDueReminders(WidgetRef ref,
     {required bool Function() stillValid}) async {
+  return _enableBackgroundAlerts(
+    ref,
+    stillValid: stillValid,
+    missingCredentials: '자동 로그인을 켜고 다시 로그인한 후 마감 알림을 켜 주세요.',
+    saveStage: '마감 알림 설정 저장',
+    enable: (db, owner) => DueReminderStore(db).enable(owner),
+    disable: (db) => DueReminderStore(db).disable(),
+  );
+}
+
+/// 새 소식·마감 알림을 켜는 공통 절차. 켰으면 null, 못 켰으면 사용자에게 보여줄 안내를 돌려준다.
+///
+/// 백그라운드가 저장된 자격증명으로 로그인하므로 자동 로그인이 켜져 있어야
+/// 하고 알림 권한이 있어야 한다. 켜기만 하고 그 자리에서 서버를 조회하지 않는다.
+/// [stillValid]가 false면 권한 창을 닫는 사이 화면이 사라졌거나 계정이 바뀐
+/// 것이므로 저장하지 않는다.
+Future<String?> _enableBackgroundAlerts(
+  WidgetRef ref, {
+  required bool Function() stillValid,
+  required String missingCredentials,
+  required String saveStage,
+  required Future<void> Function(AppDatabase db, String owner) enable,
+  required Future<void> Function(AppDatabase db) disable,
+}) async {
   final db = ref.read(appDatabaseProvider);
   final tokens = ref.read(tokenStoreProvider);
   final auth = ref.read(authControllerProvider).valueOrNull;
   var stage = '자동 로그인 정보 확인';
   try {
     if (!await hasMatchingCredentials(auth, tokens)) {
-      return '자동 로그인을 켜고 다시 로그인한 후 마감 알림을 켜 주세요.';
+      return missingCredentials;
     }
     stage = '알림 기능 준비';
     await NotificationRuntime.initialize();
@@ -75,16 +78,17 @@ Future<String?> enableDueReminders(WidgetRef ref,
     if (!stillValid() || ref.read(authControllerProvider).valueOrNull != auth) {
       return null;
     }
-    stage = '마감 알림 설정 저장';
+    stage = saveStage;
     final login = (auth! as AuthAuthenticated).profile.loginId;
-    await DueReminderStore(db).enable(login);
+    await enable(db, login);
     try {
       stage = '자동 확인 예약';
       await NotificationRuntime.schedule();
     } on Exception {
-      await DueReminderStore(db).disable();
+      await disable(db);
       rethrow;
     }
+    // 켜기만 한다. 첫 조회는 예약된 회차나 '지금 확인'에서 수행한다.
     return null;
   } on Exception catch (e) {
     return notificationSetupMessage(stage, e);
