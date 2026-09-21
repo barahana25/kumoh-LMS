@@ -308,13 +308,23 @@ class NotificationRuntime {
 
   static Future<void> checkAll(AppDatabase db, TokenStore secure) async {
     try {
+      final noticesOn =
+          (await NotificationStore(db).settings())?.enabled == true;
+      final dueOn = dueSupported &&
+          (await DueReminderStore(db).settings())?.enabled == true;
+      // 잠금을 잡기 전에 알림 기능을 준비한다. 준비가 실패하면 잠금을 잡지
+      // 않아 복구 작업이 같은 회차에 다시 시도할 수 있다.
+      if ((noticesOn || dueOn) && supported) {
+        await sink.initialize(
+            onTap: (payload) =>
+                destination.value = NotificationDestination.parse(payload));
+      }
       await runSharedAlerts(
         now: DateTime.now(),
         notices: NotificationStore(db),
         due: DueReminderStore(db),
-        noticesOn: (await NotificationStore(db).settings())?.enabled == true,
-        dueOn: dueSupported &&
-            (await DueReminderStore(db).settings())?.enabled == true,
+        noticesOn: noticesOn,
+        dueOn: dueOn,
         openSource: () => _lmsSource(secure),
         poll: (run, source) => poll(db, secure, source: source, reserved: run),
         remind: (run, source) => remindDue(db, source, reserved: run),
