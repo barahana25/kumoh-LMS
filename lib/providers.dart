@@ -1,6 +1,6 @@
 import 'package:cookie_jar/cookie_jar.dart';
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_filex/open_filex.dart';
 
@@ -19,6 +19,9 @@ import 'features/canvas/data/canvas_cache.dart';
 import 'features/canvas/data/canvas_client.dart';
 import 'features/canvas/data/canvas_download.dart';
 import 'features/canvas/data/canvas_session.dart';
+import 'features/canvas/data/canvas_token_api.dart';
+import 'features/canvas/data/canvas_token_service.dart';
+import 'features/canvas/data/canvas_token_store.dart';
 import 'features/canvas/data/saml_bridge_api.dart';
 import 'features/auth/presentation/auth_controller.dart';
 import 'features/courses/data/courses_api.dart';
@@ -139,11 +142,32 @@ final canvasSessionProvider = Provider<CanvasSession>((ref) {
   );
 });
 
+final canvasTokenStoreProvider =
+    Provider<CanvasTokenStore>((ref) => SecureCanvasTokenStore());
+
+/// 발급은 세션 인터셉터가 없는 브릿지 dio로 한다. 인터셉터가 붙은 dio를 쓰면
+/// 발급 요청이 다시 발급을 부르는 고리가 생긴다.
+final canvasTokenApiProvider = Provider<CanvasTokenApi>((ref) => CanvasTokenApi(
+      ref.watch(canvasBridgeDioProvider),
+      ref.watch(canvasCookieJarProvider),
+    ));
+
+final canvasTokenServiceProvider = Provider<CanvasTokenService>((ref) {
+  final session = ref.watch(canvasSessionProvider);
+  return CanvasTokenService(
+    api: ref.watch(canvasTokenApiProvider),
+    store: ref.watch(canvasTokenStoreProvider),
+    ensureSession: session.ensure,
+    platformLabel: defaultTargetPlatform.name,
+  );
+});
+
 /// Canvas REST API용 dio. 첫 요청 전에 다리를 건너고, 401이면 다시 건넌다.
 final canvasDioProvider = Provider<Dio>((ref) {
   final dio = buildCanvasDio(ref.watch(canvasCookieJarProvider))
     ..options.baseUrl = Env.canvasApiBaseUrl;
   final session = ref.watch(canvasSessionProvider);
+  final tokens = ref.watch(canvasTokenServiceProvider);
   // 반드시 CookieManager보다 앞에 둔다. 뒤에 두면 첫 요청에서 쿠키 매니저가
   // 아직 비어 있는 저장소를 읽은 뒤에야 브릿지가 돌아, 세션 쿠키 없이 요청이
   // 나가고 Canvas가 강좌를 404로 숨긴다.
@@ -152,6 +176,8 @@ final canvasDioProvider = Provider<Dio>((ref) {
       canvasSessionInterceptor(
     dio: dio,
     ensureSession: session.ensure,
+    accessToken: tokens.current,
+    reissueToken: tokens.reissueAfterInvalid,
     reBridge: () async {
       session.invalidate();
       await session.ensure();

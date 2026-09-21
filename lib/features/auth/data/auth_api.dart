@@ -61,13 +61,18 @@ class AuthApi {
     }
   }
 
-  /// refreshToken은 반드시 X-Refresh-Token 헤더로 보낸다.
-  /// (쿠키·바디·Bearer 방식은 서버가 거부한다.)
-  Future<AuthTokens> reissue(String refreshToken) async {
+  /// refreshToken은 X-Refresh-Token 헤더로, accessToken은 Bearer로 함께 보낸다.
+  /// refreshToken만 보내면 서버가 401 T003으로 거부한다(2026-09-15 확인).
+  /// [accessToken]을 넘기지 않으면 저장된 accessToken을 쓴다.
+  Future<AuthTokens> reissue(String refreshToken, {String? accessToken}) async {
     try {
+      final access = accessToken ?? await _tokenStore?.readAccessToken();
       final res = await _dio.post<Object?>(
         '/reissue',
-        options: Options(headers: {'X-Refresh-Token': refreshToken}),
+        options: Options(headers: {
+          'X-Refresh-Token': refreshToken,
+          if (access != null && access.isNotEmpty) 'Authorization': 'Bearer $access',
+        }),
       );
       return unwrapEnvelope<AuthTokens>(
         res.data,

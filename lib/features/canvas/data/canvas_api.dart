@@ -6,6 +6,14 @@ import '../../auth/data/auth_api.dart' show throwAsFailure;
 /// `RequestOptions.extra`에 두는 재시도 표시. 무한 재브릿지를 막는다.
 const String kCanvasRetryFlag = 'canvas_retry';
 
+/// 이 인터셉터가 실제로 붙인 Bearer 토큰 값을 기록하는 표시.
+///
+/// 불리언이 아니라 값 자체를 담아 둔다. 401을 만났을 때 "토큰을 붙였다"만
+/// 아니라 "정확히 어떤 토큰을 붙였다"를 알아야, 뒤늦게 도착한 같은 만료
+/// 토큰의 두 번째 401이 그사이 다른 요청이 이미 받아 둔 새 토큰을 착각해
+/// 지우지 않는다.
+const String _kCanvasTokenFlag = 'canvas_token';
+
 /// 강좌가 실제로 노출하는 탭 하나.
 class CourseTab {
   const CourseTab({
@@ -236,14 +244,17 @@ class CanvasModuleItem {
   bool get isOpenable => isFile || (type != 'SubHeader' && htmlUrl.isNotEmpty);
 }
 
-/// Canvas 세션이 끊겼을 때 다시 다리를 건너고 원요청을 재시도한다.
+/// Canvas 인증이 끊겼을 때 복구하고 원요청을 재시도한다.
 ///
-/// Canvas는 세션이 만료되면 401을 준다. [reBridge]는 single-flight이므로
-/// 동시에 만료를 만난 요청들이 다리를 여러 번 건너지 않는다.
+/// 토큰이 있으면 Bearer로 보내고 다리를 건너지 않는다. 401이면 토큰을 한 번
+/// 다시 발급하고, 그것도 안 되면 쿠키 세션으로 폴백한다. [reBridge]는
+/// single-flight이므로 동시에 만료를 만난 요청들이 다리를 여러 번 건너지 않는다.
 Interceptor canvasSessionInterceptor({
   required Dio dio,
   required Future<void> Function() reBridge,
   Future<void> Function()? ensureSession,
+  Future<String?> Function()? accessToken,
+  Future<String?> Function(String invalidToken)? reissueToken,
 }) {
   Future<void> recover(
     RequestOptions options,
@@ -252,7 +263,18 @@ Interceptor canvasSessionInterceptor({
   ) async {
     options.extra[kCanvasRetryFlag] = true;
     try {
-      await reBridge();
+      final usedToken = options.extra[_kCanvasTokenFlag] as String?;
+      final renewed =
+          usedToken != null ? await reissueToken?.call(usedToken) : null;
+      if (renewed != null) {
+        options.headers['Authorization'] = 'Bearer $renewed';
+        options.extra[_kCanvasTokenFlag] = renewed;
+      } else {
+        // 쿠키 폴백. Canvas는 Bearer가 붙어 있으면 세션 쿠키를 보지 않는다.
+        options.headers.remove('Authorization');
+        options.extra.remove(_kCanvasTokenFlag);
+        await reBridge();
+      }
       resolve(await dio.fetch<dynamic>(options));
     } on Object catch (e) {
       reject(DioException(
@@ -267,9 +289,21 @@ Interceptor canvasSessionInterceptor({
 
   return InterceptorsWrapper(
     onRequest: (options, handler) async {
-      // 첫 요청 전에 다리를 건너 둔다. 401을 기다리면 사용자가 매번
-      // 실패 왕복을 한 번씩 겪는다.
-      if (ensureSession != null) {
+      // dio.fetch()로 재시도하면 이 onRequest가 다시 실행된다. recover()가
+      // 이미 Authorization을 확정했으니(갱신된 토큰 또는 쿠키 폴백을 위한 제거),
+      // 여기서 다시 accessToken()을 붙이면 그 결정을 덮어써 버린다.
+      if (options.extra[kCanvasRetryFlag] != true) {
+        final token = await accessToken?.call();
+        if (token != null && token.isNotEmpty) {
+          options.headers['Authorization'] = 'Bearer $token';
+          options.extra[_kCanvasTokenFlag] = token;
+          handler.next(options);
+          return;
+        }
+      }
+      // 이 인터셉터가 토큰을 붙이지 않았으면 다리를 건넌다. 401을 기다리면 사용자가
+      // 매번 실패 왕복을 한 번씩 겪는다. 재시도에서도 토큰이 없으면 다시 호출한다.
+      if (options.extra[_kCanvasTokenFlag] == null && ensureSession != null) {
         try {
           await ensureSession();
         } on Object catch (e) {
@@ -431,15 +465,11 @@ class CanvasApi {
       parseFrontPage(await getRaw('/courses/$courseId/front_page'));
 
   /// 강의자(교수·조교)의 사용자 id. 토론에서 학생 글을 거르는 데 쓴다.
-  Future<Set<int>> fetchInstructorIds(int courseId) async {
-    final ids = <int>{};
-    for (final type in instructorEnrollmentTypes) {
-      ids.addAll(parseInstructorIds(await getListRaw(
-          '/courses/$courseId/enrollments',
-          query: {'type[]': type})));
-    }
-    return ids;
-  }
+  /// 역할을 하나씩 묻지 않고 한 요청에 담는다. 서버가 type 필터를 무시해도
+  /// parseInstructorIds가 한 번 더 거르므로 결과는 같다.
+  Future<Set<int>> fetchInstructorIds(int courseId) async =>
+      parseInstructorIds(await getListRaw('/courses/$courseId/enrollments',
+          query: const {'type[]': instructorEnrollmentTypes}));
 
   Future<List<CanvasDiscussion>> fetchDiscussions(int courseId) async =>
       parseDiscussions(await getRaw(
