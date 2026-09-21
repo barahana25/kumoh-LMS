@@ -4,6 +4,8 @@
 
 APK는 이 저장소의 [Releases](https://github.com/barahana25/kumoh-LMS/releases/latest)에서만 받을 수 있습니다.
 
+> 학교 공식 앱이 아니라 학생 개인이 만들었습니다.
+
 ## 화면
 
 | 강의 | 강좌 상세 | 과제 |
