@@ -9,6 +9,7 @@ import '../../../providers.dart';
 import '../notification_runtime.dart';
 import '../background_settings.dart';
 import 'notification_setup.dart';
+import 'due_reminder_tile.dart';
 
 final backgroundBatteryProvider = FutureProvider<bool?>(
     (ref) => BackgroundSettings.batteryUnrestricted());
@@ -148,6 +149,7 @@ class _NotificationSettingsSectionState
           actionLabel: config?.enabled == true ? '지금 확인' : null,
           onAction: _busy ? null : _check,
         ),
+      const DueReminderTile(),
       if (BackgroundSettings.supported)
         ListTile(
           leading: const Icon(Icons.battery_saver_outlined),

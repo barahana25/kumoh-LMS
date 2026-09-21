@@ -5,6 +5,7 @@ import '../../../providers.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../background_settings.dart';
 import '../data/notification_store.dart';
+import '../data/due_reminder_store.dart';
 import '../notification_runtime.dart';
 import 'notification_settings_section.dart';
 
@@ -47,6 +48,46 @@ Future<String?> enableNotifications(WidgetRef ref,
     return notificationSetupMessage(stage, e);
   } finally {
     ref.invalidate(notificationSettingsProvider);
+  }
+}
+
+/// 과제 마감 알림을 켠다. 켰으면 null, 못 켰으면 사용자에게 보여줄 안내를 돌려준다.
+///
+/// 새 소식 알림과 조건이 같다. 백그라운드가 저장된 자격증명으로 로그인하므로
+/// 자동 로그인이 켜져 있어야 하고 알림 권한이 있어야 한다. 켜기만 하고 그
+/// 자리에서 서버를 조회하지 않는다.
+Future<String?> enableDueReminders(WidgetRef ref,
+    {required bool Function() stillValid}) async {
+  final db = ref.read(appDatabaseProvider);
+  final tokens = ref.read(tokenStoreProvider);
+  final auth = ref.read(authControllerProvider).valueOrNull;
+  var stage = '자동 로그인 정보 확인';
+  try {
+    if (!await hasMatchingCredentials(auth, tokens)) {
+      return '자동 로그인을 켜고 다시 로그인한 후 마감 알림을 켜 주세요.';
+    }
+    stage = '알림 기능 준비';
+    await NotificationRuntime.initialize();
+    stage = '알림 권한 요청';
+    if (!await NotificationRuntime.sink.requestPermission()) {
+      return '기기 설정에서 금오 LMS의 알림을 허용해 주세요.';
+    }
+    if (!stillValid() || ref.read(authControllerProvider).valueOrNull != auth) {
+      return null;
+    }
+    stage = '마감 알림 설정 저장';
+    final login = (auth! as AuthAuthenticated).profile.loginId;
+    await DueReminderStore(db).enable(login);
+    try {
+      stage = '자동 확인 예약';
+      await NotificationRuntime.schedule();
+    } on Exception {
+      await DueReminderStore(db).disable();
+      rethrow;
+    }
+    return null;
+  } on Exception catch (e) {
+    return notificationSetupMessage(stage, e);
   }
 }
 
