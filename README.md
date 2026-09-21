@@ -57,7 +57,6 @@ UI (Riverpod) → Repository → dio + Drift(SQLCipher) 캐시
 | `lib/providers.dart` | 의존성 연결 |
 | `packages/lms_folder_storage/` | Android SAF 폴더 선택·저장용 로컬 플러그인 |
 | `python/` | 서버 연동 확인용 진단 스크립트 |
-| `web/`, `relay/` | 실험 중인 웹 빌드와 중계 서버. 배포하는 APK와는 별개입니다 |
 
 ### 인증 흐름
 

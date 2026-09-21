@@ -49,7 +49,13 @@ python/
 # 스파이크 의존성
 tool/spike/node_modules/
 
-relay/node_modules/
+# 웹(PWA) 빌드와 중계 서버는 배포하지 않는다. 로컬에서만 쓰고 저장소에는 올리지 않는다.
+web/
+relay/
+docs/pwa/
+.github/workflows/pwa.yml
+.github/workflows/relay-image.yml
+test/core/web_index_html_test.dart
 
 # Google Play 배포용 서비스 계정 키. 절대 커밋하지 않는다.
 *.iam.gserviceaccount.json
