@@ -1,9 +1,7 @@
 flutter_launcher_icons:
   android: true
-  ios: true
+  ios: false
   image_path: assets/branding/lms_app_icon_ochungi.png
   adaptive_icon_background: '#FFFFFF'
   adaptive_icon_foreground: assets/branding/lms_app_icon_ochungi.png
   adaptive_icon_foreground_inset: 16
-  remove_alpha_ios: true
-  background_color_ios: '#FFFFFF'
