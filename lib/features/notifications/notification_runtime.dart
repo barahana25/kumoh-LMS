@@ -13,6 +13,10 @@ import 'data/notification_models.dart';
 import 'data/notification_poller.dart';
 import 'data/notification_store.dart';
 import 'data/notification_schedule.dart';
+import 'data/due_reminder.dart';
+import 'data/due_reminder_models.dart';
+import 'data/due_reminder_store.dart';
+import 'data/shared_lms_session.dart';
 import '../downloads/auto_download.dart';
 import '../downloads/download_store.dart';
 import '../downloads/folder_storage.dart';
@@ -80,7 +84,7 @@ class NotificationDestination {
   }
 }
 
-class LocalNoticeSink implements NoticeSink {
+class LocalNoticeSink implements NoticeSink, DueSink {
   final plugin = FlutterLocalNotificationsPlugin();
   Future<void>? _initializing;
   Future<void> initialize({void Function(String?)? onTap}) =>
@@ -167,11 +171,40 @@ class LocalNoticeSink implements NoticeSink {
   }
 
   @override
+  Future<void> showDue(DueNotice notice) async {
+    if (!await permitted()) {
+      throw Exception('Notification permission unavailable');
+    }
+    await plugin.show(
+        id: notice.id,
+        title: notice.heading,
+        body: notice.body,
+        notificationDetails: const NotificationDetails(
+          android: AndroidNotificationDetails('lms_due', '과제 마감',
+              channelDescription: '제출하지 않은 과제의 마감 3일 전·1일 전·당일 알림',
+              importance: Importance.defaultImportance,
+              priority: Priority.defaultPriority,
+              visibility: NotificationVisibility.private),
+          iOS:
+              DarwinNotificationDetails(presentAlert: true, presentSound: true),
+        ),
+        payload: jsonEncode({
+          'owner': notice.owner,
+          'courseId': notice.courseId,
+          'courseName': notice.courseName,
+          'tab': NoticeKind.assignment.tab
+        }));
+  }
+
+  @override
   Future<void> cancel(int id) => plugin.cancel(id: id);
 }
 
 class NotificationRuntime {
   static bool get supported => isAndroidApp || isIOSApp;
+
+  /// 마감 알림은 Android에서만 돈다.
+  static bool get dueSupported => isAndroidApp;
   static final sink = LocalNoticeSink();
   static final destination = ValueNotifier<NotificationDestination?>(null);
   static Future<void>? _initialized;
@@ -248,6 +281,8 @@ class NotificationRuntime {
 
   static Future<bool> hasBackgroundWork(AppDatabase db) async =>
       (await NotificationStore(db).settings())?.enabled == true ||
+      (dueSupported &&
+          (await DueReminderStore(db).settings())?.enabled == true) ||
       (isAndroidApp &&
           (await DownloadStore(db).settings())?.enabled == true);
 
@@ -259,12 +294,25 @@ class NotificationRuntime {
         sourceFactory: () => CanvasDownloadSource(secure)).run(force: force);
   }
 
+  static LmsNotificationSource _lmsSource(TokenStore secure) =>
+      LmsNotificationSource(secure, canvasTokenStore: SecureCanvasTokenStore());
+
   static Future<void> checkAll(AppDatabase db, TokenStore secure) async {
+    final notices = (await NotificationStore(db).settings())?.enabled == true;
+    final due = dueSupported &&
+        (await DueReminderStore(db).settings())?.enabled == true;
+    // LINUS는 최근 로그인 하나만 유효해서 로그인할 때마다 다른 기기 세션이
+    // 끊긴다. 새 소식과 마감 알림이 한 세션을 쓰고, 로그인은 처음 필요할 때 한다.
+    final shared =
+        notices || due ? SharedLmsSession(_lmsSource(secure)) : null;
     try {
-      if ((await NotificationStore(db).settings())?.enabled == true) {
-        await poll(db, secure);
+      try {
+        if (notices) await poll(db, secure, source: shared);
+      } finally {
+        if (due) await remindDue(db, shared!);
       }
     } finally {
+      shared?.dispose();
       if (isAndroidApp &&
           (await DownloadStore(db).settings())?.enabled == true) {
         await download(db, secure);
@@ -273,7 +321,7 @@ class NotificationRuntime {
   }
 
   static Future<String> poll(AppDatabase db, TokenStore secure,
-      {bool force = false}) async {
+      {bool force = false, NotificationSource? source}) async {
     if (!supported) return '알림은 Android와 iOS에서 사용할 수 있습니다.';
     // A failed WorkManager initialization must not prevent manual checks.
     await sink.initialize(
@@ -282,11 +330,25 @@ class NotificationRuntime {
     return NotificationPoller(
       store: NotificationStore(db),
       sink: sink,
-      sourceFactory: () => LmsNotificationSource(secure,
-          canvasTokenStore: SecureCanvasTokenStore()),
+      sourceFactory: () => source ?? _lmsSource(secure),
       budget: isIOSApp
           ? const Duration(seconds: 20)
           : const Duration(minutes: 4),
     ).run(force: force);
+  }
+
+  static Future<String> remindDue(AppDatabase db, DueSource source) async {
+    await sink.initialize(
+        onTap: (payload) =>
+            destination.value = NotificationDestination.parse(payload));
+    return DueReminder(store: DueReminderStore(db), source: source, sink: sink)
+        .run();
+  }
+
+  /// 마감 알림만 끈다. 새 소식이나 자동 다운로드가 켜져 있으면 예약은 둔다.
+  /// 이미 뜬 알림은 지우지 않는다. 새 소식 알림까지 함께 지워지기 때문이다.
+  static Future<void> stopDue(AppDatabase db) async {
+    await DueReminderStore(db).disable();
+    if (!await hasBackgroundWork(db)) await cancelScheduled();
   }
 }
