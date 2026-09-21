@@ -42,19 +42,24 @@ List<DueAssignment> parseDueAssignments(List<Map<String, dynamic>> rows) {
     if (row['published'] == false || row['locked_for_user'] == true) continue;
     final due = DateTime.tryParse('${row['due_at']}');
     if (due == null) continue;
-    final types = (row['submission_types'] as List?)
-            ?.map((e) => '$e')
-            .toSet() ??
-        const <String>{};
+    final rawTypes = row['submission_types'];
+    final types = rawTypes is List
+        ? rawTypes.map((e) => '$e').toSet()
+        : const <String>{};
     if (types.isNotEmpty && types.every(_offlineSubmissionTypes.contains)) {
       continue;
     }
-    if (isSubmitted(row['submission'])) continue;
+    final submission = row['submission'];
+    if (isSubmitted(submission)) continue;
+    // 교수가 면제한 과제는 낼 필요가 없다.
+    if (submission is Map && submission['excused'] == true) continue;
     final id = row['id'];
     if (id == null || '$id'.isEmpty) continue;
     result.add(DueAssignment(
         id: '$id',
-        name: row['name'] as String? ?? '과제',
+        // 문자열이 아니면 TypeError(Error)가 모든 on Exception을 빠져나가
+        // 실행 전체가 멈춘다. 형식이 이상한 행도 기본 이름으로 남긴다.
+        name: row['name'] is String ? row['name'] as String : '과제',
         dueAt: due.toUtc()));
   }
   return result;

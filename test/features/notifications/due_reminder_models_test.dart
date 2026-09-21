@@ -38,12 +38,17 @@ void main() {
         row({'id': 13, 'submission_types': ['none']}),
         row({'id': 14, 'submission_types': ['on_paper', 'not_graded']}),
         row({'id': 15, 'submission_types': ['on_paper', 'online_text_entry']}),
+        row({'id': 16, 'submission': {'workflow_state': 'unsubmitted', 'excused': true}}),
+        row({'id': 17, 'name': 123}),
+        row({'id': 18, 'submission_types': 'online_upload'}),
       ]);
-      expect(result.map((a) => a.id), ['7', '9', '15'],
+      expect(result.map((a) => a.id), ['7', '9', '15', '17', '18'],
           reason: '점수만 있고 제출 시각이 없으면 미제출, 온라인 방식이 하나라도 있으면 대상');
       expect(result.first.name, '실습 과제');
       expect(result.first.dueAt, DateTime.utc(2026, 9, 23, 1, 40));
       expect(result.first.dueAt.isUtc, isTrue);
+      expect(result.firstWhere((a) => a.id == '17').name, '과제',
+          reason: '이름이 문자열이 아니어도 TypeError로 실행 전체가 멈추지 않는다');
     });
   });
 
