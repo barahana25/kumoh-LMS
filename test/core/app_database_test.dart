@@ -237,11 +237,26 @@ void main() {
       expect(row.submitted, isFalse);
     });
 
+    test('v8 -> v9 업그레이드가 마감 알림 테이블을 만든다', () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      await db.customStatement('DROP TABLE due_reminder_settings');
+      await db.customStatement('DROP TABLE due_reminder_sent');
+
+      await db.migration.onUpgrade(Migrator(db), 8, 9);
+
+      await db.into(db.dueReminderSent).insert(DueReminderSentCompanion.insert(
+          key: '1:2:oneDay:2026-09-23T01:40:00.000Z',
+          sentAt: DateTime.now().toUtc()));
+      expect(await db.select(db.dueReminderSent).get(), hasLength(1));
+      expect(await db.select(db.dueReminderSettings).get(), isEmpty);
+    });
+
     test('현재 schemaVersion과 마이그레이션 단계가 어긋나지 않는다', () async {
       final db = createTestDatabase();
       addTearDown(db.close);
       // 버전을 올렸는데 단계를 안 넣으면 이 테스트가 신호를 준다.
-      expect(db.schemaVersion, 8,
+      expect(db.schemaVersion, 9,
           reason: 'schemaVersion을 올렸다면 onUpgrade에 해당 단계를 추가할 것');
     });
   });

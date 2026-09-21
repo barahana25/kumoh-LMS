@@ -172,3 +172,28 @@ class CanvasCacheEntries extends Table {
   @override
   Set<Column<Object>> get primaryKey => {key};
 }
+
+/// 과제 마감 알림 설정과 실행 잠금. 새 소식 알림과 따로 켜고 끈다.
+class DueReminderSettings extends Table {
+  IntColumn get id => integer()();
+  TextColumn get owner => text()();
+  TextColumn get generation => text()();
+  BoolColumn get enabled => boolean()();
+  TextColumn get status =>
+      text().withDefault(const Constant('아직 확인하지 않았습니다.'))();
+  IntColumn get lastAttempt => integer().nullable()();
+  IntColumn get lastSuccess => integer().nullable()();
+  TextColumn get lease => text().nullable()();
+  IntColumn get leaseUntil => integer().nullable()();
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+/// 보낸 마감 알림. 키는 `강좌:과제:구간:마감시각`.
+@DataClassName('DueReminderSentRow')
+class DueReminderSent extends Table {
+  TextColumn get key => text()();
+  DateTimeColumn get sentAt => dateTime()();
+  @override
+  Set<Column<Object>> get primaryKey => {key};
+}

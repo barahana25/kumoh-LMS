@@ -4691,6 +4691,666 @@ class ReadNoticesCompanion extends UpdateCompanion<ReadNotice> {
   }
 }
 
+class $DueReminderSettingsTable extends DueReminderSettings
+    with TableInfo<$DueReminderSettingsTable, DueReminderSetting> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DueReminderSettingsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+      'id', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _ownerMeta = const VerificationMeta('owner');
+  @override
+  late final GeneratedColumn<String> owner = GeneratedColumn<String>(
+      'owner', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _generationMeta =
+      const VerificationMeta('generation');
+  @override
+  late final GeneratedColumn<String> generation = GeneratedColumn<String>(
+      'generation', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _enabledMeta =
+      const VerificationMeta('enabled');
+  @override
+  late final GeneratedColumn<bool> enabled = GeneratedColumn<bool>(
+      'enabled', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: true,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("enabled" IN (0, 1))'));
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+      'status', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('아직 확인하지 않았습니다.'));
+  static const VerificationMeta _lastAttemptMeta =
+      const VerificationMeta('lastAttempt');
+  @override
+  late final GeneratedColumn<int> lastAttempt = GeneratedColumn<int>(
+      'last_attempt', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _lastSuccessMeta =
+      const VerificationMeta('lastSuccess');
+  @override
+  late final GeneratedColumn<int> lastSuccess = GeneratedColumn<int>(
+      'last_success', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _leaseMeta = const VerificationMeta('lease');
+  @override
+  late final GeneratedColumn<String> lease = GeneratedColumn<String>(
+      'lease', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _leaseUntilMeta =
+      const VerificationMeta('leaseUntil');
+  @override
+  late final GeneratedColumn<int> leaseUntil = GeneratedColumn<int>(
+      'lease_until', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        owner,
+        generation,
+        enabled,
+        status,
+        lastAttempt,
+        lastSuccess,
+        lease,
+        leaseUntil
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'due_reminder_settings';
+  @override
+  VerificationContext validateIntegrity(Insertable<DueReminderSetting> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('owner')) {
+      context.handle(
+          _ownerMeta, owner.isAcceptableOrUnknown(data['owner']!, _ownerMeta));
+    } else if (isInserting) {
+      context.missing(_ownerMeta);
+    }
+    if (data.containsKey('generation')) {
+      context.handle(
+          _generationMeta,
+          generation.isAcceptableOrUnknown(
+              data['generation']!, _generationMeta));
+    } else if (isInserting) {
+      context.missing(_generationMeta);
+    }
+    if (data.containsKey('enabled')) {
+      context.handle(_enabledMeta,
+          enabled.isAcceptableOrUnknown(data['enabled']!, _enabledMeta));
+    } else if (isInserting) {
+      context.missing(_enabledMeta);
+    }
+    if (data.containsKey('status')) {
+      context.handle(_statusMeta,
+          status.isAcceptableOrUnknown(data['status']!, _statusMeta));
+    }
+    if (data.containsKey('last_attempt')) {
+      context.handle(
+          _lastAttemptMeta,
+          lastAttempt.isAcceptableOrUnknown(
+              data['last_attempt']!, _lastAttemptMeta));
+    }
+    if (data.containsKey('last_success')) {
+      context.handle(
+          _lastSuccessMeta,
+          lastSuccess.isAcceptableOrUnknown(
+              data['last_success']!, _lastSuccessMeta));
+    }
+    if (data.containsKey('lease')) {
+      context.handle(
+          _leaseMeta, lease.isAcceptableOrUnknown(data['lease']!, _leaseMeta));
+    }
+    if (data.containsKey('lease_until')) {
+      context.handle(
+          _leaseUntilMeta,
+          leaseUntil.isAcceptableOrUnknown(
+              data['lease_until']!, _leaseUntilMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  DueReminderSetting map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DueReminderSetting(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
+      owner: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}owner'])!,
+      generation: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}generation'])!,
+      enabled: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}enabled'])!,
+      status: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}status'])!,
+      lastAttempt: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}last_attempt']),
+      lastSuccess: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}last_success']),
+      lease: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}lease']),
+      leaseUntil: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}lease_until']),
+    );
+  }
+
+  @override
+  $DueReminderSettingsTable createAlias(String alias) {
+    return $DueReminderSettingsTable(attachedDatabase, alias);
+  }
+}
+
+class DueReminderSetting extends DataClass
+    implements Insertable<DueReminderSetting> {
+  final int id;
+  final String owner;
+  final String generation;
+  final bool enabled;
+  final String status;
+  final int? lastAttempt;
+  final int? lastSuccess;
+  final String? lease;
+  final int? leaseUntil;
+  const DueReminderSetting(
+      {required this.id,
+      required this.owner,
+      required this.generation,
+      required this.enabled,
+      required this.status,
+      this.lastAttempt,
+      this.lastSuccess,
+      this.lease,
+      this.leaseUntil});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['owner'] = Variable<String>(owner);
+    map['generation'] = Variable<String>(generation);
+    map['enabled'] = Variable<bool>(enabled);
+    map['status'] = Variable<String>(status);
+    if (!nullToAbsent || lastAttempt != null) {
+      map['last_attempt'] = Variable<int>(lastAttempt);
+    }
+    if (!nullToAbsent || lastSuccess != null) {
+      map['last_success'] = Variable<int>(lastSuccess);
+    }
+    if (!nullToAbsent || lease != null) {
+      map['lease'] = Variable<String>(lease);
+    }
+    if (!nullToAbsent || leaseUntil != null) {
+      map['lease_until'] = Variable<int>(leaseUntil);
+    }
+    return map;
+  }
+
+  DueReminderSettingsCompanion toCompanion(bool nullToAbsent) {
+    return DueReminderSettingsCompanion(
+      id: Value(id),
+      owner: Value(owner),
+      generation: Value(generation),
+      enabled: Value(enabled),
+      status: Value(status),
+      lastAttempt: lastAttempt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastAttempt),
+      lastSuccess: lastSuccess == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastSuccess),
+      lease:
+          lease == null && nullToAbsent ? const Value.absent() : Value(lease),
+      leaseUntil: leaseUntil == null && nullToAbsent
+          ? const Value.absent()
+          : Value(leaseUntil),
+    );
+  }
+
+  factory DueReminderSetting.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DueReminderSetting(
+      id: serializer.fromJson<int>(json['id']),
+      owner: serializer.fromJson<String>(json['owner']),
+      generation: serializer.fromJson<String>(json['generation']),
+      enabled: serializer.fromJson<bool>(json['enabled']),
+      status: serializer.fromJson<String>(json['status']),
+      lastAttempt: serializer.fromJson<int?>(json['lastAttempt']),
+      lastSuccess: serializer.fromJson<int?>(json['lastSuccess']),
+      lease: serializer.fromJson<String?>(json['lease']),
+      leaseUntil: serializer.fromJson<int?>(json['leaseUntil']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'owner': serializer.toJson<String>(owner),
+      'generation': serializer.toJson<String>(generation),
+      'enabled': serializer.toJson<bool>(enabled),
+      'status': serializer.toJson<String>(status),
+      'lastAttempt': serializer.toJson<int?>(lastAttempt),
+      'lastSuccess': serializer.toJson<int?>(lastSuccess),
+      'lease': serializer.toJson<String?>(lease),
+      'leaseUntil': serializer.toJson<int?>(leaseUntil),
+    };
+  }
+
+  DueReminderSetting copyWith(
+          {int? id,
+          String? owner,
+          String? generation,
+          bool? enabled,
+          String? status,
+          Value<int?> lastAttempt = const Value.absent(),
+          Value<int?> lastSuccess = const Value.absent(),
+          Value<String?> lease = const Value.absent(),
+          Value<int?> leaseUntil = const Value.absent()}) =>
+      DueReminderSetting(
+        id: id ?? this.id,
+        owner: owner ?? this.owner,
+        generation: generation ?? this.generation,
+        enabled: enabled ?? this.enabled,
+        status: status ?? this.status,
+        lastAttempt: lastAttempt.present ? lastAttempt.value : this.lastAttempt,
+        lastSuccess: lastSuccess.present ? lastSuccess.value : this.lastSuccess,
+        lease: lease.present ? lease.value : this.lease,
+        leaseUntil: leaseUntil.present ? leaseUntil.value : this.leaseUntil,
+      );
+  DueReminderSetting copyWithCompanion(DueReminderSettingsCompanion data) {
+    return DueReminderSetting(
+      id: data.id.present ? data.id.value : this.id,
+      owner: data.owner.present ? data.owner.value : this.owner,
+      generation:
+          data.generation.present ? data.generation.value : this.generation,
+      enabled: data.enabled.present ? data.enabled.value : this.enabled,
+      status: data.status.present ? data.status.value : this.status,
+      lastAttempt:
+          data.lastAttempt.present ? data.lastAttempt.value : this.lastAttempt,
+      lastSuccess:
+          data.lastSuccess.present ? data.lastSuccess.value : this.lastSuccess,
+      lease: data.lease.present ? data.lease.value : this.lease,
+      leaseUntil:
+          data.leaseUntil.present ? data.leaseUntil.value : this.leaseUntil,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DueReminderSetting(')
+          ..write('id: $id, ')
+          ..write('owner: $owner, ')
+          ..write('generation: $generation, ')
+          ..write('enabled: $enabled, ')
+          ..write('status: $status, ')
+          ..write('lastAttempt: $lastAttempt, ')
+          ..write('lastSuccess: $lastSuccess, ')
+          ..write('lease: $lease, ')
+          ..write('leaseUntil: $leaseUntil')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, owner, generation, enabled, status,
+      lastAttempt, lastSuccess, lease, leaseUntil);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DueReminderSetting &&
+          other.id == this.id &&
+          other.owner == this.owner &&
+          other.generation == this.generation &&
+          other.enabled == this.enabled &&
+          other.status == this.status &&
+          other.lastAttempt == this.lastAttempt &&
+          other.lastSuccess == this.lastSuccess &&
+          other.lease == this.lease &&
+          other.leaseUntil == this.leaseUntil);
+}
+
+class DueReminderSettingsCompanion extends UpdateCompanion<DueReminderSetting> {
+  final Value<int> id;
+  final Value<String> owner;
+  final Value<String> generation;
+  final Value<bool> enabled;
+  final Value<String> status;
+  final Value<int?> lastAttempt;
+  final Value<int?> lastSuccess;
+  final Value<String?> lease;
+  final Value<int?> leaseUntil;
+  const DueReminderSettingsCompanion({
+    this.id = const Value.absent(),
+    this.owner = const Value.absent(),
+    this.generation = const Value.absent(),
+    this.enabled = const Value.absent(),
+    this.status = const Value.absent(),
+    this.lastAttempt = const Value.absent(),
+    this.lastSuccess = const Value.absent(),
+    this.lease = const Value.absent(),
+    this.leaseUntil = const Value.absent(),
+  });
+  DueReminderSettingsCompanion.insert({
+    this.id = const Value.absent(),
+    required String owner,
+    required String generation,
+    required bool enabled,
+    this.status = const Value.absent(),
+    this.lastAttempt = const Value.absent(),
+    this.lastSuccess = const Value.absent(),
+    this.lease = const Value.absent(),
+    this.leaseUntil = const Value.absent(),
+  })  : owner = Value(owner),
+        generation = Value(generation),
+        enabled = Value(enabled);
+  static Insertable<DueReminderSetting> custom({
+    Expression<int>? id,
+    Expression<String>? owner,
+    Expression<String>? generation,
+    Expression<bool>? enabled,
+    Expression<String>? status,
+    Expression<int>? lastAttempt,
+    Expression<int>? lastSuccess,
+    Expression<String>? lease,
+    Expression<int>? leaseUntil,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (owner != null) 'owner': owner,
+      if (generation != null) 'generation': generation,
+      if (enabled != null) 'enabled': enabled,
+      if (status != null) 'status': status,
+      if (lastAttempt != null) 'last_attempt': lastAttempt,
+      if (lastSuccess != null) 'last_success': lastSuccess,
+      if (lease != null) 'lease': lease,
+      if (leaseUntil != null) 'lease_until': leaseUntil,
+    });
+  }
+
+  DueReminderSettingsCompanion copyWith(
+      {Value<int>? id,
+      Value<String>? owner,
+      Value<String>? generation,
+      Value<bool>? enabled,
+      Value<String>? status,
+      Value<int?>? lastAttempt,
+      Value<int?>? lastSuccess,
+      Value<String?>? lease,
+      Value<int?>? leaseUntil}) {
+    return DueReminderSettingsCompanion(
+      id: id ?? this.id,
+      owner: owner ?? this.owner,
+      generation: generation ?? this.generation,
+      enabled: enabled ?? this.enabled,
+      status: status ?? this.status,
+      lastAttempt: lastAttempt ?? this.lastAttempt,
+      lastSuccess: lastSuccess ?? this.lastSuccess,
+      lease: lease ?? this.lease,
+      leaseUntil: leaseUntil ?? this.leaseUntil,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (owner.present) {
+      map['owner'] = Variable<String>(owner.value);
+    }
+    if (generation.present) {
+      map['generation'] = Variable<String>(generation.value);
+    }
+    if (enabled.present) {
+      map['enabled'] = Variable<bool>(enabled.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (lastAttempt.present) {
+      map['last_attempt'] = Variable<int>(lastAttempt.value);
+    }
+    if (lastSuccess.present) {
+      map['last_success'] = Variable<int>(lastSuccess.value);
+    }
+    if (lease.present) {
+      map['lease'] = Variable<String>(lease.value);
+    }
+    if (leaseUntil.present) {
+      map['lease_until'] = Variable<int>(leaseUntil.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DueReminderSettingsCompanion(')
+          ..write('id: $id, ')
+          ..write('owner: $owner, ')
+          ..write('generation: $generation, ')
+          ..write('enabled: $enabled, ')
+          ..write('status: $status, ')
+          ..write('lastAttempt: $lastAttempt, ')
+          ..write('lastSuccess: $lastSuccess, ')
+          ..write('lease: $lease, ')
+          ..write('leaseUntil: $leaseUntil')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $DueReminderSentTable extends DueReminderSent
+    with TableInfo<$DueReminderSentTable, DueReminderSentRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DueReminderSentTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _keyMeta = const VerificationMeta('key');
+  @override
+  late final GeneratedColumn<String> key = GeneratedColumn<String>(
+      'key', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _sentAtMeta = const VerificationMeta('sentAt');
+  @override
+  late final GeneratedColumn<DateTime> sentAt = GeneratedColumn<DateTime>(
+      'sent_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns => [key, sentAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'due_reminder_sent';
+  @override
+  VerificationContext validateIntegrity(Insertable<DueReminderSentRow> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('key')) {
+      context.handle(
+          _keyMeta, key.isAcceptableOrUnknown(data['key']!, _keyMeta));
+    } else if (isInserting) {
+      context.missing(_keyMeta);
+    }
+    if (data.containsKey('sent_at')) {
+      context.handle(_sentAtMeta,
+          sentAt.isAcceptableOrUnknown(data['sent_at']!, _sentAtMeta));
+    } else if (isInserting) {
+      context.missing(_sentAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {key};
+  @override
+  DueReminderSentRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DueReminderSentRow(
+      key: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}key'])!,
+      sentAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}sent_at'])!,
+    );
+  }
+
+  @override
+  $DueReminderSentTable createAlias(String alias) {
+    return $DueReminderSentTable(attachedDatabase, alias);
+  }
+}
+
+class DueReminderSentRow extends DataClass
+    implements Insertable<DueReminderSentRow> {
+  final String key;
+  final DateTime sentAt;
+  const DueReminderSentRow({required this.key, required this.sentAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['key'] = Variable<String>(key);
+    map['sent_at'] = Variable<DateTime>(sentAt);
+    return map;
+  }
+
+  DueReminderSentCompanion toCompanion(bool nullToAbsent) {
+    return DueReminderSentCompanion(
+      key: Value(key),
+      sentAt: Value(sentAt),
+    );
+  }
+
+  factory DueReminderSentRow.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DueReminderSentRow(
+      key: serializer.fromJson<String>(json['key']),
+      sentAt: serializer.fromJson<DateTime>(json['sentAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'key': serializer.toJson<String>(key),
+      'sentAt': serializer.toJson<DateTime>(sentAt),
+    };
+  }
+
+  DueReminderSentRow copyWith({String? key, DateTime? sentAt}) =>
+      DueReminderSentRow(
+        key: key ?? this.key,
+        sentAt: sentAt ?? this.sentAt,
+      );
+  DueReminderSentRow copyWithCompanion(DueReminderSentCompanion data) {
+    return DueReminderSentRow(
+      key: data.key.present ? data.key.value : this.key,
+      sentAt: data.sentAt.present ? data.sentAt.value : this.sentAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DueReminderSentRow(')
+          ..write('key: $key, ')
+          ..write('sentAt: $sentAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(key, sentAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DueReminderSentRow &&
+          other.key == this.key &&
+          other.sentAt == this.sentAt);
+}
+
+class DueReminderSentCompanion extends UpdateCompanion<DueReminderSentRow> {
+  final Value<String> key;
+  final Value<DateTime> sentAt;
+  final Value<int> rowid;
+  const DueReminderSentCompanion({
+    this.key = const Value.absent(),
+    this.sentAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  DueReminderSentCompanion.insert({
+    required String key,
+    required DateTime sentAt,
+    this.rowid = const Value.absent(),
+  })  : key = Value(key),
+        sentAt = Value(sentAt);
+  static Insertable<DueReminderSentRow> custom({
+    Expression<String>? key,
+    Expression<DateTime>? sentAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (key != null) 'key': key,
+      if (sentAt != null) 'sent_at': sentAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  DueReminderSentCompanion copyWith(
+      {Value<String>? key, Value<DateTime>? sentAt, Value<int>? rowid}) {
+    return DueReminderSentCompanion(
+      key: key ?? this.key,
+      sentAt: sentAt ?? this.sentAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (key.present) {
+      map['key'] = Variable<String>(key.value);
+    }
+    if (sentAt.present) {
+      map['sent_at'] = Variable<DateTime>(sentAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DueReminderSentCompanion(')
+          ..write('key: $key, ')
+          ..write('sentAt: $sentAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -4715,6 +5375,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $DownloadedFilesTable downloadedFiles =
       $DownloadedFilesTable(this);
   late final $ReadNoticesTable readNotices = $ReadNoticesTable(this);
+  late final $DueReminderSettingsTable dueReminderSettings =
+      $DueReminderSettingsTable(this);
+  late final $DueReminderSentTable dueReminderSent =
+      $DueReminderSentTable(this);
   late final TermsDao termsDao = TermsDao(this as AppDatabase);
   late final CoursesDao coursesDao = CoursesDao(this as AppDatabase);
   late final CalendarEventsDao calendarEventsDao =
@@ -4739,7 +5403,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         notificationOutbox,
         downloadSettings,
         downloadedFiles,
-        readNotices
+        readNotices,
+        dueReminderSettings,
+        dueReminderSent
       ];
 }
 
@@ -7230,6 +7896,367 @@ typedef $$ReadNoticesTableProcessedTableManager = ProcessedTableManager<
     (ReadNotice, BaseReferences<_$AppDatabase, $ReadNoticesTable, ReadNotice>),
     ReadNotice,
     PrefetchHooks Function()>;
+typedef $$DueReminderSettingsTableCreateCompanionBuilder
+    = DueReminderSettingsCompanion Function({
+  Value<int> id,
+  required String owner,
+  required String generation,
+  required bool enabled,
+  Value<String> status,
+  Value<int?> lastAttempt,
+  Value<int?> lastSuccess,
+  Value<String?> lease,
+  Value<int?> leaseUntil,
+});
+typedef $$DueReminderSettingsTableUpdateCompanionBuilder
+    = DueReminderSettingsCompanion Function({
+  Value<int> id,
+  Value<String> owner,
+  Value<String> generation,
+  Value<bool> enabled,
+  Value<String> status,
+  Value<int?> lastAttempt,
+  Value<int?> lastSuccess,
+  Value<String?> lease,
+  Value<int?> leaseUntil,
+});
+
+class $$DueReminderSettingsTableFilterComposer
+    extends Composer<_$AppDatabase, $DueReminderSettingsTable> {
+  $$DueReminderSettingsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get owner => $composableBuilder(
+      column: $table.owner, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get generation => $composableBuilder(
+      column: $table.generation, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get enabled => $composableBuilder(
+      column: $table.enabled, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get status => $composableBuilder(
+      column: $table.status, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get lastAttempt => $composableBuilder(
+      column: $table.lastAttempt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get lastSuccess => $composableBuilder(
+      column: $table.lastSuccess, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get lease => $composableBuilder(
+      column: $table.lease, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get leaseUntil => $composableBuilder(
+      column: $table.leaseUntil, builder: (column) => ColumnFilters(column));
+}
+
+class $$DueReminderSettingsTableOrderingComposer
+    extends Composer<_$AppDatabase, $DueReminderSettingsTable> {
+  $$DueReminderSettingsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get owner => $composableBuilder(
+      column: $table.owner, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get generation => $composableBuilder(
+      column: $table.generation, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get enabled => $composableBuilder(
+      column: $table.enabled, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get status => $composableBuilder(
+      column: $table.status, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get lastAttempt => $composableBuilder(
+      column: $table.lastAttempt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get lastSuccess => $composableBuilder(
+      column: $table.lastSuccess, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get lease => $composableBuilder(
+      column: $table.lease, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get leaseUntil => $composableBuilder(
+      column: $table.leaseUntil, builder: (column) => ColumnOrderings(column));
+}
+
+class $$DueReminderSettingsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $DueReminderSettingsTable> {
+  $$DueReminderSettingsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get owner =>
+      $composableBuilder(column: $table.owner, builder: (column) => column);
+
+  GeneratedColumn<String> get generation => $composableBuilder(
+      column: $table.generation, builder: (column) => column);
+
+  GeneratedColumn<bool> get enabled =>
+      $composableBuilder(column: $table.enabled, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<int> get lastAttempt => $composableBuilder(
+      column: $table.lastAttempt, builder: (column) => column);
+
+  GeneratedColumn<int> get lastSuccess => $composableBuilder(
+      column: $table.lastSuccess, builder: (column) => column);
+
+  GeneratedColumn<String> get lease =>
+      $composableBuilder(column: $table.lease, builder: (column) => column);
+
+  GeneratedColumn<int> get leaseUntil => $composableBuilder(
+      column: $table.leaseUntil, builder: (column) => column);
+}
+
+class $$DueReminderSettingsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $DueReminderSettingsTable,
+    DueReminderSetting,
+    $$DueReminderSettingsTableFilterComposer,
+    $$DueReminderSettingsTableOrderingComposer,
+    $$DueReminderSettingsTableAnnotationComposer,
+    $$DueReminderSettingsTableCreateCompanionBuilder,
+    $$DueReminderSettingsTableUpdateCompanionBuilder,
+    (
+      DueReminderSetting,
+      BaseReferences<_$AppDatabase, $DueReminderSettingsTable,
+          DueReminderSetting>
+    ),
+    DueReminderSetting,
+    PrefetchHooks Function()> {
+  $$DueReminderSettingsTableTableManager(
+      _$AppDatabase db, $DueReminderSettingsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DueReminderSettingsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$DueReminderSettingsTableOrderingComposer(
+                  $db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$DueReminderSettingsTableAnnotationComposer(
+                  $db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            Value<String> owner = const Value.absent(),
+            Value<String> generation = const Value.absent(),
+            Value<bool> enabled = const Value.absent(),
+            Value<String> status = const Value.absent(),
+            Value<int?> lastAttempt = const Value.absent(),
+            Value<int?> lastSuccess = const Value.absent(),
+            Value<String?> lease = const Value.absent(),
+            Value<int?> leaseUntil = const Value.absent(),
+          }) =>
+              DueReminderSettingsCompanion(
+            id: id,
+            owner: owner,
+            generation: generation,
+            enabled: enabled,
+            status: status,
+            lastAttempt: lastAttempt,
+            lastSuccess: lastSuccess,
+            lease: lease,
+            leaseUntil: leaseUntil,
+          ),
+          createCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            required String owner,
+            required String generation,
+            required bool enabled,
+            Value<String> status = const Value.absent(),
+            Value<int?> lastAttempt = const Value.absent(),
+            Value<int?> lastSuccess = const Value.absent(),
+            Value<String?> lease = const Value.absent(),
+            Value<int?> leaseUntil = const Value.absent(),
+          }) =>
+              DueReminderSettingsCompanion.insert(
+            id: id,
+            owner: owner,
+            generation: generation,
+            enabled: enabled,
+            status: status,
+            lastAttempt: lastAttempt,
+            lastSuccess: lastSuccess,
+            lease: lease,
+            leaseUntil: leaseUntil,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$DueReminderSettingsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $DueReminderSettingsTable,
+    DueReminderSetting,
+    $$DueReminderSettingsTableFilterComposer,
+    $$DueReminderSettingsTableOrderingComposer,
+    $$DueReminderSettingsTableAnnotationComposer,
+    $$DueReminderSettingsTableCreateCompanionBuilder,
+    $$DueReminderSettingsTableUpdateCompanionBuilder,
+    (
+      DueReminderSetting,
+      BaseReferences<_$AppDatabase, $DueReminderSettingsTable,
+          DueReminderSetting>
+    ),
+    DueReminderSetting,
+    PrefetchHooks Function()>;
+typedef $$DueReminderSentTableCreateCompanionBuilder = DueReminderSentCompanion
+    Function({
+  required String key,
+  required DateTime sentAt,
+  Value<int> rowid,
+});
+typedef $$DueReminderSentTableUpdateCompanionBuilder = DueReminderSentCompanion
+    Function({
+  Value<String> key,
+  Value<DateTime> sentAt,
+  Value<int> rowid,
+});
+
+class $$DueReminderSentTableFilterComposer
+    extends Composer<_$AppDatabase, $DueReminderSentTable> {
+  $$DueReminderSentTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get key => $composableBuilder(
+      column: $table.key, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get sentAt => $composableBuilder(
+      column: $table.sentAt, builder: (column) => ColumnFilters(column));
+}
+
+class $$DueReminderSentTableOrderingComposer
+    extends Composer<_$AppDatabase, $DueReminderSentTable> {
+  $$DueReminderSentTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get key => $composableBuilder(
+      column: $table.key, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get sentAt => $composableBuilder(
+      column: $table.sentAt, builder: (column) => ColumnOrderings(column));
+}
+
+class $$DueReminderSentTableAnnotationComposer
+    extends Composer<_$AppDatabase, $DueReminderSentTable> {
+  $$DueReminderSentTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get key =>
+      $composableBuilder(column: $table.key, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get sentAt =>
+      $composableBuilder(column: $table.sentAt, builder: (column) => column);
+}
+
+class $$DueReminderSentTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $DueReminderSentTable,
+    DueReminderSentRow,
+    $$DueReminderSentTableFilterComposer,
+    $$DueReminderSentTableOrderingComposer,
+    $$DueReminderSentTableAnnotationComposer,
+    $$DueReminderSentTableCreateCompanionBuilder,
+    $$DueReminderSentTableUpdateCompanionBuilder,
+    (
+      DueReminderSentRow,
+      BaseReferences<_$AppDatabase, $DueReminderSentTable, DueReminderSentRow>
+    ),
+    DueReminderSentRow,
+    PrefetchHooks Function()> {
+  $$DueReminderSentTableTableManager(
+      _$AppDatabase db, $DueReminderSentTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DueReminderSentTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$DueReminderSentTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$DueReminderSentTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> key = const Value.absent(),
+            Value<DateTime> sentAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              DueReminderSentCompanion(
+            key: key,
+            sentAt: sentAt,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String key,
+            required DateTime sentAt,
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              DueReminderSentCompanion.insert(
+            key: key,
+            sentAt: sentAt,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$DueReminderSentTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $DueReminderSentTable,
+    DueReminderSentRow,
+    $$DueReminderSentTableFilterComposer,
+    $$DueReminderSentTableOrderingComposer,
+    $$DueReminderSentTableAnnotationComposer,
+    $$DueReminderSentTableCreateCompanionBuilder,
+    $$DueReminderSentTableUpdateCompanionBuilder,
+    (
+      DueReminderSentRow,
+      BaseReferences<_$AppDatabase, $DueReminderSentTable, DueReminderSentRow>
+    ),
+    DueReminderSentRow,
+    PrefetchHooks Function()>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -7260,6 +8287,10 @@ class $AppDatabaseManager {
       $$DownloadedFilesTableTableManager(_db, _db.downloadedFiles);
   $$ReadNoticesTableTableManager get readNotices =>
       $$ReadNoticesTableTableManager(_db, _db.readNotices);
+  $$DueReminderSettingsTableTableManager get dueReminderSettings =>
+      $$DueReminderSettingsTableTableManager(_db, _db.dueReminderSettings);
+  $$DueReminderSentTableTableManager get dueReminderSent =>
+      $$DueReminderSentTableTableManager(_db, _db.dueReminderSent);
 }
 
 mixin _$TermsDaoMixin on DatabaseAccessor<AppDatabase> {

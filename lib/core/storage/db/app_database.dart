@@ -19,7 +19,9 @@ part 'app_database.g.dart';
     NotificationOutbox,
     DownloadSettings,
     DownloadedFiles,
-    ReadNotices
+    ReadNotices,
+    DueReminderSettings,
+    DueReminderSent
   ],
   daos: [
     TermsDao,
@@ -48,7 +50,7 @@ class AppDatabase extends _$AppDatabase {
       const DriftDatabaseOptions(storeDateTimeAsText: true);
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   /// 스키마를 올릴 때마다 여기에 단계를 추가한다.
   ///
@@ -59,6 +61,11 @@ class AppDatabase extends _$AppDatabase {
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) => m.createAll(),
         onUpgrade: (m, from, to) async {
+          // v9: 과제 마감 알림
+          if (from < 9 && to >= 9) {
+            await m.createTable(dueReminderSettings);
+            await m.createTable(dueReminderSent);
+          }
           // v8: 과제 제출 여부
           if (from < 8 && to >= 8) {
             await m.addColumn(calendarEvents, calendarEvents.submitted);
