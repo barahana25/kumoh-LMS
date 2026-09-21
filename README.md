@@ -4,6 +4,16 @@
 
 APK는 이 저장소의 [Releases](https://github.com/barahana25/kumoh-LMS/releases/latest)에서만 받을 수 있습니다.
 
+## 화면
+
+| 강의 | 강좌 상세 | 과제 |
+| --- | --- | --- |
+| ![강의 목록](screenshots/01-courses.png) | ![강좌 상세](screenshots/02-course-detail.png) | ![과제 캘린더](screenshots/03-assignments-calendar.png) |
+
+| 과제 목록 | 공지 | 설정 |
+| --- | --- | --- |
+| ![과제 목록](screenshots/04-assignments-list.png) | ![공지사항](screenshots/05-notices.png) | ![설정](screenshots/06-settings.png) |
+
 ## 설치
 
 Android 7.0(API 24) 이상에서 동작합니다.
