@@ -1,6 +1,7 @@
 import 'package:flutter/services.dart';
 import 'package:sqlite3/common.dart' show SqliteException;
 import '../../../core/error/failure.dart';
+import '../../../core/storage/db/app_database.dart';
 import 'due_reminder_models.dart';
 import 'due_reminder_store.dart';
 import 'notification_schedule.dart';
@@ -15,7 +16,7 @@ class DueReminder {
       required this.source,
       required this.sink,
       DateTime Function()? clock,
-      this.budget = const Duration(minutes: 2)})
+      this.budget = const Duration(minutes: 1)})
       : clock = clock ?? DateTime.now;
   final DueReminderStore store;
   final DueSource source;
@@ -33,10 +34,16 @@ class DueReminder {
     return kstHour == 0 ? null : slot;
   }
 
-  Future<String> run() async {
-    final slot = sendSlot(clock());
-    if (slot == null) return '마감 알림은 08:01~23:01에 확인합니다.';
-    final run = await store.acquire(clock(), slot);
+  /// [reserved]를 주면 부르는 쪽이 이미 잡은 잠금으로 돈다.
+  Future<String> run({DueReminderSetting? reserved}) async {
+    final DueReminderSetting? run;
+    if (reserved != null) {
+      run = reserved;
+    } else {
+      final slot = sendSlot(clock());
+      if (slot == null) return '마감 알림은 08:01~23:01에 확인합니다.';
+      run = await store.acquire(clock(), slot);
+    }
     if (run == null) return '이번 회차는 이미 확인했거나 확인 중입니다.';
     var status = '확인하지 못했습니다. 다음 주기에 다시 시도합니다.';
     var success = false;

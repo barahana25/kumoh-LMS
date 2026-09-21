@@ -16,7 +16,7 @@ import 'data/notification_schedule.dart';
 import 'data/due_reminder.dart';
 import 'data/due_reminder_models.dart';
 import 'data/due_reminder_store.dart';
-import 'data/shared_lms_session.dart';
+import 'data/shared_alerts.dart';
 import '../downloads/auto_download.dart';
 import '../downloads/download_store.dart';
 import '../downloads/folder_storage.dart';
@@ -307,21 +307,19 @@ class NotificationRuntime {
       LmsNotificationSource(secure, canvasTokenStore: SecureCanvasTokenStore());
 
   static Future<void> checkAll(AppDatabase db, TokenStore secure) async {
-    final notices = (await NotificationStore(db).settings())?.enabled == true;
-    final due = dueSupported &&
-        (await DueReminderStore(db).settings())?.enabled == true;
-    // LINUS는 최근 로그인 하나만 유효해서 로그인할 때마다 다른 기기 세션이
-    // 끊긴다. 새 소식과 마감 알림이 한 세션을 쓰고, 로그인은 처음 필요할 때 한다.
-    final shared =
-        notices || due ? SharedLmsSession(_lmsSource(secure)) : null;
     try {
-      try {
-        if (notices) await poll(db, secure, source: shared);
-      } finally {
-        if (due) await remindDue(db, shared!);
-      }
+      await runSharedAlerts(
+        now: DateTime.now(),
+        notices: NotificationStore(db),
+        due: DueReminderStore(db),
+        noticesOn: (await NotificationStore(db).settings())?.enabled == true,
+        dueOn: dueSupported &&
+            (await DueReminderStore(db).settings())?.enabled == true,
+        openSource: () => _lmsSource(secure),
+        poll: (run, source) => poll(db, secure, source: source, reserved: run),
+        remind: (run, source) => remindDue(db, source, reserved: run),
+      );
     } finally {
-      shared?.dispose();
       if (isAndroidApp &&
           (await DownloadStore(db).settings())?.enabled == true) {
         await download(db, secure);
@@ -330,7 +328,9 @@ class NotificationRuntime {
   }
 
   static Future<String> poll(AppDatabase db, TokenStore secure,
-      {bool force = false, NotificationSource? source}) async {
+      {bool force = false,
+      NotificationSource? source,
+      NotificationSetting? reserved}) async {
     if (!supported) return '알림은 Android와 iOS에서 사용할 수 있습니다.';
     // A failed WorkManager initialization must not prevent manual checks.
     await sink.initialize(
@@ -343,15 +343,16 @@ class NotificationRuntime {
       budget: isIOSApp
           ? const Duration(seconds: 20)
           : const Duration(minutes: 4),
-    ).run(force: force);
+    ).run(force: force, reserved: reserved);
   }
 
-  static Future<String> remindDue(AppDatabase db, DueSource source) async {
+  static Future<String> remindDue(AppDatabase db, DueSource source,
+      {DueReminderSetting? reserved}) async {
     await sink.initialize(
         onTap: (payload) =>
             destination.value = NotificationDestination.parse(payload));
     return DueReminder(store: DueReminderStore(db), source: source, sink: sink)
-        .run();
+        .run(reserved: reserved);
   }
 
   /// 마감 알림만 끈다. 새 소식이나 자동 다운로드가 켜져 있으면 예약은 둔다.

@@ -175,4 +175,14 @@ void main() {
     expect(source.logins, 0);
     expect((await store.settings())!.enabled, isTrue);
   });
+
+  test('미리 잡은 잠금을 받으면 다시 잡지 않고 돈다', () async {
+    source.values[1] = [due('a', const Duration(hours: 5))];
+    final slot = DueReminder.sendSlot(now)!;
+    final reserved = (await store.acquire(now, slot))!;
+    final status = await reminder().run(reserved: reserved);
+    expect(source.logins, 1);
+    expect(sink.shown, hasLength(1));
+    expect(status, '1개 강좌 확인 · 마감 알림 1개');
+  });
 }

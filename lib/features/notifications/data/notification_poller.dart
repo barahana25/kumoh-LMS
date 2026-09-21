@@ -20,10 +20,14 @@ class NotificationPoller {
   final DateTime Function() clock;
   final Duration budget;
 
-  Future<String> run({bool force = false}) async {
+  /// [reserved]를 주면 부르는 쪽이 이미 잡은 잠금으로 돈다. 매시 작업이
+  /// 새 소식과 마감 알림의 잠금을 네트워크 전에 한꺼번에 잡을 때 쓴다.
+  Future<String> run({bool force = false, NotificationSetting? reserved}) async {
     bool allowed() => force || NotificationSchedule.slot(clock()) != null;
-    if (!allowed()) return '자동 확인 휴식 시간입니다. 다음 예약에 확인합니다.';
-    final run = await store.acquire(clock(), force: force);
+    if (reserved == null && !allowed()) {
+      return '자동 확인 휴식 시간입니다. 다음 예약에 확인합니다.';
+    }
+    final run = reserved ?? await store.acquire(clock(), force: force);
     if (run == null) return '확인 주기가 지나지 않았거나 이미 확인 중입니다.';
     NotificationSource? source;
     var status = '확인하지 못했습니다. 다음 주기에 다시 시도합니다.';

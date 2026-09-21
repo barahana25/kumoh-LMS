@@ -299,4 +299,12 @@ void main() {
     await poller.run();
     expect((await db.select(db.notificationBaselines).get()).length, 4);
   });
+
+  test('미리 잡은 잠금을 받으면 다시 잡지 않고 돈다', () async {
+    final reserved = (await store.acquire(now))!;
+    final status = await poller.run(reserved: reserved);
+    expect(source.logins, 1);
+    expect(status, isNot('확인 주기가 지나지 않았거나 이미 확인 중입니다.'));
+    expect((await store.settings())!.lease, isNull, reason: '끝나면 잠금을 푼다');
+  });
 }
