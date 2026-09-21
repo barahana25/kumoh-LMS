@@ -8,11 +8,11 @@ APK는 이 저장소의 [Releases](https://github.com/barahana25/kumoh-LMS/relea
 
 | 강의 | 강좌 상세 | 과제 |
 | --- | --- | --- |
-| ![강의 목록](screenshots/01-courses.png) | ![강좌 상세](screenshots/02-course-detail.png) | ![과제 캘린더](screenshots/03-assignments-calendar.png) |
+| ![강의 목록](screenshots/01-courses.jpg) | ![강좌 상세](screenshots/02-course-detail.jpg) | ![과제 캘린더](screenshots/03-assignments-calendar.jpg) |
 
 | 과제 목록 | 공지 | 설정 |
 | --- | --- | --- |
-| ![과제 목록](screenshots/04-assignments-list.png) | ![공지사항](screenshots/05-notices.png) | ![설정](screenshots/06-settings.png) |
+| ![과제 목록](screenshots/04-assignments-list.jpg) | ![공지사항](screenshots/05-notices.jpg) | ![설정](screenshots/06-settings.jpg) |
 
 ## 설치
 
