@@ -86,7 +86,8 @@ LINUS는 계정당 가장 최근 로그인 하나만 유효하다. 백그라운�
 | 파일 | 역할 |
 |---|---|
 | `lib/core/time/due_days.dart` (신규) | `dueDays(dueAt, now)` → 남은 일수(24시간 미만이면 0, 지났으면 null). 화면 배지와 알림이 같이 쓴다 |
-| `lib/features/notifications/data/due_reminder.dart` (신규) | `DueStage` 구간 판정, 대상 선별, 러너 `DueReminder` |
+| `lib/features/notifications/data/due_reminder_models.dart` (신규) | `DueStage` 구간 판정, 대상 선별, 기록 키, 알림 ID·문구. 모두 순수 함수 |
+| `lib/features/notifications/data/due_reminder.dart` (신규) | 러너 `DueReminder` |
 | `lib/features/notifications/data/due_reminder_store.dart` (신규) | 설정 행, 보낸 기록, 실행 잠금 |
 | `lib/features/notifications/data/shared_lms_session.dart` (신규) | 한 번만 로그인하는 감싸개. 새 소식·마감 러너가 같은 인스턴스를 받는다 |
 | `lib/features/notifications/data/lms_notification_source.dart` | `dueAssignments(courseId)` 추가. `/assignments?include[]=submission`을 받아 `DueAssignment`로 만든다 |
@@ -94,11 +95,12 @@ LINUS는 계정당 가장 최근 로그인 하나만 유효하다. 백그라운�
 | `lib/features/notifications/presentation/notification_settings_section.dart` | "과제 마감 알림" 토글과 상태 줄 |
 | `lib/features/notifications/presentation/notification_setup.dart` | `enableDueReminders()` — 켜는 절차(자격증명 확인 → 권한 → 저장 → 예약) |
 | `lib/features/assignments/presentation/widgets/event_tile.dart` | `dueRelative()`가 `dueDays()`를 쓰게 바꾼다. 표시 결과는 같다 |
+| `lib/features/auth/presentation/auth_controller.dart` | 로그인·로그아웃 때 마감 알림을 먼저 끈다. 그래야 `NotificationRuntime.stop()`이 남은 예약을 취소한다 |
 | `lib/core/storage/db/tables.dart`, `app_database.dart` | DB v9 |
 
 ### DB v9
 
-- `due_reminder_settings`: `id`, `owner`, `generation`, `enabled`, `status`, `last_success`, `lease`, `lease_until`
+- `due_reminder_settings`: `id`, `owner`, `generation`, `enabled`, `status`, `last_attempt`, `last_success`, `lease`, `lease_until`. `last_attempt`로 같은 회차에 두 번 돌지 않게 막는다. 15분 복구 작업과 앱 타이머가 같은 회차에 여러 번 부르므로, 이게 없으면 부를 때마다 로그인이 늘어난다.
 - `due_reminder_sent`: `key`(기본키, `강좌:과제:구간:마감시각`), `sent_at`
 
 로그아웃 때 `db.wipe()`가 모든 테이블을 비우므로 따로 지울 코드는 없다. v8→v9 마이그레이션 단계를 반드시 추가한다.
@@ -107,9 +109,11 @@ LINUS는 계정당 가장 최근 로그인 하나만 유효하다. 백그라운�
 
 `SharedLmsSession`은 `LmsNotificationSource` 하나를 감싼다.
 
-- `authenticate()`: 첫 호출의 `Future`를 기억해 두고 이후에는 같은 결과를 돌려준다.
+- `authenticate()`, `courses()`: 첫 호출의 `Future`를 기억해 두고 이후에는 같은 결과(실패 포함)를 돌려준다.
 - `close()`: 아무것도 하지 않는다. 실제 종료는 `checkAll`이 끝날 때 한 번 한다.
-- 나머지(`courses()`, `items()`, `dueAssignments()`)는 그대로 넘긴다.
+- `items()`, `dueAssignments()`는 그대로 넘긴다.
+
+과제 목록 응답도 나눠 쓴다. `LmsNotificationSource`가 강좌별 `/assignments?include[]=submission` 응답을 한 실행 동안 기억해 두고, 새 과제 감지(`items(assignment)`)와 마감 알림(`dueAssignments()`)이 같은 응답을 쓴다. 둘 다 켜 두어도 과제 목록 요청은 늘지 않는다.
 
 `NotificationPoller`는 지금처럼 `sourceFactory()`로 소스를 받고 `authenticate()`·`close()`를 부른다. 공유 감싸개를 넘기기만 하므로 poller 코드는 바꾸지 않는다.
 
@@ -161,7 +165,7 @@ try {
 - 러너: 구간 진입 시 알림, 00:01 회차 건너뜀, 같은 구간 재실행 시 중복 없음, 제출 후 다음 구간 없음, 처음 켜면 현재 구간만, 마감 변경 시 재알림, 휴식 시간 건너뜀, 인증 실패 시 해제, 계정 변경 시 멈춤, 한 강좌 실패가 다른 강좌를 막지 않음.
 - 공유 세션: 새 소식과 마감이 둘 다 켜져 있어도 `authenticate()`가 한 번만 로그인한다. 하나만 켜져 있어도 동작한다.
 - DB v8→v9 마이그레이션.
-- 설정 토글 위젯: 켜기(자격증명 없음·권한 거부·성공), 끄기, 상태 줄.
+- 설정 토글 위젯: 지원 안 하는 기기에서 숨김, 켜기(자격증명 없음), 끄기, 상태 줄. 권한 요청과 켜기 성공 경로는 알림 플러그인이 필요해 실기기에서 확인한다.
 
 ## 문서
 
