@@ -16,9 +16,11 @@ import '../../canvas/data/saml_bridge_api.dart';
 import '../../courses/data/courses_api.dart';
 import '../../reference/data/reference_api.dart';
 import 'notification_models.dart';
+import 'due_reminder_models.dart';
+import 'shared_lms_session.dart';
 
 /// 화면 캐시의 TTL을 사용하지 않는다. 페이지를 끝까지 조회한 경우만 비교한다.
-class LmsNotificationSource implements NotificationSource {
+class LmsNotificationSource implements LmsSource {
   LmsNotificationSource(this.secureStore,
       {Dio? linusDio,
       Dio? bridgeDio,
@@ -47,6 +49,19 @@ class LmsNotificationSource implements NotificationSource {
   /// 지우기만 해도 그사이 포그라운드가 새로 발급해 둔 유효한 토큰까지
   /// 함께 날아갈 수 있다. 이 인스턴스 안에서만 기억해 두는 편이 안전하다.
   String? _deadCanvasToken;
+
+  /// 과제 목록은 새 과제 감지와 마감 알림이 같은 응답을 쓴다. 제출 상태를
+  /// 함께 받아 두고, 한 실행 안에서는 강좌마다 한 번만 요청한다.
+  final _assignmentRows = <int, Future<List<Map<String, dynamic>>>>{};
+
+  Future<List<Map<String, dynamic>>> _assignments(int courseId) =>
+      _assignmentRows[courseId] ??= fetchNotificationPages(
+          _canvas, '/courses/$courseId/assignments',
+          query: const {'include[]': 'submission'});
+
+  @override
+  Future<List<DueAssignment>> dueAssignments(int courseId) async =>
+      parseDueAssignments(await _assignments(courseId));
 
   /// 화면 쪽에서 발급해 둔 Canvas 토큰. 없으면 null이고 다리로 폴백한다.
   /// 이번 실행에서 이미 401로 죽었다고 확인한 토큰은 다시 돌려주지 않는다.
@@ -156,11 +171,13 @@ class LmsNotificationSource implements NotificationSource {
       NoticeKind.assignment => 'assignments',
       NoticeKind.discussion => 'discussion_topics',
     };
-    final json = await fetchNotificationPages(
-        _canvas, '/courses/$courseId/$endpoint', query: {
-      if (kind == NoticeKind.announcement) 'only_announcements': true,
-      if (kind == NoticeKind.discussion) 'only_announcements': false,
-    });
+    final json = kind == NoticeKind.assignment
+        ? await _assignments(courseId)
+        : await fetchNotificationPages(
+            _canvas, '/courses/$courseId/$endpoint', query: {
+            if (kind == NoticeKind.announcement) 'only_announcements': true,
+            if (kind == NoticeKind.discussion) 'only_announcements': false,
+          });
     if (kind != NoticeKind.discussion) return parseWatchedItems(json, kind);
     // 거를 글이 없으면 수강 목록을 받아 올 이유가 없다.
     if (json.isEmpty) return const [];
