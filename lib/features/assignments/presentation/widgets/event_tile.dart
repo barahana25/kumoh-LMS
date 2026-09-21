@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import '../../../canvas/presentation/canvas_web_target.dart';
 
 import '../../../../core/storage/db/app_database.dart';
+import '../../../../core/time/due_days.dart';
 
 /// '9월 2일 (수) 23:59' 형태. 기한이 없으면 안내 문구.
 String formatDue(DateTime? at) {
@@ -17,11 +18,10 @@ const submittedForeground = Color(0xFF1E7A34);
 /// 마감까지 남은 시간을 사람이 읽는 문구로.
 String dueRelative(DateTime? at, {DateTime? now}) {
   if (at == null) return '';
-  final base = now ?? DateTime.now();
-  final diff = at.toLocal().difference(base);
-  if (diff.isNegative) return '마감됨';
-  if (diff.inHours < 24) return 'D-DAY';
-  return 'D-${diff.inDays}';
+  final days = dueDays(at, now ?? DateTime.now());
+  if (days == null) return '마감됨';
+  if (days == 0) return 'D-DAY';
+  return 'D-$days';
 }
 
 class EventTile extends StatelessWidget {
