@@ -143,58 +143,67 @@ class LocalNoticeSink implements NoticeSink, DueSink {
     return false;
   }
 
-  @override
-  Future<void> show(PendingNotice notice) async {
+  /// 권한 확인과 표시·페이로드 형식은 새 소식과 마감 알림이 같다.
+  /// 채널과 문구만 부르는 쪽이 정한다.
+  Future<void> _show(
+      {required int id,
+      required String title,
+      required String body,
+      required AndroidNotificationDetails android,
+      required String owner,
+      required int courseId,
+      required String courseName,
+      required String tab}) async {
     if (!await permitted()) {
       throw Exception('Notification permission unavailable');
     }
     await plugin.show(
-        id: notice.id,
-        title: notice.heading,
-        body: notice.title,
-        notificationDetails: const NotificationDetails(
-          android: AndroidNotificationDetails('lms_updates', 'LMS 새 소식',
-              channelDescription: '새 공지사항, 강의자료 파일, 과제, 토론',
-              importance: Importance.defaultImportance,
-              priority: Priority.defaultPriority,
-              onlyAlertOnce: true,
-              visibility: NotificationVisibility.private),
-          iOS:
-              DarwinNotificationDetails(presentAlert: true, presentSound: true),
+        id: id,
+        title: title,
+        body: body,
+        notificationDetails: NotificationDetails(
+          android: android,
+          iOS: const DarwinNotificationDetails(
+              presentAlert: true, presentSound: true),
         ),
         payload: jsonEncode({
-          'owner': notice.owner,
-          'courseId': notice.courseId,
-          'courseName': notice.courseName,
-          'tab': notice.kind.tab
+          'owner': owner,
+          'courseId': courseId,
+          'courseName': courseName,
+          'tab': tab
         }));
   }
 
   @override
-  Future<void> showDue(DueNotice notice) async {
-    if (!await permitted()) {
-      throw Exception('Notification permission unavailable');
-    }
-    await plugin.show(
-        id: notice.id,
-        title: notice.heading,
-        body: notice.body,
-        notificationDetails: const NotificationDetails(
-          android: AndroidNotificationDetails('lms_due', '과제 마감',
-              channelDescription: '제출하지 않은 과제의 마감 3일 전·1일 전·당일 알림',
-              importance: Importance.defaultImportance,
-              priority: Priority.defaultPriority,
-              visibility: NotificationVisibility.private),
-          iOS:
-              DarwinNotificationDetails(presentAlert: true, presentSound: true),
-        ),
-        payload: jsonEncode({
-          'owner': notice.owner,
-          'courseId': notice.courseId,
-          'courseName': notice.courseName,
-          'tab': NoticeKind.assignment.tab
-        }));
-  }
+  Future<void> show(PendingNotice notice) => _show(
+      id: notice.id,
+      title: notice.heading,
+      body: notice.title,
+      android: const AndroidNotificationDetails('lms_updates', 'LMS 새 소식',
+          channelDescription: '새 공지사항, 강의자료 파일, 과제, 토론',
+          importance: Importance.defaultImportance,
+          priority: Priority.defaultPriority,
+          onlyAlertOnce: true,
+          visibility: NotificationVisibility.private),
+      owner: notice.owner,
+      courseId: notice.courseId,
+      courseName: notice.courseName,
+      tab: notice.kind.tab);
+
+  @override
+  Future<void> showDue(DueNotice notice) => _show(
+      id: notice.id,
+      title: notice.heading,
+      body: notice.body,
+      android: const AndroidNotificationDetails('lms_due', '과제 마감',
+          channelDescription: '제출하지 않은 과제의 마감 3일 전·1일 전·당일 알림',
+          importance: Importance.defaultImportance,
+          priority: Priority.defaultPriority,
+          visibility: NotificationVisibility.private),
+      owner: notice.owner,
+      courseId: notice.courseId,
+      courseName: notice.courseName,
+      tab: NoticeKind.assignment.tab);
 
   @override
   Future<void> cancel(int id) => plugin.cancel(id: id);
