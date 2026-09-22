@@ -1,5 +1,6 @@
 import '../../notifications/data/notification_models.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../core/config/env.dart';
@@ -264,6 +265,15 @@ class _NoticeCarouselState extends State<_NoticeCarousel> {
   // 오래된 쪽(다음 페이지)으로 넘기면 오른쪽에서 들어온다.
   var _forward = true;
 
+  // 꽉 찬 페이지의 높이. 덜 찬 마지막 페이지가 쪼그라들지 않게 이만큼 채운다.
+  double _fullHeight = 0;
+
+  void _measured(Size size) {
+    if (size.height > _fullHeight && mounted) {
+      setState(() => _fullHeight = size.height);
+    }
+  }
+
   void _go(int page) => setState(() {
         _forward = page > _page;
         _page = page;
@@ -328,6 +338,7 @@ class _NoticeCarouselState extends State<_NoticeCarousel> {
             )
           else
             GestureDetector(
+              key: const Key('notice_pages'),
               behavior: HitTestBehavior.translucent,
               onHorizontalDragEnd: (d) {
                 final v = d.primaryVelocity ?? 0;
@@ -355,15 +366,27 @@ class _NoticeCarouselState extends State<_NoticeCarousel> {
                     alignment: Alignment.topCenter,
                     children: [...previous, if (current != null) current],
                   ),
-                  child: Column(
+                  child: _MeasureSize(
                     key: ValueKey(page),
-                    children: [
-                      for (final (i, e) in shown.indexed) ...[
-                        if (i > 0)
-                          const Divider(height: 1, indent: 68, endIndent: 16),
-                        widget.tile(e),
-                      ],
-                    ],
+                    onSize: shown.length == _NoticeCarousel.pageSize
+                        ? _measured
+                        : null,
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                          minHeight: shown.length < _NoticeCarousel.pageSize
+                              ? _fullHeight
+                              : 0),
+                      child: Column(
+                        children: [
+                          for (final (i, e) in shown.indexed) ...[
+                            if (i > 0)
+                              const Divider(
+                                  height: 1, indent: 68, endIndent: 16),
+                            widget.tile(e),
+                          ],
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -698,4 +721,37 @@ String formatNoticeTime(DateTime at, DateTime now) {
   if (days == 1) return '어제';
   if (local.year == now.year) return DateFormat('M월 d일', 'ko_KR').format(local);
   return DateFormat('yy.M.d').format(local);
+}
+
+/// 배치가 끝난 뒤 자식의 크기를 [onSize]로 알린다.
+class _MeasureSize extends SingleChildRenderObjectWidget {
+  const _MeasureSize({super.key, required this.onSize, super.child});
+
+  final ValueChanged<Size>? onSize;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) =>
+      _RenderMeasureSize(onSize);
+
+  @override
+  void updateRenderObject(
+          BuildContext context, _RenderMeasureSize renderObject) =>
+      renderObject.onSize = onSize;
+}
+
+class _RenderMeasureSize extends RenderProxyBox {
+  _RenderMeasureSize(this.onSize);
+
+  ValueChanged<Size>? onSize;
+  Size? _reported;
+
+  @override
+  void performLayout() {
+    super.performLayout();
+    final callback = onSize;
+    if (callback == null || size == _reported) return;
+    _reported = size;
+    final measured = size;
+    WidgetsBinding.instance.addPostFrameCallback((_) => callback(measured));
+  }
 }

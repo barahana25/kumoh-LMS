@@ -184,6 +184,31 @@ void main() {
     await tester.pumpAndSettle();
   });
 
+  testWidgets('마지막 페이지가 덜 차도 상자 높이는 3개 분량을 유지한다', (tester) async {
+    await db.announcementsDao.replaceForTerm(8, [
+      for (var i = 1; i <= 4; i++)
+        AnnouncementsCompanion.insert(
+          id: '$i',
+          termId: 8,
+          courseId: const Value(4831),
+          title: '공지 $i',
+          postedAt: Value(DateTime.utc(2026, 9, i)),
+        ),
+    ]);
+
+    await tester.pumpWidget(wrap());
+    await tester.pumpAndSettle();
+    final full = tester.getSize(find.byKey(const Key('notice_pages'))).height;
+
+    await tester.tap(find.byIcon(Icons.chevron_right));
+    await tester.pumpAndSettle();
+    expect(find.text('공지 1'), findsOneWidget);
+    expect(tester.getSize(find.byKey(const Key('notice_pages'))).height, full,
+        reason: '공지 1개만 남아도 쪼그라들지 않고 빈칸으로 둔다');
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpAndSettle();
+  });
+
   test('강좌명에서 학과 표기와 분반 번호를 뗀다', () {
     expect(shortCourseName('AI기초프로젝트 01 [컴퓨터공학부]'), 'AI기초프로젝트');
     expect(shortCourseName('AI기초프로젝트 01 [컴퓨터공학부] 시종욱'), 'AI기초프로젝트');

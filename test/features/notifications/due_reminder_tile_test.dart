@@ -63,12 +63,12 @@ void main() {
     await unmount(tester);
   });
 
-  testWidgets('켜져 있으면 스위치와 상태를 보여준다', (tester) async {
+  testWidgets('켜져 있어도 상태 카드 없이 스위치만 보인다', (tester) async {
     await tester.runAsync(() => DueReminderStore(db).enable('20250000'));
     await tester.pumpWidget(wrap());
     await tester.pumpAndSettle();
     expect(toggle(tester).value, isTrue);
-    expect(find.text('다음 확인부터 마감이 가까운 미제출 과제를 알려드립니다.'), findsOneWidget);
+    expect(find.text('다음 확인부터 마감이 가까운 미제출 과제를 알려드립니다.'), findsNothing);
     await unmount(tester);
   });
 
@@ -77,6 +77,7 @@ void main() {
     await tester.pumpAndSettle();
     await tapToggle(tester);
     expect(find.text('자동 로그인을 켜고 다시 로그인한 후 마감 알림을 켜 주세요.'), findsOneWidget);
+    expect(find.byType(SnackBar), findsOneWidget, reason: '실패 안내는 스낵바로 알린다');
     final saved = await tester.runAsync(() => DueReminderStore(db).settings());
     expect(saved?.enabled ?? false, isFalse);
     await unmount(tester);
